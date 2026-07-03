@@ -203,3 +203,46 @@ M4 is complete when:
 - Candidate UI clearly states pending-review candidates cannot enter RAG.
 - No human review, approved knowledge, knowledge version management, RAG, embedding, vector database, database, ORM, CustomerOpsAgent integration, Bad Case, multimodal, MCP, fine-tuning, or real LLM work is implemented.
 - `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.
+
+## 12. M5 Completion Check
+
+M5 is complete when:
+
+- `GET /api/review/pending` exists.
+- `PATCH /api/knowledge/candidates/{candidate_id}` exists.
+- `POST /api/review/{candidate_id}/approve` exists.
+- `POST /api/review/{candidate_id}/reject` exists.
+- `POST /api/review/{candidate_id}/needs-revision` exists.
+- Review APIs operate only on existing knowledge candidates under `backend/storage/knowledge_candidates/`.
+- Review APIs do not read raw batches.
+- Review APIs do not read sanitized batches to create approvals directly.
+- Candidate editing supports:
+  - `question`
+  - `answer`
+  - `intent`
+  - `tags`
+  - `risk_level`
+  - `quality_score`
+- Review states include:
+  - `pending_review`
+  - `needs_revision`
+  - `approved`
+  - `rejected`
+- Review metadata is recorded:
+  - `reviewer`
+  - `review_note`
+  - `reviewed_at`
+  - `updated_at`
+- Source traceability remains:
+  - `source_batch_id`
+  - `source_conversation_id`
+  - `source_message_ids`
+  - `extraction_method`
+- Frontend can list pending and needs-revision candidates.
+- Frontend can edit candidate fields.
+- Frontend can approve, reject, and mark needs revision.
+- Approved candidates are not indexed.
+- Approved candidates are not available to CustomerOpsAgent.
+- Rejected and needs-revision candidates do not enter retrieval.
+- No RAG, chunking, embedding, vector database, database, ORM, CustomerOpsAgent integration, Bad Case, multimodal, MCP, fine-tuning, or real LLM work is implemented.
+- `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.

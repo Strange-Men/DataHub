@@ -91,10 +91,45 @@ class KnowledgeCandidate(BaseModel):
     ]
     tags: list[str]
     risk_level: Literal["low", "medium", "high"]
-    review_status: Literal["pending_review"]
+    review_status: Literal["pending_review", "needs_revision", "approved", "rejected"]
     quality_score: float
     extraction_method: Literal["rule_based_mock"]
     created_at: str
+    reviewer: str | None = None
+    review_note: str | None = None
+    reviewed_at: str | None = None
+    updated_at: str | None = None
+
+
+class CandidateUpdateRequest(BaseModel):
+    question: str | None = Field(default=None, min_length=1, max_length=4000)
+    answer: str | None = Field(default=None, min_length=1, max_length=10000)
+    intent: Literal[
+        "shipping",
+        "refund",
+        "order_status",
+        "product_info",
+        "handoff",
+        "prohibited_answer",
+        "general",
+    ] | None = None
+    tags: list[str] | None = None
+    risk_level: Literal["low", "medium", "high"] | None = None
+    quality_score: float | None = Field(default=None, ge=0, le=1)
+
+
+class ReviewDecisionRequest(BaseModel):
+    reviewer: str = Field(min_length=1, max_length=120)
+    review_note: str = Field(default="", max_length=2000)
+
+
+class ReviewRecord(BaseModel):
+    review_id: str
+    candidate_id: str
+    review_status: Literal["needs_revision", "approved", "rejected"]
+    reviewer: str
+    review_note: str
+    reviewed_at: str
 
 
 class ExtractionJobMetadata(BaseModel):

@@ -78,10 +78,23 @@ type KnowledgeCandidate = {
     | "general";
   tags: string[];
   risk_level: "low" | "medium" | "high";
-  review_status: "pending_review";
+  review_status: "pending_review" | "needs_revision" | "approved" | "rejected";
   quality_score: number;
   extraction_method: "rule_based_mock";
   created_at: string;
+  reviewer?: string | null;
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  updated_at?: string | null;
+};
+
+type CandidateEditState = {
+  question: string;
+  answer: string;
+  intent: KnowledgeCandidate["intent"];
+  tags: string;
+  risk_level: KnowledgeCandidate["risk_level"];
+  quality_score: string;
 };
 
 export function App() {
@@ -148,10 +161,16 @@ export function App() {
   const [runningExtractionBatchId, setRunningExtractionBatchId] = useState<string | null>(null);
   const [extractionResult, setExtractionResult] = useState<ExtractionJob | null>(null);
   const [candidates, setCandidates] = useState<KnowledgeCandidate[]>([]);
+  const [reviewQueue, setReviewQueue] = useState<KnowledgeCandidate[]>([]);
+  const [selectedCandidate, setSelectedCandidate] = useState<KnowledgeCandidate | null>(null);
+  const [candidateEdit, setCandidateEdit] = useState<CandidateEditState | null>(null);
+  const [reviewer, setReviewer] = useState("local_reviewer");
+  const [reviewNote, setReviewNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void loadSources();
+    void loadReviewQueue();
   }, []);
 
   async function loadSources() {
@@ -310,8 +329,113 @@ export function App() {
         return;
       }
       setCandidates(body.data.candidates);
+      await loadReviewQueue();
     } catch {
       setError("Could not load knowledge candidates.");
+    }
+  }
+
+  async function loadReviewQueue() {
+    setError(null);
+    try {
+      const response = await fetch("/api/review/pending");
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("Could not load review queue.");
+        return;
+      }
+      setReviewQueue(body.data.candidates);
+    } catch {
+      setError("Could not load review queue.");
+    }
+  }
+
+  function selectCandidate(candidate: KnowledgeCandidate) {
+    setSelectedCandidate(candidate);
+    setCandidateEdit({
+      question: candidate.question,
+      answer: candidate.answer,
+      intent: candidate.intent,
+      tags: candidate.tags.join(", "),
+      risk_level: candidate.risk_level,
+      quality_score: String(candidate.quality_score)
+    });
+    setReviewNote(candidate.review_note || "");
+  }
+
+  async function saveCandidateEdits() {
+    if (!selectedCandidate || !candidateEdit) {
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/knowledge/candidates/${selectedCandidate.candidate_id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            question: candidateEdit.question,
+            answer: candidateEdit.answer,
+            intent: candidateEdit.intent,
+            tags: candidateEdit.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean),
+            risk_level: candidateEdit.risk_level,
+            quality_score: Number(candidateEdit.quality_score)
+          })
+        }
+      );
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("Could not save candidate edits.");
+        return;
+      }
+      setSelectedCandidate(body.data);
+      selectCandidate(body.data);
+      await loadCandidates();
+    } catch {
+      setError("Could not save candidate edits.");
+    }
+  }
+
+  async function reviewCandidate(action: "approve" | "reject" | "needs-revision") {
+    if (!selectedCandidate) {
+      return;
+    }
+    if (!reviewer.trim()) {
+      setError("Reviewer is required.");
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/review/${selectedCandidate.candidate_id}/${action}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            reviewer: reviewer.trim(),
+            review_note: reviewNote
+          })
+        }
+      );
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("Review action failed.");
+        return;
+      }
+      setSelectedCandidate(body.data);
+      selectCandidate(body.data);
+      await loadCandidates();
+      await loadReviewQueue();
+    } catch {
+      setError("Review action failed.");
     }
   }
 
@@ -607,6 +731,195 @@ export function App() {
           )}
         </section>
 
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow compact">Human review</p>
+              <h2>Review candidates</h2>
+            </div>
+            <button type="button" className="secondary" onClick={loadReviewQueue}>
+              Refresh queue
+            </button>
+          </div>
+          <p className="warning-note">
+            Approved here means human-reviewed only. It is not indexed, embedded,
+            or available to CustomerOpsAgent.
+          </p>
+
+          {reviewQueue.length === 0 ? (
+            <p className="empty-state">No pending or needs-revision candidates.</p>
+          ) : (
+            <div className="batch-list">
+              {reviewQueue.map((candidate) => (
+                <article className="batch-row" key={candidate.candidate_id}>
+                  <div>
+                    <strong>{candidate.question}</strong>
+                    <span>{candidate.candidate_id}</span>
+                    <span>
+                      {candidate.review_status} · {candidate.intent} · quality{" "}
+                      {candidate.quality_score}
+                    </span>
+                  </div>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => selectCandidate(candidate)}
+                    >
+                      Review
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {selectedCandidate && candidateEdit ? (
+          <section className="panel">
+            <p className="eyebrow compact">Candidate detail</p>
+            <h2>{selectedCandidate.candidate_id}</h2>
+            <div className="review-grid">
+              <label>
+                <span>Question</span>
+                <textarea
+                  className="compact-textarea"
+                  value={candidateEdit.question}
+                  onChange={(event) =>
+                    setCandidateEdit({ ...candidateEdit, question: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span>Answer</span>
+                <textarea
+                  className="compact-textarea"
+                  value={candidateEdit.answer}
+                  onChange={(event) =>
+                    setCandidateEdit({ ...candidateEdit, answer: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span>Intent</span>
+                <select
+                  value={candidateEdit.intent}
+                  onChange={(event) =>
+                    setCandidateEdit({
+                      ...candidateEdit,
+                      intent: event.target.value as KnowledgeCandidate["intent"]
+                    })
+                  }
+                >
+                  <option value="shipping">shipping</option>
+                  <option value="refund">refund</option>
+                  <option value="order_status">order_status</option>
+                  <option value="product_info">product_info</option>
+                  <option value="handoff">handoff</option>
+                  <option value="prohibited_answer">prohibited_answer</option>
+                  <option value="general">general</option>
+                </select>
+              </label>
+              <label>
+                <span>Tags</span>
+                <input
+                  value={candidateEdit.tags}
+                  onChange={(event) =>
+                    setCandidateEdit({ ...candidateEdit, tags: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                <span>Risk level</span>
+                <select
+                  value={candidateEdit.risk_level}
+                  onChange={(event) =>
+                    setCandidateEdit({
+                      ...candidateEdit,
+                      risk_level: event.target.value as KnowledgeCandidate["risk_level"]
+                    })
+                  }
+                >
+                  <option value="low">low</option>
+                  <option value="medium">medium</option>
+                  <option value="high">high</option>
+                </select>
+              </label>
+              <label>
+                <span>Quality score</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={candidateEdit.quality_score}
+                  onChange={(event) =>
+                    setCandidateEdit({
+                      ...candidateEdit,
+                      quality_score: event.target.value
+                    })
+                  }
+                />
+              </label>
+              <label>
+                <span>Reviewer</span>
+                <input
+                  value={reviewer}
+                  onChange={(event) => setReviewer(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Review note</span>
+                <textarea
+                  className="compact-textarea"
+                  value={reviewNote}
+                  onChange={(event) => setReviewNote(event.target.value)}
+                />
+              </label>
+            </div>
+            <div className="review-actions">
+              <button type="button" className="secondary" onClick={saveCandidateEdits}>
+                Save edits
+              </button>
+              <button type="button" onClick={() => reviewCandidate("approve")}>
+                Approve
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => reviewCandidate("needs-revision")}
+              >
+                Needs revision
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => reviewCandidate("reject")}
+              >
+                Reject
+              </button>
+            </div>
+            <dl className="review-meta">
+              <div>
+                <dt>review_status</dt>
+                <dd>{selectedCandidate.review_status}</dd>
+              </div>
+              <div>
+                <dt>source_batch_id</dt>
+                <dd>{selectedCandidate.source_batch_id}</dd>
+              </div>
+              <div>
+                <dt>source_conversation_id</dt>
+                <dd>{selectedCandidate.source_conversation_id}</dd>
+              </div>
+              <div>
+                <dt>source_message_ids</dt>
+                <dd>{selectedCandidate.source_message_ids.join(", ")}</dd>
+              </div>
+            </dl>
+          </section>
+        ) : null}
+
         <div className="status-grid" aria-label="Project status">
           <div>
             <span className="label">Frontend</span>
@@ -618,7 +931,7 @@ export function App() {
           </div>
           <div>
             <span className="label">Current milestone</span>
-            <strong>M4 knowledge candidates</strong>
+            <strong>M5 human review</strong>
           </div>
         </div>
       </section>

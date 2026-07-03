@@ -76,7 +76,8 @@ label {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid #cfd7e3;
   border-radius: 8px;
@@ -85,7 +86,8 @@ textarea {
   font: inherit;
 }
 
-input {
+input,
+select {
   height: 44px;
   padding: 0 12px;
 }
@@ -117,6 +119,10 @@ button.secondary {
   border: 1px solid #cfd7e3;
   background: #ffffff;
   color: #2f6f9f;
+}
+
+button.danger {
+  background: #a83b3b;
 }
 
 button:disabled {
@@ -265,6 +271,28 @@ button:disabled {
   font-weight: 700;
 }
 
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.compact-textarea {
+  min-height: 120px;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.review-meta {
+  padding-top: 14px;
+  border-top: 1px solid #dfe5ee;
+}
+
 .message-meta,
 .pill-row {
   display: flex;
@@ -365,6 +393,10 @@ strong {
 
   .row-actions {
     justify-content: flex-start;
+  }
+
+  .review-grid {
+    grid-template-columns: 1fr;
   }
 
   dl > div {

@@ -5,10 +5,13 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.schemas import (
+    CandidateUpdateRequest,
     CleaningJobMetadata,
     ExtractionJobMetadata,
     ImportJsonRequest,
     KnowledgeCandidate,
+    ReviewDecisionRequest,
+    ReviewRecord,
     SanitizedBatch,
     SanitizedMessage,
     SourceBatchMetadata,
@@ -22,11 +25,13 @@ SANITIZED_BATCH_DIR = STORAGE_DIR / "sanitized_batches"
 CLEANING_JOB_DIR = STORAGE_DIR / "cleaning_jobs"
 EXTRACTION_JOB_DIR = STORAGE_DIR / "extraction_jobs"
 KNOWLEDGE_CANDIDATE_DIR = STORAGE_DIR / "knowledge_candidates"
+REVIEW_RECORD_DIR = STORAGE_DIR / "review_records"
 INDEX_FILE = RAW_BATCH_DIR / "index.json"
 SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
 CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
 EXTRACTION_JOB_INDEX_FILE = EXTRACTION_JOB_DIR / "index.json"
 KNOWLEDGE_CANDIDATE_INDEX_FILE = KNOWLEDGE_CANDIDATE_DIR / "index.json"
+REVIEW_RECORD_INDEX_FILE = REVIEW_RECORD_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -52,6 +57,7 @@ def _ensure_storage() -> None:
     CLEANING_JOB_DIR.mkdir(parents=True, exist_ok=True)
     EXTRACTION_JOB_DIR.mkdir(parents=True, exist_ok=True)
     KNOWLEDGE_CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
+    REVIEW_RECORD_DIR.mkdir(parents=True, exist_ok=True)
     if not INDEX_FILE.exists():
         INDEX_FILE.write_text("[]", encoding="utf-8")
     if not SANITIZED_INDEX_FILE.exists():
@@ -62,6 +68,8 @@ def _ensure_storage() -> None:
         EXTRACTION_JOB_INDEX_FILE.write_text("[]", encoding="utf-8")
     if not KNOWLEDGE_CANDIDATE_INDEX_FILE.exists():
         KNOWLEDGE_CANDIDATE_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not REVIEW_RECORD_INDEX_FILE.exists():
+        REVIEW_RECORD_INDEX_FILE.write_text("[]", encoding="utf-8")
 
 
 def _read_json_list(path: Path) -> list[dict[str, object]]:
@@ -502,3 +510,99 @@ def get_knowledge_candidate(candidate_id: str) -> KnowledgeCandidate | None:
     if not isinstance(data, dict):
         return None
     return KnowledgeCandidate(**data)
+
+
+def _write_knowledge_candidate(candidate: KnowledgeCandidate) -> KnowledgeCandidate:
+    _ensure_storage()
+    (KNOWLEDGE_CANDIDATE_DIR / f"{candidate.candidate_id}.json").write_text(
+        json.dumps(candidate.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    items = [
+        item for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE)
+        if item.get("candidate_id") != candidate.candidate_id
+    ]
+    items.append(candidate.model_dump())
+    _write_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE, items)
+    return candidate
+
+
+def list_pending_review_candidates() -> list[KnowledgeCandidate]:
+    allowed = {"pending_review", "needs_revision"}
+    return [
+        candidate
+        for candidate in list_knowledge_candidates()
+        if candidate.review_status in allowed
+    ]
+
+
+def update_knowledge_candidate(
+    candidate_id: str,
+    payload: CandidateUpdateRequest,
+) -> KnowledgeCandidate | None:
+    candidate = get_knowledge_candidate(candidate_id)
+    if candidate is None:
+        return None
+
+    updates = payload.model_dump(exclude_unset=True)
+    cleaned_tags = updates.get("tags")
+    if cleaned_tags is not None:
+        updates["tags"] = [
+            str(tag).strip()
+            for tag in cleaned_tags
+            if str(tag).strip()
+        ]
+    updated = candidate.model_copy(
+        update={
+            **updates,
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+    )
+    return _write_knowledge_candidate(updated)
+
+
+def apply_review_decision(
+    candidate_id: str,
+    status: str,
+    payload: ReviewDecisionRequest,
+) -> KnowledgeCandidate | None:
+    candidate = get_knowledge_candidate(candidate_id)
+    if candidate is None:
+        return None
+    if status not in {"approved", "rejected", "needs_revision"}:
+        return None
+    allowed_transitions = {
+        "pending_review": {"approved", "rejected", "needs_revision"},
+        "needs_revision": {"approved", "rejected"},
+    }
+    if status not in allowed_transitions.get(candidate.review_status, set()):
+        return None
+
+    reviewed_at = datetime.now(UTC).isoformat()
+    updated = candidate.model_copy(
+        update={
+            "review_status": status,
+            "reviewer": payload.reviewer,
+            "review_note": payload.review_note,
+            "reviewed_at": reviewed_at,
+            "updated_at": reviewed_at,
+        }
+    )
+    written = _write_knowledge_candidate(updated)
+
+    review = ReviewRecord(
+        review_id=f"review_{uuid4().hex[:12]}",
+        candidate_id=candidate_id,
+        review_status=status,  # type: ignore[arg-type]
+        reviewer=payload.reviewer,
+        review_note=payload.review_note,
+        reviewed_at=reviewed_at,
+    )
+    (REVIEW_RECORD_DIR / f"{review.review_id}.json").write_text(
+        json.dumps(review.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    review_items = _read_json_list(REVIEW_RECORD_INDEX_FILE)
+    review_items.append(review.model_dump())
+    _write_json_list(REVIEW_RECORD_INDEX_FILE, review_items)
+    return written

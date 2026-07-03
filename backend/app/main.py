@@ -2,8 +2,9 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 
-from app.schemas import ApiResponse, ImportJsonRequest
+from app.schemas import ApiResponse, CandidateUpdateRequest, ImportJsonRequest, ReviewDecisionRequest
 from app.storage import (
+    apply_review_decision,
     create_raw_batch,
     get_cleaning_job,
     get_extraction_job,
@@ -11,9 +12,11 @@ from app.storage import (
     get_raw_batch_metadata,
     get_sanitized_batch,
     list_knowledge_candidates,
+    list_pending_review_candidates,
     list_raw_batches,
     run_cleaning,
     run_extraction,
+    update_knowledge_candidate,
 )
 
 app = FastAPI(title="DataHub API", version="0.1.0")
@@ -24,7 +27,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M4",
+        "phase": "M5",
     }
 
 
@@ -182,3 +185,63 @@ def get_candidate(candidate_id: str) -> ApiResponse:
         data=candidate.model_dump(),
         requestId=f"req_{uuid4().hex[:12]}",
     )
+
+
+@app.get("/api/review/pending", response_model=ApiResponse)
+def list_pending_review() -> ApiResponse:
+    candidates = [candidate.model_dump() for candidate in list_pending_review_candidates()]
+    return ApiResponse(
+        success=True,
+        data={"candidates": candidates},
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.patch("/api/knowledge/candidates/{candidate_id}", response_model=ApiResponse)
+def update_candidate(candidate_id: str, payload: CandidateUpdateRequest) -> ApiResponse:
+    candidate = update_knowledge_candidate(candidate_id, payload)
+    if candidate is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "KNOWLEDGE_CANDIDATE_NOT_FOUND",
+                "message": "Knowledge candidate was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=candidate.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+def _review_response(candidate_id: str, status: str, payload: ReviewDecisionRequest) -> ApiResponse:
+    candidate = apply_review_decision(candidate_id, status, payload)
+    if candidate is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "KNOWLEDGE_CANDIDATE_NOT_FOUND",
+                "message": "Knowledge candidate was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=candidate.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.post("/api/review/{candidate_id}/approve", response_model=ApiResponse)
+def approve_candidate(candidate_id: str, payload: ReviewDecisionRequest) -> ApiResponse:
+    return _review_response(candidate_id, "approved", payload)
+
+
+@app.post("/api/review/{candidate_id}/reject", response_model=ApiResponse)
+def reject_candidate(candidate_id: str, payload: ReviewDecisionRequest) -> ApiResponse:
+    return _review_response(candidate_id, "rejected", payload)
+
+
+@app.post("/api/review/{candidate_id}/needs-revision", response_model=ApiResponse)
+def request_candidate_revision(candidate_id: str, payload: ReviewDecisionRequest) -> ApiResponse:
+    return _review_response(candidate_id, "needs_revision", payload)

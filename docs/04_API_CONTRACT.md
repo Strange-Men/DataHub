@@ -505,27 +505,66 @@ State rule:
 
 The next stage may add human review, editing, approval, and rejection. These are not implemented in M4.
 
-## 5. Human Review APIs
+## 5. M5 Human Review APIs
 
-### 5.1 Review Knowledge Draft
+M5 allows humans to edit and review existing knowledge candidates.
 
-`POST /api/review/knowledge-drafts/{draftId}/decision`
+Hard rules:
+
+- Review APIs only operate on existing files under `backend/storage/knowledge_candidates/`.
+- Review APIs must not read raw batches directly.
+- Review APIs must not read sanitized batches directly to create approvals.
+- Approved candidates are human-reviewed candidates only.
+- Approved candidates are not RAG chunks.
+- Approved candidates are not indexed.
+- Rejected and needs-revision candidates must not enter future retrieval.
+- M5 must not create embeddings, vector records, CustomerOpsAgent retrieval records, or Bad Case records.
+
+### 5.1 List Pending Review Candidates
+
+`GET /api/review/pending`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "candidates": [
+      {
+        "candidate_id": "kc_abc123",
+        "review_status": "pending_review",
+        "question": "How long does shipping take to Germany?",
+        "answer": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+        "source_batch_id": "batch_abc123",
+        "source_conversation_id": "conv_001",
+        "source_message_ids": ["msg_001", "msg_002"]
+      }
+    ]
+  },
+  "requestId": "req_007"
+}
+```
+
+Returned states:
+
+- `pending_review`
+- `needs_revision`
+
+### 5.2 Edit Knowledge Candidate
+
+`PATCH /api/knowledge/candidates/{candidate_id}`
 
 Request:
 
 ```json
 {
-  "decision": "approve | reject | needs_revision",
-  "reviewerId": "user_001",
-  "reviewNote": "optional safe note",
-  "editedKnowledge": {
-    "title": "Shipping delay FAQ",
-    "question": "Why is my shipment delayed?",
-    "answer": "Approved answer text",
-    "knowledgeType": "faq",
-    "tags": ["shipping", "delay"],
-    "sourceNote": "Derived from June customer service conversations."
-  }
+  "question": "How long does shipping take to Germany?",
+  "answer": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+  "intent": "shipping",
+  "tags": ["shipping", "delivery"],
+  "risk_level": "low",
+  "quality_score": 0.82
 }
 ```
 
@@ -535,47 +574,37 @@ Response:
 {
   "success": true,
   "data": {
-    "draftId": "draft_001",
-    "knowledgeId": "know_001",
-    "status": "approved",
-    "version": 1,
-    "reviewedAt": "2026-07-03T11:00:00+08:00"
+    "candidate_id": "kc_abc123",
+    "review_status": "pending_review",
+    "updated_at": "2026-07-03T11:00:00+00:00"
   },
-  "requestId": "req_004"
+  "requestId": "req_008"
 }
 ```
 
-Allowed draft states:
+Editable fields:
 
-- `review_pending`
-- `needs_revision`
+- `question`
+- `answer`
+- `intent`
+- `tags`
+- `risk_level`
+- `quality_score`
 
 Possible errors:
 
-- `DRAFT_NOT_FOUND`
-- `INVALID_STATE`
-- `MISSING_SOURCE_REFERENCE`
-- `UNSAFE_CONTENT`
+- `KNOWLEDGE_CANDIDATE_NOT_FOUND`
 
-Hard rule:
+### 5.3 Approve Candidate
 
-- Approved knowledge must retain source references.
-
-### 5.2 Create Manual Knowledge
-
-`POST /api/knowledge/manual`
+`POST /api/review/{candidate_id}/approve`
 
 Request:
 
 ```json
 {
-  "knowledgeType": "faq",
-  "title": "Manual supplement title",
-  "question": "Customer question",
-  "answer": "Reviewed answer draft",
-  "tags": ["manual"],
-  "sourceNote": "Manual supplement from reviewer",
-  "sourceRecordIds": []
+  "reviewer": "local_reviewer",
+  "review_note": "Approved after wording check."
 }
 ```
 
@@ -585,14 +614,81 @@ Response:
 {
   "success": true,
   "data": {
-    "draftId": "draft_manual_001",
-    "status": "review_pending"
+    "candidate_id": "kc_abc123",
+    "review_status": "approved",
+    "reviewer": "local_reviewer",
+    "review_note": "Approved after wording check.",
+    "reviewed_at": "2026-07-03T11:00:00+00:00",
+    "updated_at": "2026-07-03T11:00:00+00:00"
   },
-  "requestId": "req_005"
+  "requestId": "req_009"
 }
 ```
 
-Manual knowledge must still pass review before indexing.
+Hard rule:
+
+- Approved candidates retain `source_batch_id`, `source_conversation_id`, `source_message_ids`, and `extraction_method`.
+- Approved candidates are not indexed and are not available to CustomerOpsAgent.
+
+### 5.4 Reject Candidate
+
+`POST /api/review/{candidate_id}/reject`
+
+Request:
+
+```json
+{
+  "reviewer": "local_reviewer",
+  "review_note": "Not useful enough."
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "candidate_id": "kc_abc123",
+    "review_status": "rejected"
+  },
+  "requestId": "req_010"
+}
+```
+
+Rejected candidates must not enter future retrieval or RAG.
+
+### 5.5 Mark Candidate As Needs Revision
+
+`POST /api/review/{candidate_id}/needs-revision`
+
+Request:
+
+```json
+{
+  "reviewer": "local_reviewer",
+  "review_note": "Needs a clearer answer."
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "candidate_id": "kc_abc123",
+    "review_status": "needs_revision"
+  },
+  "requestId": "req_011"
+}
+```
+
+Needs-revision candidates must be edited before later approval or rejection.
+
+## 5A. Future RAG APIs Not Implemented In M5
+
+M5 does not implement RAG build, embeddings, vector storage, CustomerOpsAgent retrieval, or Bad Case feedback.
 
 ## 6. Knowledge Base APIs
 

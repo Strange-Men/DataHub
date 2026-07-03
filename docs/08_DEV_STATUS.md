@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M4 Knowledge Candidate Extraction.
+M5 Human Review Workflow.
 
 ## Completed Through M1
 
@@ -82,9 +82,30 @@ M4 Knowledge Candidate Extraction.
   - `created_at`
 - Added React controls to list sanitized batches, run extraction, show extraction summary, and show pending-review candidates.
 
+## Completed In M5
+
+- Added pending review API: `GET /api/review/pending`.
+- Added candidate edit API: `PATCH /api/knowledge/candidates/{candidate_id}`.
+- Added review decision APIs:
+  - `POST /api/review/{candidate_id}/approve`
+  - `POST /api/review/{candidate_id}/reject`
+  - `POST /api/review/{candidate_id}/needs-revision`
+- Added candidate review states:
+  - `pending_review`
+  - `needs_revision`
+  - `approved`
+  - `rejected`
+- Added review metadata:
+  - `reviewer`
+  - `review_note`
+  - `reviewed_at`
+  - `updated_at`
+- Added local review record storage under `backend/storage/review_records/`.
+- Added React review queue, candidate editing, reviewer/note inputs, and Approve/Reject/Needs revision actions.
+
 ## Current Boundaries
 
-Allowed in M4:
+Allowed in M5:
 
 - JSON customer service chat import only.
 - Local raw batch file storage only.
@@ -98,8 +119,12 @@ Allowed in M4:
 - Rule-based mock extraction only.
 - Local knowledge candidate storage.
 - Candidate list and detail APIs.
+- Human review of existing knowledge candidates.
+- Candidate field editing.
+- Review status transitions.
+- Local review record storage.
 
-Forbidden in M4:
+Forbidden in M5:
 
 - CSV import.
 - Excel import.
@@ -108,14 +133,22 @@ Forbidden in M4:
 - SQLite integration.
 - ORM integration.
 - Real LLM integration.
-- Human review.
-- Approved knowledge.
-- Knowledge version management.
 - RAG implementation.
-- Embedding.
-- Vector database integration.
+- RAG chunk generation.
 - CustomerOpsAgent integration.
 - Bad Case feedback.
+- Treating approved candidates as indexed or available knowledge.
+Forbidden from prior stages remains:
+- CSV import.
+- Excel import.
+- Database selection finalization.
+- PostgreSQL integration.
+- SQLite integration.
+- ORM integration.
+- Real LLM integration.
+- Knowledge version management.
+- Embedding.
+- Vector database integration.
 - Multimodal features.
 - MCP.
 - Fine-tuning.
@@ -150,8 +183,10 @@ Still candidates:
 - M4 extraction endpoints are defined.
 - Knowledge candidates are written to ignored local storage.
 - Extraction reads only sanitized batches.
-- Candidates use `pending_review` only.
-- No human review, approved status, RAG, CustomerOpsAgent integration, Bad Case workflow, database, ORM, vector store, real LLM, or multimodal workflow has been implemented.
+- M5 review endpoints are defined.
+- Review updates only existing knowledge candidates.
+- Approved candidates remain candidates and are not indexed.
+- No RAG, CustomerOpsAgent integration, Bad Case workflow, database, ORM, vector store, real LLM, or multimodal workflow has been implemented.
 
 Manual verification:
 
@@ -198,15 +233,31 @@ Read knowledge candidates:
 Invoke-RestMethod http://127.0.0.1:8000/api/knowledge/candidates
 ```
 
+Read pending review queue:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/review/pending
+```
+
+Approve a candidate:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/review/{candidate_id}/approve `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"reviewer":"local_reviewer","review_note":"Approved."}'
+```
+
 ## Next Suggested Stage
 
-M5 Human Review planning.
+M6 RAG Build planning.
 
-Before M5 starts:
+Before M6 starts:
 
-- Confirm review decision model.
-- Confirm candidate edit fields.
-- Confirm approve/reject/needs_revision transitions.
-- Keep approved knowledge out of RAG until M6.
+- Confirm which approved candidates are eligible for indexing.
+- Confirm chunking rules.
+- Confirm vector store candidate remains local/lightweight.
+- Confirm rejected and needs_revision candidates are excluded.
 
-M5 must not implement RAG, CustomerOpsAgent integration, Bad Case feedback, vector storage, or model fine-tuning unless explicitly approved later.
+M6 must not implement CustomerOpsAgent integration, Bad Case feedback, or model fine-tuning unless explicitly approved later.

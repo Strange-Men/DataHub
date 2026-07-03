@@ -2,7 +2,7 @@
 
 DataHub is a lightweight data asset center for AI application projects.
 
-Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M4 knowledge candidate extraction: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, then transformed into pending-review knowledge candidates.
+Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M5 human review: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, and reviewed by a human.
 
 ## Current Scope
 
@@ -18,6 +18,7 @@ Implemented through M4:
 - Sanitized batch lookup.
 - Rule-based mock knowledge candidate extraction.
 - Pending-review knowledge candidate lookup.
+- Human review state transitions for knowledge candidates.
 - Environment example file.
 - Development status and stage checklist documents.
 
@@ -67,7 +68,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M4"
+  "phase": "M5"
 }
 ```
 
@@ -236,6 +237,91 @@ Frontend M4 verification:
 6. Confirm candidates show question, answer, intent, tags, quality score, and `pending_review`.
 
 M4 does not create approved knowledge, RAG indexes, embeddings, CustomerOpsAgent integrations, or Bad Case workflows.
+
+## M5 Human Review
+
+Review records are saved locally under:
+
+```text
+backend/storage/review_records/
+```
+
+Review updates existing knowledge candidates under:
+
+```text
+backend/storage/knowledge_candidates/
+```
+
+Both directories are ignored by Git through `backend/storage/`.
+
+Supported review states:
+
+- `pending_review`
+- `needs_revision`
+- `approved`
+- `rejected`
+
+Approved candidates are human-reviewed candidates only. They are not indexed, embedded, or available to CustomerOpsAgent.
+
+List pending review candidates:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/review/pending
+```
+
+Edit a candidate:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/knowledge/candidates/{candidate_id} `
+  -Method Patch `
+  -ContentType 'application/json' `
+  -Body '{"question":"Updated question?","answer":"Updated answer.","intent":"shipping","tags":["shipping"],"risk_level":"low","quality_score":0.82}'
+```
+
+Approve:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/review/{candidate_id}/approve `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"reviewer":"local_reviewer","review_note":"Approved."}'
+```
+
+Reject:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/review/{candidate_id}/reject `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"reviewer":"local_reviewer","review_note":"Rejected."}'
+```
+
+Needs revision:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/review/{candidate_id}/needs-revision `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"reviewer":"local_reviewer","review_note":"Needs a clearer answer."}'
+```
+
+Frontend M5 verification:
+
+1. Start both backend and frontend.
+2. Import sample JSON.
+3. Run cleaning.
+4. Run extraction.
+5. Open the review queue.
+6. Edit candidate fields.
+7. Enter reviewer and review note.
+8. Approve, reject, or mark needs revision.
+9. Confirm status updates in the UI.
+
+M5 does not create RAG chunks, embeddings, vector records, CustomerOpsAgent integrations, or Bad Case workflows.
 
 ## Development Rules
 
