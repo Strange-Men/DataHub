@@ -16,6 +16,7 @@ Before starting work, read:
 - `docs/07_ACCEPTANCE_CRITERIA.md`
 - `docs/08_DEV_STATUS.md`
 - `docs/09_STAGE_CHECKLIST.md`
+- `docs/10_FINAL_VISION_AND_ROADMAP.md`
 
 ## 2. Stage Declaration
 

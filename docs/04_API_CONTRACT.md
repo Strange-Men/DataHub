@@ -1,6 +1,6 @@
 # DataHub API Contract Draft
 
-This document defines the phase-one API draft. It is a planning contract, not an implementation.
+This document defines the phase-one API contract and roadmap. Each section is marked as implemented, planned, or future roadmap.
 
 Base assumptions:
 
@@ -8,6 +8,65 @@ Base assumptions:
 - CustomerOpsAgent calls restricted retrieval and Bad Case APIs.
 - All APIs return structured errors.
 - Raw and unapproved data must never be retrievable by CustomerOpsAgent.
+
+## 0. API Implementation Status
+
+This document separates APIs by implementation status.
+
+Implemented APIs: M2-M6
+
+- M2 JSON import.
+- M3 cleaning and sanitization.
+- M4 knowledge candidate extraction.
+- M5 human review.
+- M6 local RAG chunk build and local mock search.
+
+Planned Phase 1 APIs: M7-M8
+
+- CustomerOpsAgent production retrieval.
+- CustomerOpsAgent Bad Case feedback.
+- Bad Case management and resolution.
+- Any production retrieval endpoint that exposes data to CustomerOpsAgent.
+
+Future Roadmap APIs: Phase 2-4
+
+- Multimodal material ingestion and understanding.
+- Sales training dataset export.
+- Fine-tuning dataset export.
+- MCP tool APIs for the Agent cluster.
+
+Important M6 boundary:
+
+- `POST /api/rag/build` and `POST /api/rag/search` are implemented as DataHub internal local RAG test APIs.
+- Current `/api/rag/search` is not the official CustomerOpsAgent retrieval API.
+- Current M6 uses local JSON plus keyword/mock retrieval.
+- Current M6 does not use embeddings, a real vector database, database, ORM, or production RAG index.
+
+## 0A. Canonical State Names
+
+Use these canonical state names:
+
+```text
+raw_imported
+sanitized
+pending_review
+needs_revision
+approved
+rejected
+rag_chunked
+indexed
+```
+
+Rules:
+
+- `pending_review` is the candidate review state. Do not use `review_pending`.
+- `approved` means a human approved the candidate. It does not mean RAG chunks or production indexing exist.
+- `rag_chunked` means M6 local RAG chunks exist.
+- `indexed` is reserved for future real vector store or production retrieval index status.
+- Current M6 reaches `rag_chunked`, not production `indexed`.
+- `knowledge candidate` is used for M4-M5 records.
+- `approved candidate` is the M5 post-review state.
+- A future `knowledge_item` or formal knowledge asset store must be planned separately.
 
 ## 1. Common Response Shapes
 
@@ -37,7 +96,7 @@ Base assumptions:
 
 Error messages must not include raw private data, secrets, or internal stack traces.
 
-## 2. M2 JSON Data Import APIs
+## 2. Implemented APIs: M2 JSON Data Import
 
 M2 implements only JSON customer service chat import. CSV, Excel, database-backed import, cleaning, desensitization, extraction, RAG, and CustomerOpsAgent integration are not implemented in M2.
 
@@ -176,7 +235,7 @@ M2 state rule:
 - Imported batches only have `raw_imported` status.
 - `raw_imported` data cannot be used for extraction, RAG, CustomerOpsAgent retrieval, or export.
 
-## 2A. Future Import APIs Not Implemented In M2
+## 2A. Planned Phase 1 Import APIs Not Implemented
 
 The earlier generic import direction is reserved for later stages:
 
@@ -188,7 +247,7 @@ The earlier generic import direction is reserved for later stages:
 
 These are not implemented in M2.
 
-## 3. M3 Cleaning And Sanitization APIs
+## 3. Implemented APIs: M3 Cleaning And Sanitization
 
 M3 converts a raw batch into a separate sanitized batch.
 
@@ -198,7 +257,7 @@ Hard rules:
 - Sanitized batches are saved under `backend/storage/sanitized_batches/`.
 - Cleaning jobs are saved under `backend/storage/cleaning_jobs/`.
 - M3 only creates `sanitized` data.
-- M3 must not create `extracted`, `approved`, or `indexed` data.
+- M3 must not create `pending_review`, `approved`, `rag_chunked`, or `indexed` data.
 - M3 must not create RAG, embedding, vector store, CustomerOpsAgent, or Bad Case workflows.
 
 ### 3.1 Run Cleaning And Sanitization
@@ -332,10 +391,10 @@ State rule:
 - Sanitized data is safer processed data.
 - Sanitized data is not knowledge.
 - Sanitized data is not approved.
-- Sanitized data is not indexed.
+- Sanitized data is not `rag_chunked` or `indexed`.
 - Sanitized data cannot be retrieved by CustomerOpsAgent.
 
-## 4. M4 Knowledge Candidate Extraction APIs
+## 4. Implemented APIs: M4 Knowledge Candidate Extraction
 
 M4 extracts reviewable knowledge candidates from sanitized batches only.
 
@@ -499,13 +558,13 @@ State rule:
 
 - M4 produces only `pending_review` candidates.
 - M4 does not produce `approved` knowledge.
-- M4 does not produce `indexed` knowledge.
+- M4 does not produce `rag_chunked` or production `indexed` knowledge.
 
-## 4A. Future Knowledge Review APIs Not Implemented In M4
+## 4A. Historical Note: Knowledge Review Is Implemented In M5
 
-The next stage may add human review, editing, approval, and rejection. These are not implemented in M4.
+M4 itself does not implement review. M5 implements human review, editing, approval, and rejection.
 
-## 5. M5 Human Review APIs
+## 5. Implemented APIs: M5 Human Review
 
 M5 allows humans to edit and review existing knowledge candidates.
 
@@ -516,7 +575,7 @@ Hard rules:
 - Review APIs must not read sanitized batches directly to create approvals.
 - Approved candidates are human-reviewed candidates only.
 - Approved candidates are not RAG chunks.
-- Approved candidates are not indexed.
+- Approved candidates are not `rag_chunked` or production `indexed`.
 - Rejected and needs-revision candidates must not enter future retrieval.
 - M5 must not create embeddings, vector records, CustomerOpsAgent retrieval records, or Bad Case records.
 
@@ -628,7 +687,7 @@ Response:
 Hard rule:
 
 - Approved candidates retain `source_batch_id`, `source_conversation_id`, `source_message_ids`, and `extraction_method`.
-- Approved candidates are not indexed and are not available to CustomerOpsAgent.
+- Approved candidates are not `rag_chunked` until M6 build runs. They are not production `indexed` and are not available to CustomerOpsAgent.
 
 ### 5.4 Reject Candidate
 
@@ -686,7 +745,7 @@ Response:
 
 Needs-revision candidates must be edited before later approval or rejection.
 
-## 5A. M6 Local RAG Build And Search APIs
+## 5A. Implemented APIs: M6 Local RAG Build And Search
 
 M6 builds local JSON RAG chunks from approved knowledge candidates only.
 
@@ -826,7 +885,9 @@ Response:
 
 M6 search is a DataHub internal test endpoint. It does not mean CustomerOpsAgent integration is complete.
 
-## 6. Knowledge Base APIs
+## 6. Planned Phase 1 APIs: Knowledge Base Management (Not Implemented)
+
+This section describes planned Phase 1 knowledge management capabilities. These APIs are not implemented through M6.
 
 ### 6.1 List Approved Knowledge
 
@@ -871,7 +932,9 @@ Allowed states:
 
 Archived knowledge must be removed from future retrieval results.
 
-## 7. RAG Build APIs
+## 7. Planned/Future Phase 1 APIs: Production RAG Index Jobs (Not Implemented)
+
+This section is for future production indexing. It must not be confused with M6 `POST /api/rag/build`, which only creates local JSON RAG chunks.
 
 ### 7.1 Start RAG Index Job
 
@@ -949,7 +1012,7 @@ Hard rule:
 
 - Retrieval must only return approved and indexed knowledge.
 
-## 9. CustomerOpsAgent APIs
+## 9. Planned Phase 1 APIs: CustomerOpsAgent Integration (M7-M8, Not Implemented)
 
 ### 9.1 CustomerOpsAgent Knowledge Retrieval
 
@@ -1054,7 +1117,7 @@ Hard rule:
 
 - Bad Cases cannot directly update approved knowledge or the RAG index.
 
-## 10. Bad Case Management APIs
+## 10. Planned Phase 1 APIs: Bad Case Management (M8, Not Implemented)
 
 ### 10.1 List Bad Cases
 
@@ -1110,3 +1173,53 @@ Response:
 Hard rule:
 
 - Created or updated knowledge from Bad Case resolution must enter review before indexing.
+
+## 11. Future Roadmap APIs: Phase 2-4 (Not Implemented)
+
+These API groups belong to the formal roadmap, but they are not implemented through M6 and must not be started without an explicit future phase.
+
+### 11.1 Phase 2 Multimodal Material APIs
+
+Potential future APIs:
+
+- Material asset import.
+- OCR and Caption job management.
+- Tag and SKU binding management.
+- Multimodal review queue.
+- Multimodal asset retrieval.
+
+Status:
+
+- Not implemented.
+- Not part of M6.5 or M7 unless explicitly approved later.
+
+### 11.2 Phase 3 Dataset Export APIs
+
+Potential future APIs:
+
+- Export sales training materials.
+- Export FAQ handbook.
+- Export SOP and script handbook.
+- Export typical cases and quiz questions.
+- Export SFT dataset.
+- Export Preference dataset.
+
+Status:
+
+- Not implemented.
+- No real fine-tuning is performed by DataHub.
+
+### 11.3 Phase 4 MCP Tool APIs
+
+Potential future tools:
+
+- `search_customer_knowledge`
+- `search_multimodal_assets`
+- `submit_bad_case`
+- `export_training_dataset`
+- `export_finetune_dataset`
+
+Status:
+
+- Not implemented.
+- Future MCP tool contracts must enforce review and authorization boundaries.

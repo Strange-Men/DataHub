@@ -2,6 +2,32 @@
 
 This document defines milestone-level acceptance criteria. Each milestone should be accepted before moving to the next one.
 
+## Canonical State Names
+
+Use these canonical state names in implementation and documentation:
+
+```text
+raw_imported
+sanitized
+pending_review
+needs_revision
+approved
+rejected
+rag_chunked
+indexed
+```
+
+Rules:
+
+- `pending_review` is the candidate review state. Do not use `review_pending`.
+- `approved` means human review passed, but it does not mean RAG chunks or production indexing exist.
+- `rag_chunked` means M6 local RAG chunks exist.
+- `indexed` is reserved for future real vector store or production retrieval index status.
+- Current M6 stops at `rag_chunked`; it is not production `indexed`.
+- `knowledge candidate` is used for M4-M5 records.
+- `approved candidate` is the M5 state before M6 local RAG chunking.
+- A future `knowledge_item` or formal knowledge asset store requires separate planning.
+
 ## M0 Documentation Baseline
 
 Goal:
@@ -86,7 +112,7 @@ Acceptance criteria:
   - Human-handoff rule
   - Forbidden-answer rule
 - Each draft includes source references.
-- Drafts are created in `review_pending` or equivalent state.
+- Drafts are created in `pending_review` or equivalent state.
 - Drafts are not searchable by CustomerOpsAgent.
 - Mock mode or controlled LLM mode is available before real uncontrolled LLM usage.
 
@@ -111,16 +137,16 @@ Acceptance criteria:
 
 Goal:
 
-- Build a retrievable index from approved knowledge only.
+- Build local RAG chunks from approved candidates only.
 
 Acceptance criteria:
 
-- Indexing job accepts approved knowledge only.
-- Pending, rejected, raw, cleaned, or sanitized-only records are rejected by indexing.
-- Indexed entries preserve knowledge id, type, version, tags, and source metadata.
-- Retrieval returns only indexed approved knowledge.
+- Local RAG build accepts approved candidates only.
+- Pending, needs-revision, rejected, raw, or sanitized-only records are skipped or rejected by RAG chunking.
+- RAG chunks preserve candidate id, knowledge type, tags, and source metadata.
+- Internal M6 retrieval returns only local chunks created from approved candidates.
 - Retrieval results include traceable source information.
-- Indexing failures are visible and safe.
+- Build failures are visible and safe.
 
 ## M7 CustomerOpsAgent Integration
 

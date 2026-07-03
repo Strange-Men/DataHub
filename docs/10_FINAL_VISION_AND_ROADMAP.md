@@ -2,13 +2,7 @@
 
 ## 1. Final Positioning
 
-DataHub is not only a customer service RAG tool. DataHub is a multi-source data governance and RAG knowledge platform for an Agent cluster.
-
-中文定位：
-
-```text
-DataHub 不是单纯的客服 RAG 工具，而是面向 Agent 集群的多源数据治理与 RAG 知识中台。
-```
+DataHub is not only a customer service RAG tool.
 
 Final positioning:
 
@@ -16,7 +10,9 @@ Final positioning:
 DataHub | Multi-source data governance and RAG knowledge platform for Agent clusters
 ```
 
-The long-term goal is:
+The target product direction is a governed data asset center that can turn customer service records, product documents, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for multiple Agent consumers.
+
+The long-term flow is:
 
 ```text
 Multi-source business data
@@ -30,43 +26,6 @@ Multi-source business data
 Phase 1 serves CustomerOpsAgent first because the text customer service knowledge loop is the smallest useful closed loop. CustomerOpsAgent is the first core consumer, not the only final consumer.
 
 ## 2. Four-Phase Roadmap
-
-中文正式路线：
-
-```text
-Phase 1：Text Customer Service Knowledge Loop
-真实客服聊天记录
--> 清洗 / 去重 / 脱敏
--> FAQ / 标准回答 / 业务规则 / 转人工规则 / 禁答规则
--> 人工审核
--> 文本 RAG 知识库
--> CustomerOpsAgent 文本客服
--> Bad Case 回流
-
-Phase 2：AI Material Center & Multimodal Knowledge
-运营 Agent / AI 素材中心生成图片、视频、海报素材
--> 素材导入
--> OCR / Caption / 标签 / SKU 绑定
--> 人工审核
--> 多模态知识库
--> CustomerOpsAgent 图文 / 多模态客服
-
-Phase 3：High-quality Dataset Export
-已审核客服知识、优秀人工回复、Bad Case 修正、优质问答
--> 销售新人培训资料
--> FAQ 手册 / SOP / 话术手册 / 典型案例 / 测验题
--> SFT 数据集 / Preference 数据集
--> 用于降低 AI 客服 AI 味和提升品牌客服风格
-
-Phase 4：MCP Tools & Agent Cluster Integration
-DataHub 封装 MCP Tools
--> search_customer_knowledge
--> search_multimodal_assets
--> submit_bad_case
--> export_training_dataset
--> export_finetune_dataset
--> CustomerOpsAgent / SalesAgent / OpsAgent / MaterialAgent 统一调用
-```
 
 ### Phase 1: Text Customer Service Knowledge Loop
 
@@ -86,8 +45,14 @@ Phase 1 proves the governed knowledge lifecycle:
 - Sanitized data becomes knowledge candidates.
 - Humans approve or reject candidates.
 - Only approved knowledge can enter RAG.
-- CustomerOpsAgent retrieves controlled knowledge.
-- Bad Cases return to DataHub for correction.
+- CustomerOpsAgent retrieves controlled knowledge after M7.
+- Bad Cases return to DataHub for correction after M8.
+
+Current status:
+
+- Implemented through M6 local RAG chunks and local mock retrieval.
+- CustomerOpsAgent production retrieval is not implemented yet.
+- Bad Case feedback is not implemented yet.
 
 ### Phase 2: AI Material Center And Multimodal Knowledge
 
@@ -112,11 +77,16 @@ Expected capabilities:
 - Human review for material understanding.
 - Multimodal retrieval preparation for CustomerOpsAgent.
 
+Current status:
+
+- Roadmap only.
+- Not implemented.
+
 ### Phase 3: High-Quality Dataset Export
 
 ```text
 Reviewed customer service knowledge, excellent human replies, Bad Case fixes, high-quality Q&A
--> new sales training materials
+-> sales onboarding materials
 -> FAQ handbook / SOP / script handbook / typical cases / quiz questions
 -> SFT dataset / Preference dataset
 -> reduce AI flavor and improve brand voice, service style, and refusal rules
@@ -134,7 +104,11 @@ Expected outputs:
 - Supervised fine-tuning dataset exports.
 - Preference dataset exports.
 
-This phase may support model improvement later, but Phase 3 does not mean DataHub itself must train models.
+Current status:
+
+- Roadmap only.
+- Not implemented.
+- DataHub may export datasets later, but DataHub itself does not need to train models.
 
 ### Phase 4: MCP Tools And Agent Cluster Integration
 
@@ -165,6 +139,11 @@ Expected consumers:
 - OpsAgent
 - MaterialAgent
 - Future fine-tuning pipeline
+
+Current status:
+
+- Roadmap only.
+- Not implemented.
 
 ## 3. Current Development Boundary
 
@@ -229,23 +208,17 @@ Future modules are real roadmap modules, not current implementation commitments.
 
 ## 5. Resume-Ready Project Positioning
 
-中文简历表达：
-
-```text
-DataHub｜面向 Agent 集群的多源数据治理与 RAG 知识中台
-
-设计并实现面向跨境电商 AI 应用的 DataHub 数据资产中心，支持从真实客服聊天记录中进行清洗、脱敏、知识抽取与人工审核，构建可追溯 RAG 知识库并供给 CustomerOpsAgent；项目架构预留 AI 素材中心、多模态知识库、销售培训数据导出、微调数据导出和 MCP Agent 集群调用能力，形成“数据治理—知识生产—Agent 调用—反馈回流”的 AI 数据闭环。
-```
-
-The Chinese resume wording must be used carefully: Phase 2, Phase 3, and Phase 4 are architecture reservations and later extensions, not completed features yet.
+Resume-safe positioning:
 
 ```text
 DataHub | Multi-source data governance and RAG knowledge platform for Agent clusters
 
-Designed and implemented a DataHub data asset center for cross-border e-commerce AI applications. The system supports cleaning, desensitization, knowledge extraction, and human review from real customer service chat records, builds a traceable RAG knowledge base, and provides knowledge to CustomerOpsAgent. The architecture reserves extension paths for AI Material Center integration, multimodal knowledge bases, sales training dataset export, fine-tuning dataset export, and MCP-based Agent cluster access, forming an AI data closed loop across data governance, knowledge production, Agent consumption, and feedback iteration.
+Designed and implemented a DataHub data asset center for cross-border e-commerce AI applications. The system supports cleaning, desensitization, knowledge extraction, and human review from customer service chat records, builds traceable local RAG chunks, and prepares governed knowledge for CustomerOpsAgent. The architecture reserves extension paths for AI Material Center integration, multimodal knowledge bases, sales training dataset export, fine-tuning dataset export, and MCP-based Agent cluster access, forming an AI data loop across data governance, knowledge production, Agent consumption, and feedback iteration.
 ```
 
-Important wording rule:
+Important wording rules:
 
-- Current completed work should be described as Phase 1 text customer service knowledge governance.
+- Current completed work should be described as Phase 1 text customer service knowledge governance through M6 local mock RAG retrieval.
+- CustomerOpsAgent production retrieval is not implemented until M7.
+- Bad Case feedback is not implemented until M8.
 - Phase 2, Phase 3, and Phase 4 should be described as architecture reservations or roadmap extensions unless they are actually implemented later.

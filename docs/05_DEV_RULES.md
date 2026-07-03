@@ -15,11 +15,15 @@
 
 ## 2. Phase Discipline
 
-Current phase goal:
+This document defines permanent development guardrails. The current milestone is tracked in `docs/08_DEV_STATUS.md`.
 
-- Solidify documentation, boundaries, architecture direction, API contract, development rules, technical candidates, and acceptance criteria.
+Phase rules:
 
-Do not start business implementation until the documentation baseline is accepted.
+- Follow the current milestone stated in `docs/08_DEV_STATUS.md`.
+- Do not start the next milestone until the current milestone is verified and checkpointed.
+- Do not implement future roadmap phases before they are explicitly started.
+- Documentation-only rounds must not modify business code.
+- Code rounds must keep documentation aligned with implemented behavior.
 
 ## 3. Confirmed Technical Direction
 
@@ -136,6 +140,7 @@ Do not place all core logic in one large file.
 - Initialize Git only when the project setup step begins.
 - Commit after each accepted small feature.
 - Tag after each accepted milestone.
+- After each development stage, run the relevant verification, commit, tag, and push to the remote repository by default unless the user explicitly says not to.
 - Create a branch before major refactoring.
 - Do not continue multiple large changes without a clean checkpoint.
 - Do not commit secrets, `.env` files, caches, temporary files, or generated private data.
@@ -153,9 +158,9 @@ Keep these documents current:
 - `docs/06_TECH_STACK_CANDIDATES.md`
 - `docs/07_ACCEPTANCE_CRITERIA.md`
 
-When implementation begins, add and maintain:
+During implementation, maintain:
 
-- `docs/DEV_STATUS.md`
+- `docs/08_DEV_STATUS.md`
 - `docs/CHANGELOG.md`
 
 ## 12. Repository Content Rules

@@ -111,3 +111,16 @@ The correct first-phase judgment is:
 > Worth building, but only with a narrowed MVP focused on the CustomerOpsAgent text knowledge loop.
 
 The project should move forward only after the scope, API contract, safety rules, and acceptance criteria are documented and kept stable.
+
+## 9. M6.1 Update
+
+The pressure test conclusion applies to Phase 1 implementation scope.
+
+M6.1 formalized the final product vision as a four-phase Agent-cluster-oriented DataHub roadmap in `docs/10_FINAL_VISION_AND_ROADMAP.md`.
+
+Updated interpretation:
+
+- Phase 1 implementation must remain narrow.
+- The final vision is not a weak extension point; it is a formal Phase 1 to Phase 4 roadmap.
+- Development scope stays narrow while architecture direction stays broad.
+- Phase 2, Phase 3, and Phase 4 must not be implemented early.

@@ -2,7 +2,11 @@
 
 ## Current Stage
 
-M6 completed. Current checkpoint: M6.1 Final Vision And Roadmap documentation update.
+M6 completed. M6.1 final vision documentation completed. Current checkpoint: M6.2 documentation consistency fix.
+
+Current code remains Phase 1.
+
+Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be implemented early.
 
 ## Completed Through M1
 
@@ -136,9 +140,22 @@ M6 completed. Current checkpoint: M6.1 Final Vision And Roadmap documentation up
 - Confirmed that current code development remains Phase 1 only.
 - Confirmed that Phase 2, Phase 3, and Phase 4 are roadmap phases and must not be implemented early.
 
+## Completed In M6.2
+
+- Aligned documentation phase status after M6.1.
+- Replaced M0-era development rule wording with permanent guardrails.
+- Clarified that `docs/08_DEV_STATUS.md` is the source of truth for the current milestone.
+- Split API contract status into:
+  - Implemented APIs: M2-M6.
+  - Planned Phase 1 APIs: M7-M8.
+  - Future Roadmap APIs: Phase 2-4.
+- Added canonical state naming guidance.
+- Clarified that M6 local RAG search is mock retrieval, not CustomerOpsAgent production retrieval.
+- Confirmed that no business code changed in M6.2.
+
 ## Current Boundaries
 
-Allowed in M6:
+### Current Implemented Capabilities
 
 - JSON customer service chat import only.
 - Local raw batch file storage only.
@@ -160,8 +177,9 @@ Allowed in M6:
 - Local JSON chunk storage.
 - Local keyword/mock retrieval for DataHub internal testing only.
 - M6.1 documentation-only final vision and roadmap clarification.
+- M6.2 documentation-only consistency fixes.
 
-Forbidden in M6:
+### Current Forbidden Work
 
 - CSV import.
 - Excel import.
@@ -193,6 +211,21 @@ Forbidden from prior stages remains:
 - MCP.
 - Fine-tuning.
 - Database, vector database, ORM, or RAG framework finalization.
+
+## Next Allowed Stage Candidates
+
+The next implementation stage must still stay inside Phase 1.
+
+Allowed candidates:
+
+- M6.5 RAG Quality Hardening.
+- M7 CustomerOpsAgent Retrieval Integration.
+
+Not allowed as the next immediate implementation stage unless explicitly approved later:
+
+- Phase 2 AI Material Center or multimodal implementation.
+- Phase 3 sales training export or fine-tuning dataset export.
+- Phase 4 MCP Tools or Agent cluster integration.
 
 ## Current Technical Direction
 

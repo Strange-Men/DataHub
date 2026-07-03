@@ -50,6 +50,41 @@ Current implementation scope:
 - Phase 2, Phase 3, and Phase 4 are product roadmap phases.
 - Roadmap phases should guide architecture boundaries but must not be implemented before the Phase 1 loop is accepted.
 
+## 2B. Implementation Status Note
+
+This PRD describes the Phase 1 target scope, not only the currently completed implementation.
+
+### Phase 1 Target Scope
+
+- Import customer service chat records.
+- Clean, deduplicate, and desensitize records.
+- Extract knowledge candidates.
+- Support human review.
+- Build RAG from approved knowledge.
+- Provide CustomerOpsAgent retrieval.
+- Receive Bad Cases and feed corrections back into the knowledge workflow.
+
+### Currently Implemented Through M6
+
+- JSON customer service chat import.
+- Local raw batch storage.
+- Basic cleaning and PII masking.
+- Sanitized batch generation.
+- Rule-based mock knowledge candidate extraction.
+- Human review for knowledge candidates.
+- Local RAG chunk generation from approved candidates only.
+- Local JSON plus keyword/mock RAG search for DataHub internal testing.
+
+### Pending In Phase 1
+
+- CSV import.
+- Manual text paste import.
+- More complete deduplication.
+- Separate approved knowledge or knowledge asset version management.
+- CustomerOpsAgent retrieval integration.
+- Bad Case feedback.
+- Production retrieval/indexing beyond local mock RAG chunks.
+
 ### Phase 1: Text Customer Service Knowledge Loop
 
 ```text
@@ -137,7 +172,7 @@ A human reviewer checks knowledge drafts, edits them, rejects invalid ones, or a
 
 ### 4.5 Build RAG Knowledge
 
-Only approved knowledge is indexed into the RAG knowledge base.
+In the full Phase 1 target, only approved knowledge is indexed into the RAG knowledge base. Current M6 only builds local RAG chunks with mock retrieval.
 
 ### 4.6 Serve CustomerOpsAgent
 
@@ -243,16 +278,15 @@ CustomerOpsAgent submits Bad Cases. DataHub stores them for human correction. Co
 
 ## 7. Data State Flow
 
-Core state flow:
+Canonical state names:
 
 ```text
 raw_imported
--> cleaned
 -> sanitized
--> extraction_pending
--> draft_extracted
--> review_pending
+-> pending_review
+-> needs_revision
 -> approved
+-> rag_chunked
 -> indexed
 ```
 
@@ -269,10 +303,21 @@ failed_indexing
 archived
 ```
 
+State naming rules:
+
+- `pending_review` is the canonical candidate review state. Do not use `review_pending`.
+- `approved` means a human approved the candidate. It does not mean the item has entered RAG.
+- `rag_chunked` means a local RAG chunk has been generated from an approved candidate.
+- `indexed` is reserved for future real vector store or production retrieval index status.
+- Current M6 reaches `rag_chunked`, not production `indexed`.
+- `knowledge candidate` is the M4-M5 term.
+- `approved candidate` is the M5 post-review term.
+- If DataHub later introduces a formal `knowledge_item` or knowledge asset store, it must be planned separately and not mixed with candidate records.
+
 Hard rules:
 
 - Only sanitized records can be used for extraction.
-- Only approved knowledge can be indexed.
+- Only approved candidates or future approved knowledge items can be chunked or indexed.
 - Only indexed approved knowledge can be retrieved by CustomerOpsAgent.
 - Raw records must remain isolated from RAG and export flows.
 

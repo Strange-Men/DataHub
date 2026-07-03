@@ -386,4 +386,4 @@ Strong phase-one candidates:
 - Background tasks: FastAPI BackgroundTasks first.
 - Deployment: local Docker Compose after initialization.
 
-Do not finalize all choices until M1 project initialization planning.
+Do not finalize non-confirmed infrastructure choices until an explicit technology decision round is approved.

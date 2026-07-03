@@ -4,7 +4,7 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6 local RAG builder plus M6.1 final vision documentation: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, and built into local RAG chunks when approved.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6 local RAG builder plus M6.2 documentation consistency alignment: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, and built into local RAG chunks when approved.
 
 ## Current Scope
 
@@ -24,6 +24,7 @@ Implemented through M6:
 - Local JSON RAG chunk building from approved candidates only.
 - Internal keyword/mock RAG search.
 - Final vision and four-phase roadmap documentation.
+- Documentation consistency fixes for phase status, API roadmap, and canonical state names.
 - Environment example file.
 - Development status and stage checklist documents.
 
@@ -367,7 +368,9 @@ Rules:
 - `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
 - RAG chunks preserve candidate and source traceability.
 - Search uses local JSON plus simple keyword scoring.
+- Current RAG search is local mock retrieval for DataHub internal testing only.
 - This is not CustomerOpsAgent integration.
+- This is not production vector retrieval.
 - This is not a real vector database, embedding model, database, ORM, or RAG framework.
 
 Build local RAG chunks:
@@ -429,3 +432,4 @@ Before each development round, read:
 - `docs/07_ACCEPTANCE_CRITERIA.md`
 - `docs/08_DEV_STATUS.md`
 - `docs/09_STAGE_CHECKLIST.md`
+- `docs/10_FINAL_VISION_AND_ROADMAP.md`

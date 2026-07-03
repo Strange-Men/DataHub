@@ -231,7 +231,7 @@ Responsibilities:
   - Human-handoff rule
   - Forbidden-answer rule
 - Attach source references.
-- Mark drafts as review pending.
+- Mark candidates as `pending_review`.
 
 Candidate implementation:
 
