@@ -29,6 +29,43 @@ class SourceBatchMetadata(BaseModel):
     status: Literal["raw_imported"]
 
 
+class CleaningJobMetadata(BaseModel):
+    job_id: str
+    source_batch_id: str
+    sanitized_batch_id: str
+    raw_message_count: int
+    sanitized_message_count: int
+    dropped_message_count: int
+    pii_detected_count: int
+    status: Literal["completed"]
+    created_at: str
+    completed_at: str
+
+
+class SanitizedMessage(BaseModel):
+    source_batch_id: str
+    conversation_id: str
+    message_id: str
+    source_message_id: str
+    role: Literal["customer", "agent", "system"]
+    content: str
+    pii_detected: bool
+    pii_types: list[str]
+    cleaning_notes: list[str]
+
+
+class SanitizedBatch(BaseModel):
+    batch_id: str
+    source_batch_id: str
+    status: Literal["sanitized"]
+    raw_message_count: int
+    sanitized_message_count: int
+    dropped_message_count: int
+    pii_detected_count: int
+    created_at: str
+    messages: list[SanitizedMessage]
+
+
 class ApiResponse(BaseModel):
     success: bool
     data: object

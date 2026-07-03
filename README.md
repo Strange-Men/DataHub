@@ -2,11 +2,11 @@
 
 DataHub is a lightweight data asset center for AI application projects.
 
-Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M2 data import: JSON customer service chat records can be saved as raw batches in local storage.
+Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M3 cleaning and desensitization: JSON customer service chat records can be saved as raw batches, then converted into sanitized batches in local storage.
 
 ## Current Scope
 
-Implemented through M2:
+Implemented through M3:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -14,6 +14,8 @@ Implemented through M2:
 - Backend `/health` endpoint.
 - JSON customer service chat import.
 - Raw batch metadata listing and lookup.
+- Raw batch cleaning and PII masking.
+- Sanitized batch lookup.
 - Environment example file.
 - Development status and stage checklist documents.
 
@@ -63,7 +65,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M2"
+  "phase": "M3"
 }
 ```
 
@@ -117,6 +119,60 @@ Start both backend and frontend.
 3. Keep or edit the source name.
 4. Click `Import raw JSON`.
 5. Confirm the page shows `batch_id`, `message_count`, `conversation_count`, and `raw_imported`.
+
+## M3 Cleaning And Sanitization
+
+Sanitized batches are saved locally under:
+
+```text
+backend/storage/sanitized_batches/
+```
+
+Cleaning jobs are saved locally under:
+
+```text
+backend/storage/cleaning_jobs/
+```
+
+Both directories are ignored by Git through `backend/storage/`.
+
+Supported masking:
+
+- Email -> `[EMAIL]`
+- Phone or mobile number -> `[PHONE]`
+- Order id -> `[ORDER_ID]`
+- Tracking id -> `[TRACKING_ID]`
+- Obvious address text -> `[ADDRESS]`
+
+Run cleaning by API:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/cleaning/run/{batch_id} `
+  -Method Post
+```
+
+Get cleaning job status:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/cleaning/jobs/{job_id}
+```
+
+Get sanitized batch:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/sanitized/{batch_id}
+```
+
+Frontend M3 verification:
+
+1. Start both backend and frontend.
+2. Import `samples/customer_chat_sample.json`.
+3. In Raw batches, click `Run cleaning`.
+4. Confirm summary counts are shown.
+5. Confirm sanitized messages show `[EMAIL]`, `[PHONE]`, `[ORDER_ID]`, `[TRACKING_ID]`, and `[ADDRESS]` for the fake sample data.
+
+M3 does not create knowledge drafts, approved knowledge, RAG indexes, embeddings, CustomerOpsAgent integrations, or Bad Case workflows.
 
 ## Development Rules
 

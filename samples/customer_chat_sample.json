@@ -15,6 +15,18 @@
           "role": "agent",
           "content": "Shipping to Germany usually takes 7-12 business days after dispatch.",
           "timestamp": "2026-07-03T10:01:00"
+        },
+        {
+          "message_id": "msg_003",
+          "role": "customer",
+          "content": "Please contact me at alex.customer@example.test or +1 202 555 0175. My order number is ORDER-AX91-4455.",
+          "timestamp": "2026-07-03T10:02:00"
+        },
+        {
+          "message_id": "msg_004",
+          "role": "agent",
+          "content": "We can help. The tracking number TRK-9988776655 shows dispatch is pending.",
+          "timestamp": "2026-07-03T10:03:00"
         }
       ]
     },
@@ -22,15 +34,21 @@
       "conversation_id": "conv_002",
       "messages": [
         {
-          "message_id": "msg_003",
+          "message_id": "msg_005",
           "role": "customer",
           "content": "Can I change my delivery address after placing an order?",
           "timestamp": "2026-07-03T11:10:00"
         },
         {
-          "message_id": "msg_004",
+          "message_id": "msg_006",
+          "role": "customer",
+          "content": "Ship it to 123 Example Street, Testville.",
+          "timestamp": "2026-07-03T11:10:00"
+        },
+        {
+          "message_id": "msg_007",
           "role": "agent",
-          "content": "Address changes are possible before dispatch. Please contact support with your order reference.",
+          "content": " ",
           "timestamp": "2026-07-03T11:11:00"
         }
       ]

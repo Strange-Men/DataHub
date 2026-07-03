@@ -120,3 +120,45 @@ M2 is complete when:
 - `samples/customer_chat_sample.json` uses fake data only.
 - No CSV, Excel, database, ORM, cleaning, deduplication, desensitization, extraction, review, RAG, CustomerOpsAgent, Bad Case, multimodal, MCP, or fine-tuning work is implemented.
 - `docs/04_API_CONTRACT.md` and `docs/08_DEV_STATUS.md` are updated.
+
+## 10. M3 Completion Check
+
+M3 is complete when:
+
+- `POST /api/cleaning/run/{batch_id}` exists.
+- `GET /api/cleaning/jobs/{job_id}` exists.
+- `GET /api/sanitized/{batch_id}` exists.
+- Cleaning reads from `backend/storage/raw_batches/`.
+- Cleaning does not overwrite raw batch files.
+- Sanitized batches are saved under `backend/storage/sanitized_batches/`.
+- Cleaning job metadata is saved under `backend/storage/cleaning_jobs/`.
+- Sanitized messages include:
+  - `source_batch_id`
+  - `conversation_id`
+  - `message_id`
+  - `source_message_id`
+  - `role`
+  - `content`
+  - `pii_detected`
+  - `pii_types`
+  - `cleaning_notes`
+- Summary includes:
+  - `raw_message_count`
+  - `sanitized_message_count`
+  - `dropped_message_count`
+  - `pii_detected_count`
+  - `status`
+- PII masking supports:
+  - Email
+  - Phone
+  - Order id
+  - Tracking id
+  - Obvious address text
+- Frontend can list raw batches.
+- Frontend can run cleaning for a raw batch.
+- Frontend can show the cleaning summary.
+- Frontend can show sanitized messages without showing full raw sensitive content.
+- Sanitized data is not marked as `approved`.
+- Sanitized data is not indexed.
+- No knowledge extraction, FAQ generation, standard answer generation, business rule generation, human review, RAG, embedding, vector database, CustomerOpsAgent integration, Bad Case, multimodal, MCP, fine-tuning, database, or ORM work is implemented.
+- `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.

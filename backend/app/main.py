@@ -3,7 +3,14 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 
 from app.schemas import ApiResponse, ImportJsonRequest
-from app.storage import create_raw_batch, get_raw_batch_metadata, list_raw_batches
+from app.storage import (
+    create_raw_batch,
+    get_cleaning_job,
+    get_raw_batch_metadata,
+    get_sanitized_batch,
+    list_raw_batches,
+    run_cleaning,
+)
 
 app = FastAPI(title="DataHub API", version="0.1.0")
 
@@ -13,7 +20,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M2",
+        "phase": "M3",
     }
 
 
@@ -51,5 +58,59 @@ def get_source(batch_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=metadata.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.post("/api/cleaning/run/{batch_id}", response_model=ApiResponse)
+def run_cleaning_for_source(batch_id: str) -> ApiResponse:
+    job = run_cleaning(batch_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "BATCH_NOT_FOUND",
+                "message": "Raw batch was not found or could not be read.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=job.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/cleaning/jobs/{job_id}", response_model=ApiResponse)
+def get_cleaning_job_status(job_id: str) -> ApiResponse:
+    job = get_cleaning_job(job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "JOB_NOT_FOUND",
+                "message": "Cleaning job was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=job.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/sanitized/{batch_id}", response_model=ApiResponse)
+def get_sanitized_source(batch_id: str) -> ApiResponse:
+    sanitized = get_sanitized_batch(batch_id)
+    if sanitized is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "SANITIZED_BATCH_NOT_FOUND",
+                "message": "Sanitized batch was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=sanitized.model_dump(),
         requestId=f"req_{uuid4().hex[:12]}",
     )

@@ -113,6 +113,12 @@ button {
   cursor: pointer;
 }
 
+button.secondary {
+  border: 1px solid #cfd7e3;
+  background: #ffffff;
+  color: #2f6f9f;
+}
+
 button:disabled {
   cursor: wait;
   opacity: 0.7;
@@ -144,6 +150,116 @@ button:disabled {
   margin: 0 0 14px;
   color: #1f5f3d;
   font-size: 1.05rem;
+}
+
+.panel {
+  margin: 0 0 24px;
+  padding: 18px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel h2 {
+  margin: 0;
+  color: #17202a;
+  font-size: 1.15rem;
+}
+
+.compact {
+  margin-bottom: 6px;
+  font-size: 0.76rem;
+}
+
+.compact-summary {
+  margin: 10px 0 16px;
+}
+
+.empty-state {
+  margin: 0;
+  color: #657386;
+}
+
+.batch-list,
+.message-list {
+  display: grid;
+  gap: 12px;
+}
+
+.batch-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.batch-row div:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.batch-row span {
+  color: #657386;
+  font-size: 0.88rem;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sanitized-message {
+  padding: 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.sanitized-message p {
+  margin: 10px 0;
+  color: #2d3744;
+  line-height: 1.55;
+}
+
+.message-meta,
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.message-meta span,
+.pill {
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #eef4f8;
+  color: #476273;
+  font-size: 0.78rem;
+}
+
+.pill {
+  background: #e7f4ee;
+  color: #226345;
+  font-weight: 700;
+}
+
+.pill.muted {
+  background: #f0f2f5;
+  color: #657386;
 }
 
 dl {
@@ -209,6 +325,16 @@ strong {
 
   .status-grid {
     grid-template-columns: 1fr;
+  }
+
+  .panel-heading,
+  .batch-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
   }
 
   dl > div {

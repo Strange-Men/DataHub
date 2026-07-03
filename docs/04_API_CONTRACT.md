@@ -188,24 +188,26 @@ The earlier generic import direction is reserved for later stages:
 
 These are not implemented in M2.
 
-## 3. Cleaning Task APIs
+## 3. M3 Cleaning And Sanitization APIs
 
-### 3.1 Start Cleaning And Desensitization
+M3 converts a raw batch into a separate sanitized batch.
 
-`POST /api/processing/cleaning-jobs`
+Hard rules:
+
+- Raw batch files are read-only during cleaning.
+- Sanitized batches are saved under `backend/storage/sanitized_batches/`.
+- Cleaning jobs are saved under `backend/storage/cleaning_jobs/`.
+- M3 only creates `sanitized` data.
+- M3 must not create `extracted`, `approved`, or `indexed` data.
+- M3 must not create RAG, embedding, vector store, CustomerOpsAgent, or Bad Case workflows.
+
+### 3.1 Run Cleaning And Sanitization
+
+`POST /api/cleaning/run/{batch_id}`
 
 Request:
 
-```json
-{
-  "batchId": "batch_001",
-  "options": {
-    "deduplicate": true,
-    "desensitize": true,
-    "detectNearDuplicates": true
-  }
-}
-```
+No request body.
 
 Response:
 
@@ -213,9 +215,16 @@ Response:
 {
   "success": true,
   "data": {
-    "jobId": "clean_job_001",
-    "batchId": "batch_001",
-    "status": "queued"
+    "job_id": "clean_job_abc123",
+    "source_batch_id": "batch_abc123",
+    "sanitized_batch_id": "batch_abc123",
+    "raw_message_count": 6,
+    "sanitized_message_count": 5,
+    "dropped_message_count": 1,
+    "pii_detected_count": 3,
+    "status": "completed",
+    "created_at": "2026-07-03T10:10:00+00:00",
+    "completed_at": "2026-07-03T10:10:00+00:00"
   },
   "requestId": "req_002"
 }
@@ -224,33 +233,107 @@ Response:
 Allowed source states:
 
 - `raw_imported`
-- `failed_cleaning`
-- `failed_desensitization`
 
 Possible errors:
 
 - `BATCH_NOT_FOUND`
-- `INVALID_STATE`: Batch is not eligible for cleaning.
-- `JOB_ALREADY_RUNNING`
 
-Hard rule:
+Cleaning rules:
 
-- Cleaning must produce sanitized records before extraction can start.
+- Trim leading and trailing whitespace from `content`.
+- Drop empty `content`.
+- Standardize role into `customer`, `agent`, or `system`.
+- Apply safe fallback values for missing fields.
+- Count raw, sanitized, and dropped messages.
+
+PII masking rules:
+
+- Email -> `[EMAIL]`
+- Phone or mobile number -> `[PHONE]`
+- Order id -> `[ORDER_ID]`
+- Tracking id -> `[TRACKING_ID]`
+- Obvious address text -> `[ADDRESS]`
 
 ### 3.2 Get Cleaning Job Status
 
-`GET /api/processing/cleaning-jobs/{jobId}`
+`GET /api/cleaning/jobs/{job_id}`
 
 Response fields:
 
-- `jobId`
-- `batchId`
-- `status`: `queued | running | completed | failed`
-- `rawRecordCount`
-- `cleanedRecordCount`
-- `sanitizedRecordCount`
-- `duplicateCount`
-- `errorSummary`
+- `job_id`
+- `source_batch_id`
+- `sanitized_batch_id`
+- `raw_message_count`
+- `sanitized_message_count`
+- `dropped_message_count`
+- `pii_detected_count`
+- `status`
+- `created_at`
+- `completed_at`
+
+Possible errors:
+
+- `JOB_NOT_FOUND`
+
+### 3.3 Get Sanitized Batch
+
+`GET /api/sanitized/{batch_id}`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "batch_id": "batch_abc123",
+    "source_batch_id": "batch_abc123",
+    "status": "sanitized",
+    "raw_message_count": 6,
+    "sanitized_message_count": 5,
+    "dropped_message_count": 1,
+    "pii_detected_count": 3,
+    "created_at": "2026-07-03T10:10:00+00:00",
+    "messages": [
+      {
+        "source_batch_id": "batch_abc123",
+        "conversation_id": "conv_001",
+        "message_id": "msg_003",
+        "source_message_id": "msg_003",
+        "role": "customer",
+        "content": "Please contact me at [EMAIL] or [PHONE]. My [ORDER_ID].",
+        "pii_detected": true,
+        "pii_types": ["EMAIL", "PHONE", "ORDER_ID"],
+        "cleaning_notes": ["pii_masked"]
+      }
+    ]
+  },
+  "requestId": "req_003"
+}
+```
+
+Sanitized message fields:
+
+- `source_batch_id`
+- `conversation_id`
+- `message_id`
+- `source_message_id`
+- `role`
+- `content`
+- `pii_detected`
+- `pii_types`
+- `cleaning_notes`
+
+Possible errors:
+
+- `SANITIZED_BATCH_NOT_FOUND`
+
+State rule:
+
+- Sanitized data is safer processed data.
+- Sanitized data is not knowledge.
+- Sanitized data is not approved.
+- Sanitized data is not indexed.
+- Sanitized data cannot be retrieved by CustomerOpsAgent.
 
 ## 4. Knowledge Extraction APIs
 
