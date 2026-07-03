@@ -4,11 +4,11 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6 local RAG builder plus M6.2 documentation consistency alignment: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, and built into local RAG chunks when approved.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6.5 local RAG quality hardening: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, and searched through local keyword/mock retrieval for DataHub internal testing.
 
 ## Current Scope
 
-Implemented through M6:
+Implemented through M6.5:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -23,8 +23,11 @@ Implemented through M6:
 - Human review state transitions for knowledge candidates.
 - Local JSON RAG chunk building from approved candidates only.
 - Internal keyword/mock RAG search.
+- Idempotent local RAG build with duplicate chunk prevention.
+- Local RAG search query and `top_k` validation.
+- Search debug output with `matched_terms` and source trace.
 - Final vision and four-phase roadmap documentation.
-- Documentation consistency fixes for phase status, API roadmap, and canonical state names.
+- Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
 - Development status and stage checklist documents.
 
@@ -91,7 +94,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M6"
+  "phase": "M6.5"
 }
 ```
 
@@ -346,7 +349,7 @@ Frontend M5 verification:
 
 M5 does not create RAG chunks, embeddings, vector records, CustomerOpsAgent integrations, or Bad Case workflows.
 
-## M6 Local RAG Builder
+## M6 / M6.5 Local RAG Builder And Quality Hardening
 
 RAG chunks are saved locally under:
 
@@ -366,8 +369,12 @@ Rules:
 
 - Only `approved` candidates can become RAG chunks.
 - `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
+- Build is idempotent. Repeating build for the same unchanged approved candidate does not create duplicate chunks.
+- Stable chunk ids are derived from candidate ids.
 - RAG chunks preserve candidate and source traceability.
 - Search uses local JSON plus simple keyword scoring.
+- Search validates trimmed query text and `top_k`.
+- Search results include `matched_terms` and source trace for debugging.
 - Current RAG search is local mock retrieval for DataHub internal testing only.
 - This is not CustomerOpsAgent integration.
 - This is not production vector retrieval.
@@ -411,12 +418,20 @@ Frontend M6 verification:
 4. Run extraction.
 5. Approve at least one candidate.
 6. In Local RAG test, click `Build RAG chunks`.
-7. Confirm build summary shows `built_count`, `skipped_count`, `chunk_count`, and `status`.
+7. Confirm build summary shows `built_count`, `updated_count`, `skipped_count`, `chunk_count`, and `status`.
 8. Confirm RAG chunks list shows approved chunks only.
 9. Enter a query and click `Search RAG`.
-10. Confirm results show score, chunk text, chunk id, candidate id, source conversation id, and tags.
+10. Confirm results show score, matched terms, chunk text, chunk id, candidate id, source conversation id, and tags.
 
-M6 does not create CustomerOpsAgent APIs, Bad Case workflows, embeddings, vector records, database/ORM integrations, real LLM calls, multimodal workflows, MCP, or fine-tuning.
+M6.5 does not create CustomerOpsAgent APIs, Bad Case workflows, embeddings, vector records, database/ORM integrations, real LLM calls, multimodal workflows, MCP, sales training export, or fine-tuning.
+
+Lightweight RAG quality verification:
+
+```powershell
+python backend\tests\test_rag_quality.py
+```
+
+The test covers approved-only chunking, repeated build idempotency, safe search validation, source trace, and the absence of CustomerOpsAgent-specific routes.
 
 ## Development Rules
 

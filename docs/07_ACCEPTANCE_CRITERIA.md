@@ -23,7 +23,7 @@ Rules:
 - `approved` means human review passed, but it does not mean RAG chunks or production indexing exist.
 - `rag_chunked` means M6 local RAG chunks exist.
 - `indexed` is reserved for future real vector store or production retrieval index status.
-- Current M6 stops at `rag_chunked`; it is not production `indexed`.
+- Current M6/M6.5 stops at `rag_chunked`; it is not production `indexed`.
 - `knowledge candidate` is used for M4-M5 records.
 - `approved candidate` is the M5 state before M6 local RAG chunking.
 - A future `knowledge_item` or formal knowledge asset store requires separate planning.
@@ -159,7 +159,9 @@ Acceptance criteria:
 - CustomerOpsAgent retrieval API exists.
 - Request validation is enforced.
 - Query length limit is enforced.
-- API returns topK approved indexed knowledge results.
+- API returns topK approved retrieval-ready results.
+- At the current local stage, retrieval-ready may mean approved `rag_chunked` records.
+- Production `indexed` retrieval is a later hardening step.
 - API returns retrieval id for later Bad Case linkage.
 - API never returns raw records, unapproved drafts, rejected knowledge, or archived knowledge.
 - CustomerOpsAgent has no direct database access.
@@ -214,6 +216,35 @@ import
   - Fine-tuning export.
   - Sales Agent.
   - Operations Agent.
+
+## M6.5 RAG Quality Hardening Completion Check
+
+M6.5 is complete when:
+
+- RAG build remains local JSON plus mock retrieval only.
+- RAG build is idempotent for unchanged approved candidates.
+- Repeated RAG build does not create duplicate chunks.
+- Existing chunks are updated only when candidate-derived chunk content changes.
+- Build response includes:
+  - `built_count`
+  - `updated_count`
+  - `skipped_count`
+  - `chunk_count`
+  - `skipped_reasons`
+  - `status`
+- Only `approved` candidates become RAG chunks.
+- `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
+- Search query is trimmed and validated.
+- Empty query, overlong query, and invalid `top_k` return safe errors.
+- `top_k` defaults to 5 and is limited to 1-10.
+- Search scoring remains local keyword/mock scoring.
+- Search results include:
+  - `score`
+  - `matched_terms`
+  - `chunk_id`
+  - `candidate_id`
+  - source trace
+- No CustomerOpsAgent integration, Bad Case workflow, vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
 
 ## Future Phase Acceptance Outline
 

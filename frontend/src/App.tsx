@@ -116,6 +116,7 @@ type RagChunk = {
 
 type RagBuildResult = {
   built_count: number;
+  updated_count: number;
   skipped_count: number;
   skipped_reasons: Record<string, number>;
   chunk_count: number;
@@ -126,6 +127,7 @@ type RagBuildResult = {
 
 type RagSearchResult = RagChunk & {
   score: number;
+  matched_terms: string[];
 };
 
 export function App() {
@@ -560,9 +562,9 @@ export function App() {
         <p className="eyebrow">DataHub</p>
         <h1>Local RAG builder</h1>
         <p className="summary">
-          M6 builds local JSON RAG chunks from approved knowledge candidates
-          only. This is an internal retrieval test, not a CustomerOpsAgent
-          integration and not a real vector database.
+          M6.5 builds idempotent local JSON RAG chunks from approved knowledge
+          candidates only. This is an internal retrieval test, not a
+          CustomerOpsAgent integration and not a real vector database.
         </p>
 
         <form className="import-form" onSubmit={handleSubmit}>
@@ -1067,13 +1069,17 @@ export function App() {
             <div className="result-panel compact-panel" aria-live="polite">
               <h2>RAG build complete</h2>
               <dl>
-                <div>
-                  <dt>built_count</dt>
-                  <dd>{ragBuildResult.built_count}</dd>
-                </div>
-                <div>
-                  <dt>skipped_count</dt>
-                  <dd>{ragBuildResult.skipped_count}</dd>
+              <div>
+                <dt>built_count</dt>
+                <dd>{ragBuildResult.built_count}</dd>
+              </div>
+              <div>
+                <dt>updated_count</dt>
+                <dd>{ragBuildResult.updated_count}</dd>
+              </div>
+              <div>
+                <dt>skipped_count</dt>
+                <dd>{ragBuildResult.skipped_count}</dd>
                 </div>
                 <div>
                   <dt>chunk_count</dt>
@@ -1138,7 +1144,7 @@ export function App() {
               <input
                 type="number"
                 min="1"
-                max="20"
+                max="10"
                 value={ragTopK}
                 onChange={(event) => setRagTopK(event.target.value)}
               />
@@ -1162,6 +1168,11 @@ export function App() {
                   </div>
                   <p>{result.chunk_text}</p>
                   <div className="pill-row">
+                    {result.matched_terms.map((term) => (
+                      <span className="pill muted" key={`match-${term}`}>
+                        match {term}
+                      </span>
+                    ))}
                     {result.tags.map((tag) => (
                       <span className="pill" key={tag}>
                         {tag}
@@ -1185,7 +1196,7 @@ export function App() {
           </div>
           <div>
             <span className="label">Current milestone</span>
-            <strong>M6 local RAG builder</strong>
+            <strong>M6.5 RAG quality hardening</strong>
           </div>
         </div>
       </section>

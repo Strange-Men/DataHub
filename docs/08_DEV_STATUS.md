@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. Current checkpoint: M6.2 documentation consistency fix.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. Current checkpoint: M6.5 RAG quality hardening.
 
 Current code remains Phase 1.
 
@@ -153,6 +153,27 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Clarified that M6 local RAG search is mock retrieval, not CustomerOpsAgent production retrieval.
 - Confirmed that no business code changed in M6.2.
 
+## Completed In M6.3
+
+- Adjusted PRD Phase 1 target flow wording so CustomerOpsAgent retrieval and Bad Case feedback are not implied as already complete.
+- Clarified canonical state flow:
+  - `approved` does not mean RAG-ready.
+  - `rag_chunked` is the current local RAG chunk state.
+  - `indexed` is reserved for future production retrieval index work.
+- Updated development rules so `docs/CHANGELOG.md` is optional unless explicitly needed.
+- Updated M7 acceptance wording to allow approved `rag_chunked` records as retrieval-ready before production vector indexing exists.
+
+## Completed In M6.5
+
+- Hardened local RAG build idempotency.
+- Prevented repeated builds from creating duplicate chunks.
+- Added `updated_count` to RAG build results.
+- Added query trimming, max length, and `top_k` validation for local RAG search.
+- Added `matched_terms` to search results for local debugging.
+- Added lightweight RAG quality verification script under `backend/tests/`.
+- Confirmed M6.5 remains local JSON plus mock retrieval only.
+- Confirmed M6.5 does not implement CustomerOpsAgent, Bad Case, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -178,6 +199,12 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Local keyword/mock retrieval for DataHub internal testing only.
 - M6.1 documentation-only final vision and roadmap clarification.
 - M6.2 documentation-only consistency fixes.
+- M6.3 documentation micro-fixes.
+- M6.5 local RAG quality hardening:
+  - idempotent build
+  - duplicate chunk prevention
+  - query/top_k validation
+  - matched_terms debug output
 
 ### Current Forbidden Work
 
@@ -194,8 +221,8 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Treating local RAG test as CustomerOpsAgent production retrieval.
 - Real vector database integration.
 - Embedding model integration.
-- M6.1 does not permit new business code.
-- M6.1 does not permit Phase 2, Phase 3, or Phase 4 implementation.
+- Documentation-only stages do not permit business code changes.
+- Phase 2, Phase 3, and Phase 4 must not be implemented unless explicitly started.
 Forbidden from prior stages remains:
 - CSV import.
 - Excel import.
@@ -218,7 +245,7 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- M6.5 RAG Quality Hardening.
+- M6.6 RAG retrieval quality tuning if another local hardening round is explicitly requested.
 - M7 CustomerOpsAgent Retrieval Integration.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
@@ -247,7 +274,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports M6.
+- `/health` endpoint is defined and reports M6.5.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -261,7 +288,10 @@ Still candidates:
 - M6 RAG endpoints are defined.
 - RAG build reads only knowledge candidates.
 - RAG chunks are built only from `approved` candidates.
+- RAG build is idempotent and repeated builds do not create duplicate chunks.
 - Pending, needs-revision, and rejected candidates are skipped.
+- RAG search validates empty query, query length, and `top_k`.
+- RAG search returns `matched_terms` and source trace.
 - RAG chunks are written to ignored local storage.
 - No CustomerOpsAgent integration, Bad Case workflow, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
@@ -357,7 +387,7 @@ Continue Phase 1 only.
 
 Recommended options:
 
-- M6.5 RAG quality hardening.
+- M6.6 RAG quality tuning if another local hardening round is explicitly requested.
 - M7 CustomerOpsAgent retrieval integration planning.
 
 Before M7 starts:

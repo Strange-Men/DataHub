@@ -617,8 +617,7 @@ def apply_review_decision(
 
 
 def _chunk_id_for_candidate(candidate_id: str) -> str:
-    normalized = candidate_id.removeprefix("kc_")
-    return f"chunk_{normalized}"
+    return f"chunk_{candidate_id}"
 
 
 def _chunk_text(candidate: KnowledgeCandidate) -> str:
@@ -636,8 +635,14 @@ def build_rag_chunks() -> RagBuildResult:
     _ensure_storage()
     created_at = datetime.now(UTC).isoformat()
     candidates = list_knowledge_candidates()
-    chunks: list[RagChunk] = []
+    existing_chunks = {
+        chunk.chunk_id: chunk
+        for chunk in list_rag_chunks()
+    }
+    chunks_by_id: dict[str, RagChunk] = {}
     skipped_reasons: dict[str, int] = {}
+    built_count = 0
+    updated_count = 0
 
     for candidate in candidates:
         if candidate.review_status != "approved":
@@ -645,28 +650,39 @@ def build_rag_chunks() -> RagBuildResult:
             skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
             continue
 
-        chunks.append(
-            RagChunk(
-                chunk_id=_chunk_id_for_candidate(candidate.candidate_id),
-                candidate_id=candidate.candidate_id,
-                source_batch_id=candidate.source_batch_id,
-                source_conversation_id=candidate.source_conversation_id,
-                source_message_ids=candidate.source_message_ids,
-                knowledge_type=candidate.knowledge_type,
-                intent=candidate.intent,
-                tags=candidate.tags,
-                risk_level=candidate.risk_level,
-                quality_score=candidate.quality_score,
-                review_status="approved",
-                chunk_text=_chunk_text(candidate),
-                created_at=created_at,
-                build_method="local_json_mock_retrieval",
-            )
+        chunk_id = _chunk_id_for_candidate(candidate.candidate_id)
+        previous = existing_chunks.get(chunk_id)
+        next_chunk = RagChunk(
+            chunk_id=chunk_id,
+            candidate_id=candidate.candidate_id,
+            source_batch_id=candidate.source_batch_id,
+            source_conversation_id=candidate.source_conversation_id,
+            source_message_ids=candidate.source_message_ids,
+            knowledge_type=candidate.knowledge_type,
+            intent=candidate.intent,
+            tags=candidate.tags,
+            risk_level=candidate.risk_level,
+            quality_score=candidate.quality_score,
+            review_status="approved",
+            chunk_text=_chunk_text(candidate),
+            created_at=previous.created_at if previous else created_at,
+            build_method="local_json_mock_retrieval",
         )
 
-    for chunk_file in RAG_CHUNK_DIR.glob("chunk_*.json"):
-        chunk_file.unlink()
+        if previous is None:
+            built_count += 1
+        elif _rag_chunk_changed(previous, next_chunk):
+            updated_count += 1
+            next_chunk = next_chunk.model_copy(update={"created_at": created_at})
+        else:
+            skipped_reasons["unchanged"] = skipped_reasons.get("unchanged", 0) + 1
+        chunks_by_id[chunk_id] = next_chunk
 
+    for chunk_file in RAG_CHUNK_DIR.glob("chunk_*.json"):
+        if chunk_file.stem not in chunks_by_id:
+            chunk_file.unlink()
+
+    chunks = sorted(chunks_by_id.values(), key=lambda item: item.chunk_id)
     for chunk in chunks:
         (RAG_CHUNK_DIR / f"{chunk.chunk_id}.json").write_text(
             json.dumps(chunk.model_dump(), ensure_ascii=False, indent=2),
@@ -678,7 +694,8 @@ def build_rag_chunks() -> RagBuildResult:
     )
 
     return RagBuildResult(
-        built_count=len(chunks),
+        built_count=built_count,
+        updated_count=updated_count,
         skipped_count=sum(skipped_reasons.values()),
         skipped_reasons=skipped_reasons,
         chunk_count=len(chunks),
@@ -686,6 +703,12 @@ def build_rag_chunks() -> RagBuildResult:
         build_method="local_json_mock_retrieval",
         created_at=created_at,
     )
+
+
+def _rag_chunk_changed(previous: RagChunk, current: RagChunk) -> bool:
+    comparable_previous = previous.model_dump(exclude={"created_at"})
+    comparable_current = current.model_dump(exclude={"created_at"})
+    return comparable_previous != comparable_current
 
 
 def list_rag_chunks() -> list[RagChunk]:
@@ -735,15 +758,20 @@ def search_rag_chunks(query: str, top_k: int) -> list[RagSearchResult]:
         if not overlap:
             continue
 
-        tag_boost = 0.15 if query_tokens & set(chunk.tags) else 0
-        intent_boost = 0.15 if chunk.intent in query_tokens else 0
+        tag_tokens = {tag.lower() for tag in chunk.tags}
+        tag_overlap = query_tokens & tag_tokens
+        intent_overlap = {chunk.intent} if chunk.intent in query_tokens else set()
+        tag_boost = 0.15 if tag_overlap else 0
+        intent_boost = 0.15 if intent_overlap else 0
         score = min(
             1.0,
             (len(overlap) / len(query_tokens)) + tag_boost + intent_boost,
         )
+        matched_terms = sorted(overlap | tag_overlap | intent_overlap)
         results.append(
             RagSearchResult(
                 score=round(score, 4),
+                matched_terms=matched_terms,
                 chunk_id=chunk.chunk_id,
                 candidate_id=chunk.candidate_id,
                 source_batch_id=chunk.source_batch_id,

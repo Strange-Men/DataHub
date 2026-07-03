@@ -20,6 +20,7 @@ Implemented APIs: M2-M6
 - M4 knowledge candidate extraction.
 - M5 human review.
 - M6 local RAG chunk build and local mock search.
+- M6.5 local RAG quality hardening.
 
 Planned Phase 1 APIs: M7-M8
 
@@ -39,8 +40,8 @@ Important M6 boundary:
 
 - `POST /api/rag/build` and `POST /api/rag/search` are implemented as DataHub internal local RAG test APIs.
 - Current `/api/rag/search` is not the official CustomerOpsAgent retrieval API.
-- Current M6 uses local JSON plus keyword/mock retrieval.
-- Current M6 does not use embeddings, a real vector database, database, ORM, or production RAG index.
+- Current M6.5 uses local JSON plus keyword/mock retrieval.
+- Current M6.5 does not use embeddings, a real vector database, database, ORM, or production RAG index.
 
 ## 0A. Canonical State Names
 
@@ -63,7 +64,7 @@ Rules:
 - `approved` means a human approved the candidate. It does not mean RAG chunks or production indexing exist.
 - `rag_chunked` means M6 local RAG chunks exist.
 - `indexed` is reserved for future real vector store or production retrieval index status.
-- Current M6 reaches `rag_chunked`, not production `indexed`.
+- Current M6/M6.5 reaches `rag_chunked`, not production `indexed`.
 - `knowledge candidate` is used for M4-M5 records.
 - `approved candidate` is the M5 post-review state.
 - A future `knowledge_item` or formal knowledge asset store must be planned separately.
@@ -745,9 +746,9 @@ Response:
 
 Needs-revision candidates must be edited before later approval or rejection.
 
-## 5A. Implemented APIs: M6 Local RAG Build And Search
+## 5A. Implemented APIs: M6/M6.5 Local RAG Build And Search
 
-M6 builds local JSON RAG chunks from approved knowledge candidates only.
+M6 builds local JSON RAG chunks from approved knowledge candidates only. M6.5 hardens build idempotency, search validation, and debug traceability.
 
 Hard rules:
 
@@ -758,6 +759,8 @@ Hard rules:
 - M6 uses local JSON plus mock keyword retrieval only.
 - M6 does not use embeddings, a vector database, database, ORM, real LLM, or RAG framework.
 - M6 does not expose CustomerOpsAgent-specific APIs.
+- M6.5 build is idempotent: repeating build for the same unchanged approved candidate must not create duplicate chunks.
+- M6.5 search returns `matched_terms` for local debugging.
 
 ### 5A.1 Build Local RAG Chunks
 
@@ -774,8 +777,10 @@ Response:
   "success": true,
   "data": {
     "built_count": 1,
+    "updated_count": 0,
     "skipped_count": 2,
     "skipped_reasons": {
+      "unchanged": 0,
       "review_status_pending_review": 1,
       "review_status_rejected": 1
     },
@@ -787,6 +792,15 @@ Response:
   "requestId": "req_012"
 }
 ```
+
+Response fields:
+
+- `built_count`: new chunks created from approved candidates.
+- `updated_count`: existing chunks updated because candidate-derived chunk content changed.
+- `skipped_count`: non-approved candidates plus unchanged approved chunks that were skipped.
+- `skipped_reasons`: reason counts such as `unchanged`, `review_status_pending_review`, `review_status_needs_revision`, or `review_status_rejected`.
+- `chunk_count`: total chunks after the build.
+- `status`: `completed`.
 
 Allowed source state:
 
@@ -812,7 +826,7 @@ Response:
   "data": {
     "chunks": [
       {
-        "chunk_id": "chunk_abc123",
+        "chunk_id": "chunk_kc_abc123",
         "candidate_id": "kc_abc123",
         "source_batch_id": "batch_abc123",
         "source_conversation_id": "conv_001",
@@ -854,6 +868,15 @@ Request:
 }
 ```
 
+Validation:
+
+- `query` must be a non-empty string after trimming.
+- `query` maximum length is 500 characters.
+- `top_k` defaults to 5.
+- `top_k` minimum is 1.
+- `top_k` maximum is 10.
+- Invalid input returns a safe structured error and does not include private content.
+
 Response:
 
 ```json
@@ -863,7 +886,8 @@ Response:
     "results": [
       {
         "score": 0.75,
-        "chunk_id": "chunk_abc123",
+        "matched_terms": ["germany", "shipping"],
+        "chunk_id": "chunk_kc_abc123",
         "candidate_id": "kc_abc123",
         "source_batch_id": "batch_abc123",
         "source_conversation_id": "conv_001",
@@ -883,7 +907,7 @@ Response:
 }
 ```
 
-M6 search is a DataHub internal test endpoint. It does not mean CustomerOpsAgent integration is complete.
+M6/M6.5 search is a DataHub internal test endpoint. It does not mean CustomerOpsAgent integration is complete.
 
 ## 6. Planned Phase 1 APIs: Knowledge Base Management (Not Implemented)
 

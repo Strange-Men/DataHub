@@ -161,7 +161,9 @@ Keep these documents current:
 During implementation, maintain:
 
 - `docs/08_DEV_STATUS.md`
-- `docs/CHANGELOG.md`
+- Related API, architecture, and acceptance documents when behavior changes.
+
+A changelog may be added later if explicitly needed.
 
 ## 12. Repository Content Rules
 

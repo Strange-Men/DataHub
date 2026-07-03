@@ -291,3 +291,44 @@ M6 is complete when:
 - UI clearly states this is not CustomerOpsAgent integration and not a real vector database.
 - No CustomerOpsAgent integration, Bad Case, real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, or fine-tuning work is implemented.
 - `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.
+
+## 14. M6.5 RAG Quality Hardening Check
+
+M6.5 is complete when:
+
+- `POST /api/rag/build` remains local JSON plus mock retrieval only.
+- RAG build remains approved-only.
+- RAG build still reads only from `backend/storage/knowledge_candidates/`.
+- RAG build does not read raw batches.
+- RAG build does not read sanitized batches directly.
+- Repeating build for an unchanged approved candidate does not create duplicate chunks.
+- Chunk ids are stable for the same candidate.
+- Build response includes:
+  - `built_count`
+  - `updated_count`
+  - `skipped_count`
+  - `chunk_count`
+  - `skipped_reasons`
+  - `status`
+- `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
+- Search query is trimmed and must not be empty.
+- Search query is limited to 500 characters.
+- `top_k` defaults to 5.
+- `top_k` is limited to the range 1-10.
+- Invalid search input returns safe structured errors.
+- Search scoring stays local keyword/mock scoring only.
+- Search results include:
+  - `score`
+  - `matched_terms`
+  - `chunk_id`
+  - `candidate_id`
+  - `source_batch_id`
+  - `source_conversation_id`
+  - `source_message_ids`
+  - `chunk_text`
+  - `tags`
+  - `intent`
+- Frontend shows `updated_count` and matched terms if it is updated in the stage.
+- Lightweight verification or tests cover approved-only chunking, repeated build idempotency, search validation, and source trace.
+- No CustomerOpsAgent integration, Bad Case, real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
+- `docs/04_API_CONTRACT.md`, `docs/07_ACCEPTANCE_CRITERIA.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, `README.md`, and related API docs are updated.

@@ -165,6 +165,7 @@ class RagChunk(BaseModel):
 
 class RagBuildResult(BaseModel):
     built_count: int
+    updated_count: int
     skipped_count: int
     skipped_reasons: dict[str, int]
     chunk_count: int
@@ -174,12 +175,13 @@ class RagBuildResult(BaseModel):
 
 
 class RagSearchRequest(BaseModel):
-    query: str = Field(min_length=1, max_length=1000)
-    top_k: int = Field(default=5, ge=1, le=20)
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5)
 
 
 class RagSearchResult(BaseModel):
     score: float
+    matched_terms: list[str]
     chunk_id: str
     candidate_id: str
     source_batch_id: str

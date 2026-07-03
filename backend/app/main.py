@@ -37,7 +37,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M6",
+        "phase": "M6.5",
     }
 
 
@@ -297,9 +297,34 @@ def get_local_rag_chunk(chunk_id: str) -> ApiResponse:
 
 @app.post("/api/rag/search", response_model=ApiResponse)
 def search_local_rag_chunks(payload: RagSearchRequest) -> ApiResponse:
+    query = payload.query.strip()
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_QUERY",
+                "message": "Query must not be empty.",
+            },
+        )
+    if len(query) > 500:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "QUERY_TOO_LONG",
+                "message": "Query must be 500 characters or fewer.",
+            },
+        )
+    if payload.top_k < 1 or payload.top_k > 10:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_TOP_K",
+                "message": "top_k must be between 1 and 10.",
+            },
+        )
     results = [
         result.model_dump()
-        for result in search_rag_chunks(payload.query, payload.top_k)
+        for result in search_rag_chunks(query, payload.top_k)
     ]
     return ApiResponse(
         success=True,
