@@ -10,6 +10,9 @@ from app.schemas import (
     ExtractionJobMetadata,
     ImportJsonRequest,
     KnowledgeCandidate,
+    RagBuildResult,
+    RagChunk,
+    RagSearchResult,
     ReviewDecisionRequest,
     ReviewRecord,
     SanitizedBatch,
@@ -26,12 +29,14 @@ CLEANING_JOB_DIR = STORAGE_DIR / "cleaning_jobs"
 EXTRACTION_JOB_DIR = STORAGE_DIR / "extraction_jobs"
 KNOWLEDGE_CANDIDATE_DIR = STORAGE_DIR / "knowledge_candidates"
 REVIEW_RECORD_DIR = STORAGE_DIR / "review_records"
+RAG_CHUNK_DIR = STORAGE_DIR / "rag_chunks"
 INDEX_FILE = RAW_BATCH_DIR / "index.json"
 SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
 CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
 EXTRACTION_JOB_INDEX_FILE = EXTRACTION_JOB_DIR / "index.json"
 KNOWLEDGE_CANDIDATE_INDEX_FILE = KNOWLEDGE_CANDIDATE_DIR / "index.json"
 REVIEW_RECORD_INDEX_FILE = REVIEW_RECORD_DIR / "index.json"
+RAG_CHUNK_INDEX_FILE = RAG_CHUNK_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -58,6 +63,7 @@ def _ensure_storage() -> None:
     EXTRACTION_JOB_DIR.mkdir(parents=True, exist_ok=True)
     KNOWLEDGE_CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
     REVIEW_RECORD_DIR.mkdir(parents=True, exist_ok=True)
+    RAG_CHUNK_DIR.mkdir(parents=True, exist_ok=True)
     if not INDEX_FILE.exists():
         INDEX_FILE.write_text("[]", encoding="utf-8")
     if not SANITIZED_INDEX_FILE.exists():
@@ -70,6 +76,8 @@ def _ensure_storage() -> None:
         KNOWLEDGE_CANDIDATE_INDEX_FILE.write_text("[]", encoding="utf-8")
     if not REVIEW_RECORD_INDEX_FILE.exists():
         REVIEW_RECORD_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not RAG_CHUNK_INDEX_FILE.exists():
+        RAG_CHUNK_INDEX_FILE.write_text("[]", encoding="utf-8")
 
 
 def _read_json_list(path: Path) -> list[dict[str, object]]:
@@ -606,3 +614,150 @@ def apply_review_decision(
     review_items.append(review.model_dump())
     _write_json_list(REVIEW_RECORD_INDEX_FILE, review_items)
     return written
+
+
+def _chunk_id_for_candidate(candidate_id: str) -> str:
+    normalized = candidate_id.removeprefix("kc_")
+    return f"chunk_{normalized}"
+
+
+def _chunk_text(candidate: KnowledgeCandidate) -> str:
+    return "\n".join(
+        [
+            f"Question: {candidate.question}",
+            f"Answer: {candidate.answer}",
+            f"Intent: {candidate.intent}",
+            f"Tags: {', '.join(candidate.tags)}",
+        ]
+    )
+
+
+def build_rag_chunks() -> RagBuildResult:
+    _ensure_storage()
+    created_at = datetime.now(UTC).isoformat()
+    candidates = list_knowledge_candidates()
+    chunks: list[RagChunk] = []
+    skipped_reasons: dict[str, int] = {}
+
+    for candidate in candidates:
+        if candidate.review_status != "approved":
+            reason = f"review_status_{candidate.review_status}"
+            skipped_reasons[reason] = skipped_reasons.get(reason, 0) + 1
+            continue
+
+        chunks.append(
+            RagChunk(
+                chunk_id=_chunk_id_for_candidate(candidate.candidate_id),
+                candidate_id=candidate.candidate_id,
+                source_batch_id=candidate.source_batch_id,
+                source_conversation_id=candidate.source_conversation_id,
+                source_message_ids=candidate.source_message_ids,
+                knowledge_type=candidate.knowledge_type,
+                intent=candidate.intent,
+                tags=candidate.tags,
+                risk_level=candidate.risk_level,
+                quality_score=candidate.quality_score,
+                review_status="approved",
+                chunk_text=_chunk_text(candidate),
+                created_at=created_at,
+                build_method="local_json_mock_retrieval",
+            )
+        )
+
+    for chunk_file in RAG_CHUNK_DIR.glob("chunk_*.json"):
+        chunk_file.unlink()
+
+    for chunk in chunks:
+        (RAG_CHUNK_DIR / f"{chunk.chunk_id}.json").write_text(
+            json.dumps(chunk.model_dump(), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    _write_json_list(
+        RAG_CHUNK_INDEX_FILE,
+        [chunk.model_dump() for chunk in chunks],
+    )
+
+    return RagBuildResult(
+        built_count=len(chunks),
+        skipped_count=sum(skipped_reasons.values()),
+        skipped_reasons=skipped_reasons,
+        chunk_count=len(chunks),
+        status="completed",
+        build_method="local_json_mock_retrieval",
+        created_at=created_at,
+    )
+
+
+def list_rag_chunks() -> list[RagChunk]:
+    return [RagChunk(**item) for item in _read_json_list(RAG_CHUNK_INDEX_FILE)]
+
+
+def get_rag_chunk(chunk_id: str) -> RagChunk | None:
+    _ensure_storage()
+    chunk_file = RAG_CHUNK_DIR / f"{chunk_id}.json"
+    if not chunk_file.exists():
+        return None
+    try:
+        data = json.loads(chunk_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return RagChunk(**data)
+
+
+def _tokenize(value: str) -> set[str]:
+    return {
+        token.lower()
+        for token in re.findall(r"[A-Za-z0-9_]+", value)
+        if len(token) >= 2
+    }
+
+
+def search_rag_chunks(query: str, top_k: int) -> list[RagSearchResult]:
+    query_tokens = _tokenize(query)
+    if not query_tokens:
+        return []
+
+    results: list[RagSearchResult] = []
+    for chunk in list_rag_chunks():
+        chunk_tokens = _tokenize(
+            " ".join(
+                [
+                    chunk.chunk_text,
+                    chunk.intent,
+                    " ".join(chunk.tags),
+                    chunk.knowledge_type,
+                ]
+            )
+        )
+        overlap = query_tokens & chunk_tokens
+        if not overlap:
+            continue
+
+        tag_boost = 0.15 if query_tokens & set(chunk.tags) else 0
+        intent_boost = 0.15 if chunk.intent in query_tokens else 0
+        score = min(
+            1.0,
+            (len(overlap) / len(query_tokens)) + tag_boost + intent_boost,
+        )
+        results.append(
+            RagSearchResult(
+                score=round(score, 4),
+                chunk_id=chunk.chunk_id,
+                candidate_id=chunk.candidate_id,
+                source_batch_id=chunk.source_batch_id,
+                source_conversation_id=chunk.source_conversation_id,
+                source_message_ids=chunk.source_message_ids,
+                knowledge_type=chunk.knowledge_type,
+                intent=chunk.intent,
+                tags=chunk.tags,
+                risk_level=chunk.risk_level,
+                quality_score=chunk.quality_score,
+                review_status=chunk.review_status,
+                chunk_text=chunk.chunk_text,
+                build_method=chunk.build_method,
+            )
+        )
+
+    return sorted(results, key=lambda item: item.score, reverse=True)[:top_k]

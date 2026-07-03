@@ -132,6 +132,69 @@ class ReviewRecord(BaseModel):
     reviewed_at: str
 
 
+class RagChunk(BaseModel):
+    chunk_id: str
+    candidate_id: str
+    source_batch_id: str
+    source_conversation_id: str
+    source_message_ids: list[str]
+    knowledge_type: Literal[
+        "faq",
+        "standard_answer",
+        "business_rule",
+        "human_handoff_rule",
+        "forbidden_answer_rule",
+    ]
+    intent: Literal[
+        "shipping",
+        "refund",
+        "order_status",
+        "product_info",
+        "handoff",
+        "prohibited_answer",
+        "general",
+    ]
+    tags: list[str]
+    risk_level: Literal["low", "medium", "high"]
+    quality_score: float
+    review_status: Literal["approved"]
+    chunk_text: str
+    created_at: str
+    build_method: Literal["local_json_mock_retrieval"]
+
+
+class RagBuildResult(BaseModel):
+    built_count: int
+    skipped_count: int
+    skipped_reasons: dict[str, int]
+    chunk_count: int
+    status: Literal["completed"]
+    build_method: Literal["local_json_mock_retrieval"]
+    created_at: str
+
+
+class RagSearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=1000)
+    top_k: int = Field(default=5, ge=1, le=20)
+
+
+class RagSearchResult(BaseModel):
+    score: float
+    chunk_id: str
+    candidate_id: str
+    source_batch_id: str
+    source_conversation_id: str
+    source_message_ids: list[str]
+    knowledge_type: str
+    intent: str
+    tags: list[str]
+    risk_level: str
+    quality_score: float
+    review_status: Literal["approved"]
+    chunk_text: str
+    build_method: str
+
+
 class ExtractionJobMetadata(BaseModel):
     job_id: str
     source_batch_id: str

@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M5 Human Review Workflow.
+M6 Local RAG Builder.
 
 ## Completed Through M1
 
@@ -103,9 +103,27 @@ M5 Human Review Workflow.
 - Added local review record storage under `backend/storage/review_records/`.
 - Added React review queue, candidate editing, reviewer/note inputs, and Approve/Reject/Needs revision actions.
 
+## Completed In M6
+
+- Added local RAG build API: `POST /api/rag/build`.
+- Added RAG chunk list API: `GET /api/rag/chunks`.
+- Added RAG chunk detail API: `GET /api/rag/chunks/{chunk_id}`.
+- Added local RAG search API: `POST /api/rag/search`.
+- Added local RAG chunk storage under `backend/storage/rag_chunks/`.
+- Added `local_json_mock_retrieval` build and search method.
+- Added approved-only chunk generation:
+  - `approved` candidates can become chunks.
+  - `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
+- Added source traceability to every chunk:
+  - `candidate_id`
+  - `source_batch_id`
+  - `source_conversation_id`
+  - `source_message_ids`
+- Added React controls to show approved candidate count, build chunks, list chunks, and test local search.
+
 ## Current Boundaries
 
-Allowed in M5:
+Allowed in M6:
 
 - JSON customer service chat import only.
 - Local raw batch file storage only.
@@ -123,8 +141,11 @@ Allowed in M5:
 - Candidate field editing.
 - Review status transitions.
 - Local review record storage.
+- Local RAG chunk generation from approved candidates only.
+- Local JSON chunk storage.
+- Local keyword/mock retrieval for DataHub internal testing only.
 
-Forbidden in M5:
+Forbidden in M6:
 
 - CSV import.
 - Excel import.
@@ -133,11 +154,12 @@ Forbidden in M5:
 - SQLite integration.
 - ORM integration.
 - Real LLM integration.
-- RAG implementation.
-- RAG chunk generation.
 - CustomerOpsAgent integration.
+- CustomerOpsAgent-specific retrieval API.
 - Bad Case feedback.
-- Treating approved candidates as indexed or available knowledge.
+- Treating local RAG test as CustomerOpsAgent production retrieval.
+- Real vector database integration.
+- Embedding model integration.
 Forbidden from prior stages remains:
 - CSV import.
 - Excel import.
@@ -147,7 +169,7 @@ Forbidden from prior stages remains:
 - ORM integration.
 - Real LLM integration.
 - Knowledge version management.
-- Embedding.
+- Embedding beyond local keyword/mock search.
 - Vector database integration.
 - Multimodal features.
 - MCP.
@@ -174,7 +196,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports M4.
+- `/health` endpoint is defined and reports M6.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -185,8 +207,12 @@ Still candidates:
 - Extraction reads only sanitized batches.
 - M5 review endpoints are defined.
 - Review updates only existing knowledge candidates.
-- Approved candidates remain candidates and are not indexed.
-- No RAG, CustomerOpsAgent integration, Bad Case workflow, database, ORM, vector store, real LLM, or multimodal workflow has been implemented.
+- M6 RAG endpoints are defined.
+- RAG build reads only knowledge candidates.
+- RAG chunks are built only from `approved` candidates.
+- Pending, needs-revision, and rejected candidates are skipped.
+- RAG chunks are written to ignored local storage.
+- No CustomerOpsAgent integration, Bad Case workflow, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 
 Manual verification:
 
@@ -249,15 +275,39 @@ Invoke-RestMethod `
   -Body '{"reviewer":"local_reviewer","review_note":"Approved."}'
 ```
 
+Build local RAG chunks:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/rag/build `
+  -Method Post
+```
+
+List RAG chunks:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/rag/chunks
+```
+
+Search local RAG chunks:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/rag/search `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"query":"shipping Germany","top_k":5}'
+```
+
 ## Next Suggested Stage
 
-M6 RAG Build planning.
+M7 CustomerOpsAgent retrieval integration planning.
 
-Before M6 starts:
+Before M7 starts:
 
-- Confirm which approved candidates are eligible for indexing.
-- Confirm chunking rules.
-- Confirm vector store candidate remains local/lightweight.
-- Confirm rejected and needs_revision candidates are excluded.
+- Confirm whether CustomerOpsAgent should use the internal RAG chunks directly or a dedicated restricted retrieval API.
+- Confirm request and response contract for CustomerOpsAgent.
+- Confirm authentication or local development access rules.
+- Confirm query length and top-k limits.
 
-M6 must not implement CustomerOpsAgent integration, Bad Case feedback, or model fine-tuning unless explicitly approved later.
+M7 must not implement Bad Case feedback, multimodal retrieval, MCP, or model fine-tuning unless explicitly approved later.

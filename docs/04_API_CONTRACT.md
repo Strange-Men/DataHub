@@ -686,9 +686,145 @@ Response:
 
 Needs-revision candidates must be edited before later approval or rejection.
 
-## 5A. Future RAG APIs Not Implemented In M5
+## 5A. M6 Local RAG Build And Search APIs
 
-M5 does not implement RAG build, embeddings, vector storage, CustomerOpsAgent retrieval, or Bad Case feedback.
+M6 builds local JSON RAG chunks from approved knowledge candidates only.
+
+Hard rules:
+
+- RAG build reads only from `backend/storage/knowledge_candidates/`.
+- Only candidates with `review_status: approved` can become RAG chunks.
+- `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
+- M6 writes chunks under `backend/storage/rag_chunks/`.
+- M6 uses local JSON plus mock keyword retrieval only.
+- M6 does not use embeddings, a vector database, database, ORM, real LLM, or RAG framework.
+- M6 does not expose CustomerOpsAgent-specific APIs.
+
+### 5A.1 Build Local RAG Chunks
+
+`POST /api/rag/build`
+
+Request:
+
+No request body.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "built_count": 1,
+    "skipped_count": 2,
+    "skipped_reasons": {
+      "review_status_pending_review": 1,
+      "review_status_rejected": 1
+    },
+    "chunk_count": 1,
+    "status": "completed",
+    "build_method": "local_json_mock_retrieval",
+    "created_at": "2026-07-03T12:00:00+00:00"
+  },
+  "requestId": "req_012"
+}
+```
+
+Allowed source state:
+
+- `approved`
+
+Forbidden source states:
+
+- `pending_review`
+- `needs_revision`
+- `rejected`
+- raw batches
+- sanitized batches
+
+### 5A.2 List RAG Chunks
+
+`GET /api/rag/chunks`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "chunks": [
+      {
+        "chunk_id": "chunk_abc123",
+        "candidate_id": "kc_abc123",
+        "source_batch_id": "batch_abc123",
+        "source_conversation_id": "conv_001",
+        "source_message_ids": ["msg_001", "msg_002"],
+        "knowledge_type": "faq",
+        "intent": "shipping",
+        "tags": ["shipping", "delivery"],
+        "risk_level": "low",
+        "quality_score": 0.82,
+        "review_status": "approved",
+        "chunk_text": "Question: ...\nAnswer: ...\nIntent: shipping\nTags: shipping, delivery",
+        "created_at": "2026-07-03T12:00:00+00:00",
+        "build_method": "local_json_mock_retrieval"
+      }
+    ]
+  },
+  "requestId": "req_013"
+}
+```
+
+### 5A.3 Get RAG Chunk
+
+`GET /api/rag/chunks/{chunk_id}`
+
+Possible errors:
+
+- `RAG_CHUNK_NOT_FOUND`
+
+### 5A.4 Search Local RAG Chunks
+
+`POST /api/rag/search`
+
+Request:
+
+```json
+{
+  "query": "shipping Germany",
+  "top_k": 5
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "score": 0.75,
+        "chunk_id": "chunk_abc123",
+        "candidate_id": "kc_abc123",
+        "source_batch_id": "batch_abc123",
+        "source_conversation_id": "conv_001",
+        "source_message_ids": ["msg_001", "msg_002"],
+        "knowledge_type": "faq",
+        "intent": "shipping",
+        "tags": ["shipping", "delivery"],
+        "risk_level": "low",
+        "quality_score": 0.82,
+        "review_status": "approved",
+        "chunk_text": "Question: ...\nAnswer: ...",
+        "build_method": "local_json_mock_retrieval"
+      }
+    ]
+  },
+  "requestId": "req_014"
+}
+```
+
+M6 search is a DataHub internal test endpoint. It does not mean CustomerOpsAgent integration is complete.
 
 ## 6. Knowledge Base APIs
 
@@ -791,61 +927,27 @@ Response fields:
 - `failedCount`
 - `errorSummary`
 
-## 8. RAG Retrieval API
+## 8. Future RAG Retrieval Enhancements
 
-### 8.1 Internal Retrieval
+M6 implements local internal search in section 5A.4 using:
 
-`POST /api/rag/search`
+- `query`
+- `top_k`
+- local JSON chunks
+- mock keyword scoring
 
-Request:
+Future production retrieval may add:
 
-```json
-{
-  "query": "How do I handle a refund request?",
-  "topK": 5,
-  "filters": {
-    "knowledgeTypes": ["faq", "business_rule"],
-    "tags": ["refund"]
-  }
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "results": [
-      {
-        "knowledgeId": "know_001",
-        "knowledgeType": "faq",
-        "title": "Refund policy",
-        "content": "Approved answer content",
-        "score": 0.87,
-        "version": 1,
-        "sourceRecordIds": ["record_001"],
-        "approvedAt": "2026-07-03T11:00:00+08:00"
-      }
-    ]
-  },
-  "requestId": "req_007"
-}
-```
-
-Allowed retrieval states:
-
-- `indexed`
-
-Possible errors:
-
-- `QUERY_TOO_LONG`
-- `INVALID_FILTER`
-- `RAG_INDEX_UNAVAILABLE`
+- filters
+- version metadata
+- archive handling
+- access control
+- real vector scoring
+- CustomerOpsAgent-specific response guarantees
 
 Hard rule:
 
-- This API must only return approved and indexed knowledge.
+- Retrieval must only return approved and indexed knowledge.
 
 ## 9. CustomerOpsAgent APIs
 

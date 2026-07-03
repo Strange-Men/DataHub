@@ -2,20 +2,30 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
 
-from app.schemas import ApiResponse, CandidateUpdateRequest, ImportJsonRequest, ReviewDecisionRequest
+from app.schemas import (
+    ApiResponse,
+    CandidateUpdateRequest,
+    ImportJsonRequest,
+    RagSearchRequest,
+    ReviewDecisionRequest,
+)
 from app.storage import (
     apply_review_decision,
+    build_rag_chunks,
     create_raw_batch,
     get_cleaning_job,
     get_extraction_job,
     get_knowledge_candidate,
+    get_rag_chunk,
     get_raw_batch_metadata,
     get_sanitized_batch,
     list_knowledge_candidates,
     list_pending_review_candidates,
+    list_rag_chunks,
     list_raw_batches,
     run_cleaning,
     run_extraction,
+    search_rag_chunks,
     update_knowledge_candidate,
 )
 
@@ -27,7 +37,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M5",
+        "phase": "M6",
     }
 
 
@@ -245,3 +255,54 @@ def reject_candidate(candidate_id: str, payload: ReviewDecisionRequest) -> ApiRe
 @app.post("/api/review/{candidate_id}/needs-revision", response_model=ApiResponse)
 def request_candidate_revision(candidate_id: str, payload: ReviewDecisionRequest) -> ApiResponse:
     return _review_response(candidate_id, "needs_revision", payload)
+
+
+@app.post("/api/rag/build", response_model=ApiResponse)
+def build_local_rag_chunks() -> ApiResponse:
+    result = build_rag_chunks()
+    return ApiResponse(
+        success=True,
+        data=result.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/rag/chunks", response_model=ApiResponse)
+def list_local_rag_chunks() -> ApiResponse:
+    chunks = [chunk.model_dump() for chunk in list_rag_chunks()]
+    return ApiResponse(
+        success=True,
+        data={"chunks": chunks},
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/rag/chunks/{chunk_id}", response_model=ApiResponse)
+def get_local_rag_chunk(chunk_id: str) -> ApiResponse:
+    chunk = get_rag_chunk(chunk_id)
+    if chunk is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "RAG_CHUNK_NOT_FOUND",
+                "message": "RAG chunk was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=chunk.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.post("/api/rag/search", response_model=ApiResponse)
+def search_local_rag_chunks(payload: RagSearchRequest) -> ApiResponse:
+    results = [
+        result.model_dump()
+        for result in search_rag_chunks(payload.query, payload.top_k)
+    ]
+    return ApiResponse(
+        success=True,
+        data={"results": results},
+        requestId=f"req_{uuid4().hex[:12]}",
+    )

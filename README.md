@@ -2,11 +2,11 @@
 
 DataHub is a lightweight data asset center for AI application projects.
 
-Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M5 human review: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, and reviewed by a human.
+Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6 local RAG builder: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, and built into local RAG chunks when approved.
 
 ## Current Scope
 
-Implemented through M5:
+Implemented through M6:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -19,13 +19,14 @@ Implemented through M5:
 - Rule-based mock knowledge candidate extraction.
 - Pending-review knowledge candidate lookup.
 - Human review state transitions for knowledge candidates.
+- Local JSON RAG chunk building from approved candidates only.
+- Internal keyword/mock RAG search.
 - Environment example file.
 - Development status and stage checklist documents.
 
 Not implemented yet:
 
-- Approved knowledge.
-- RAG.
+- Separate approved knowledge/version management.
 - CustomerOpsAgent integration.
 - Bad Case feedback.
 - Multimodal, MCP, or fine-tuning.
@@ -66,7 +67,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M5"
+  "phase": "M6"
 }
 ```
 
@@ -320,6 +321,76 @@ Frontend M5 verification:
 9. Confirm status updates in the UI.
 
 M5 does not create RAG chunks, embeddings, vector records, CustomerOpsAgent integrations, or Bad Case workflows.
+
+## M6 Local RAG Builder
+
+RAG chunks are saved locally under:
+
+```text
+backend/storage/rag_chunks/
+```
+
+This directory is ignored by Git through `backend/storage/`.
+
+M6 uses:
+
+```text
+local_json_mock_retrieval
+```
+
+Rules:
+
+- Only `approved` candidates can become RAG chunks.
+- `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
+- RAG chunks preserve candidate and source traceability.
+- Search uses local JSON plus simple keyword scoring.
+- This is not CustomerOpsAgent integration.
+- This is not a real vector database, embedding model, database, ORM, or RAG framework.
+
+Build local RAG chunks:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/rag/build `
+  -Method Post
+```
+
+List local RAG chunks:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/rag/chunks
+```
+
+Get one chunk:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/rag/chunks/{chunk_id}
+```
+
+Search local RAG chunks:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/rag/search `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"query":"shipping Germany","top_k":5}'
+```
+
+Frontend M6 verification:
+
+1. Start both backend and frontend.
+2. Import sample JSON.
+3. Run cleaning.
+4. Run extraction.
+5. Approve at least one candidate.
+6. In Local RAG test, click `Build RAG chunks`.
+7. Confirm build summary shows `built_count`, `skipped_count`, `chunk_count`, and `status`.
+8. Confirm RAG chunks list shows approved chunks only.
+9. Enter a query and click `Search RAG`.
+10. Confirm results show score, chunk text, chunk id, candidate id, source conversation id, and tags.
+
+M6 does not create CustomerOpsAgent APIs, Bad Case workflows, embeddings, vector records, database/ORM integrations, real LLM calls, multimodal workflows, MCP, or fine-tuning.
 
 ## Development Rules
 

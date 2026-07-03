@@ -97,6 +97,37 @@ type CandidateEditState = {
   quality_score: string;
 };
 
+type RagChunk = {
+  chunk_id: string;
+  candidate_id: string;
+  source_batch_id: string;
+  source_conversation_id: string;
+  source_message_ids: string[];
+  knowledge_type: KnowledgeCandidate["knowledge_type"];
+  intent: KnowledgeCandidate["intent"];
+  tags: string[];
+  risk_level: KnowledgeCandidate["risk_level"];
+  quality_score: number;
+  review_status: "approved";
+  chunk_text: string;
+  created_at: string;
+  build_method: "local_json_mock_retrieval";
+};
+
+type RagBuildResult = {
+  built_count: number;
+  skipped_count: number;
+  skipped_reasons: Record<string, number>;
+  chunk_count: number;
+  status: "completed";
+  build_method: "local_json_mock_retrieval";
+  created_at: string;
+};
+
+type RagSearchResult = RagChunk & {
+  score: number;
+};
+
 export function App() {
   const [sourceName, setSourceName] = useState("sample_customer_chat");
   const [jsonText, setJsonText] = useState(`{
@@ -166,11 +197,20 @@ export function App() {
   const [candidateEdit, setCandidateEdit] = useState<CandidateEditState | null>(null);
   const [reviewer, setReviewer] = useState("local_reviewer");
   const [reviewNote, setReviewNote] = useState("");
+  const [ragBuildResult, setRagBuildResult] = useState<RagBuildResult | null>(null);
+  const [ragChunks, setRagChunks] = useState<RagChunk[]>([]);
+  const [ragQuery, setRagQuery] = useState("shipping Germany");
+  const [ragTopK, setRagTopK] = useState("5");
+  const [ragSearchResults, setRagSearchResults] = useState<RagSearchResult[]>([]);
+  const [isBuildingRag, setIsBuildingRag] = useState(false);
+  const [isSearchingRag, setIsSearchingRag] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     void loadSources();
     void loadReviewQueue();
+    void loadCandidates();
+    void loadRagChunks();
   }, []);
 
   async function loadSources() {
@@ -434,20 +474,95 @@ export function App() {
       selectCandidate(body.data);
       await loadCandidates();
       await loadReviewQueue();
+      await loadRagChunks();
     } catch {
       setError("Review action failed.");
     }
   }
 
+  async function loadRagChunks() {
+    setError(null);
+    try {
+      const response = await fetch("/api/rag/chunks");
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("Could not load RAG chunks.");
+        return;
+      }
+      setRagChunks(body.data.chunks);
+    } catch {
+      setError("Could not load RAG chunks.");
+    }
+  }
+
+  async function buildRagChunks() {
+    setError(null);
+    setIsBuildingRag(true);
+    setRagBuildResult(null);
+    setRagSearchResults([]);
+    try {
+      const response = await fetch("/api/rag/build", {
+        method: "POST"
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("RAG build failed.");
+        return;
+      }
+      setRagBuildResult(body.data);
+      await loadRagChunks();
+    } catch {
+      setError("RAG build request failed.");
+    } finally {
+      setIsBuildingRag(false);
+    }
+  }
+
+  async function searchRag() {
+    if (!ragQuery.trim()) {
+      setError("RAG search query is required.");
+      return;
+    }
+    setError(null);
+    setIsSearchingRag(true);
+    setRagSearchResults([]);
+    try {
+      const response = await fetch("/api/rag/search", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query: ragQuery.trim(),
+          top_k: Number(ragTopK)
+        })
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("RAG search failed.");
+        return;
+      }
+      setRagSearchResults(body.data.results);
+    } catch {
+      setError("RAG search request failed.");
+    } finally {
+      setIsSearchingRag(false);
+    }
+  }
+
+  const approvedCandidateCount = candidates.filter(
+    (candidate) => candidate.review_status === "approved"
+  ).length;
+
   return (
     <main className="app-shell">
       <section className="workspace">
         <p className="eyebrow">DataHub</p>
-        <h1>Knowledge candidates</h1>
+        <h1>Local RAG builder</h1>
         <p className="summary">
-          M4 extracts pending-review knowledge candidates from sanitized
-          customer service chat batches. These candidates are not approved and
-          cannot enter RAG.
+          M6 builds local JSON RAG chunks from approved knowledge candidates
+          only. This is an internal retrieval test, not a CustomerOpsAgent
+          integration and not a real vector database.
         </p>
 
         <form className="import-form" onSubmit={handleSubmit}>
@@ -756,7 +871,7 @@ export function App() {
                     <strong>{candidate.question}</strong>
                     <span>{candidate.candidate_id}</span>
                     <span>
-                      {candidate.review_status} · {candidate.intent} · quality{" "}
+                      {candidate.review_status} - {candidate.intent} - quality{" "}
                       {candidate.quality_score}
                     </span>
                   </div>
@@ -920,6 +1035,145 @@ export function App() {
           </section>
         ) : null}
 
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow compact">Local RAG test</p>
+              <h2>Build chunks from approved candidates</h2>
+            </div>
+            <button type="button" className="secondary" onClick={loadRagChunks}>
+              Refresh chunks
+            </button>
+          </div>
+          <p className="warning-note">
+            Only approved candidates can enter this local RAG test. It is not
+            connected to CustomerOpsAgent, embeddings, or a real vector store.
+          </p>
+          <div className="rag-toolbar">
+            <div>
+              <span className="label">Approved candidates</span>
+              <strong>{approvedCandidateCount}</strong>
+            </div>
+            <div>
+              <span className="label">RAG chunks</span>
+              <strong>{ragChunks.length}</strong>
+            </div>
+            <button type="button" onClick={buildRagChunks} disabled={isBuildingRag}>
+              {isBuildingRag ? "Building..." : "Build RAG chunks"}
+            </button>
+          </div>
+
+          {ragBuildResult ? (
+            <div className="result-panel compact-panel" aria-live="polite">
+              <h2>RAG build complete</h2>
+              <dl>
+                <div>
+                  <dt>built_count</dt>
+                  <dd>{ragBuildResult.built_count}</dd>
+                </div>
+                <div>
+                  <dt>skipped_count</dt>
+                  <dd>{ragBuildResult.skipped_count}</dd>
+                </div>
+                <div>
+                  <dt>chunk_count</dt>
+                  <dd>{ragBuildResult.chunk_count}</dd>
+                </div>
+                <div>
+                  <dt>status</dt>
+                  <dd>{ragBuildResult.status}</dd>
+                </div>
+                <div>
+                  <dt>skipped_reasons</dt>
+                  <dd>{JSON.stringify(ragBuildResult.skipped_reasons)}</dd>
+                </div>
+              </dl>
+            </div>
+          ) : null}
+
+          {ragChunks.length === 0 ? (
+            <p className="empty-state">
+              No RAG chunks built yet. Approve at least one candidate first.
+            </p>
+          ) : (
+            <div className="message-list">
+              {ragChunks.map((chunk) => (
+                <article className="candidate-card" key={chunk.chunk_id}>
+                  <div className="message-meta">
+                    <span>{chunk.review_status}</span>
+                    <span>{chunk.intent}</span>
+                    <span>quality {chunk.quality_score}</span>
+                  </div>
+                  <h3>{chunk.chunk_id}</h3>
+                  <p>{chunk.chunk_text}</p>
+                  <dl className="review-meta">
+                    <div>
+                      <dt>candidate_id</dt>
+                      <dd>{chunk.candidate_id}</dd>
+                    </div>
+                    <div>
+                      <dt>source_conversation_id</dt>
+                      <dd>{chunk.source_conversation_id}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="panel">
+          <p className="eyebrow compact">RAG search</p>
+          <h2>Internal retrieval test</h2>
+          <div className="search-row">
+            <label>
+              <span>Query</span>
+              <input
+                value={ragQuery}
+                onChange={(event) => setRagQuery(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Top K</span>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={ragTopK}
+                onChange={(event) => setRagTopK(event.target.value)}
+              />
+            </label>
+            <button type="button" onClick={searchRag} disabled={isSearchingRag}>
+              {isSearchingRag ? "Searching..." : "Search RAG"}
+            </button>
+          </div>
+
+          {ragSearchResults.length === 0 ? (
+            <p className="empty-state">No search results shown yet.</p>
+          ) : (
+            <div className="message-list">
+              {ragSearchResults.map((result) => (
+                <article className="candidate-card" key={result.chunk_id}>
+                  <div className="message-meta">
+                    <span>score {result.score}</span>
+                    <span>{result.chunk_id}</span>
+                    <span>{result.candidate_id}</span>
+                    <span>{result.source_conversation_id}</span>
+                  </div>
+                  <p>{result.chunk_text}</p>
+                  <div className="pill-row">
+                    {result.tags.map((tag) => (
+                      <span className="pill" key={tag}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
         <div className="status-grid" aria-label="Project status">
           <div>
             <span className="label">Frontend</span>
@@ -931,7 +1185,7 @@ export function App() {
           </div>
           <div>
             <span className="label">Current milestone</span>
-            <strong>M5 human review</strong>
+            <strong>M6 local RAG builder</strong>
           </div>
         </div>
       </section>

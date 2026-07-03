@@ -246,3 +246,47 @@ M5 is complete when:
 - Rejected and needs-revision candidates do not enter retrieval.
 - No RAG, chunking, embedding, vector database, database, ORM, CustomerOpsAgent integration, Bad Case, multimodal, MCP, fine-tuning, or real LLM work is implemented.
 - `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.
+
+## 13. M6 Completion Check
+
+M6 is complete when:
+
+- `POST /api/rag/build` exists.
+- `GET /api/rag/chunks` exists.
+- `GET /api/rag/chunks/{chunk_id}` exists.
+- `POST /api/rag/search` exists.
+- RAG build reads only from `backend/storage/knowledge_candidates/`.
+- RAG build does not read raw batches.
+- RAG build does not read sanitized batches directly.
+- RAG chunks are saved under `backend/storage/rag_chunks/`.
+- Every RAG chunk includes:
+  - `chunk_id`
+  - `candidate_id`
+  - `source_batch_id`
+  - `source_conversation_id`
+  - `source_message_ids`
+  - `knowledge_type`
+  - `intent`
+  - `tags`
+  - `risk_level`
+  - `quality_score`
+  - `review_status`
+  - `chunk_text`
+  - `created_at`
+  - `build_method`
+- Only candidates with `review_status: approved` become RAG chunks.
+- `pending_review`, `needs_revision`, and `rejected` candidates are skipped.
+- RAG search uses local JSON plus simple keyword/mock scoring only.
+- Search results include:
+  - `score`
+  - `chunk_id`
+  - `candidate_id`
+  - source information
+- Frontend can show approved candidate count.
+- Frontend can run local RAG build.
+- Frontend can show build summary.
+- Frontend can list RAG chunks.
+- Frontend can run internal RAG search.
+- UI clearly states this is not CustomerOpsAgent integration and not a real vector database.
+- No CustomerOpsAgent integration, Bad Case, real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, or fine-tuning work is implemented.
+- `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.
