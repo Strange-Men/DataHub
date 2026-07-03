@@ -162,3 +162,44 @@ M3 is complete when:
 - Sanitized data is not indexed.
 - No knowledge extraction, FAQ generation, standard answer generation, business rule generation, human review, RAG, embedding, vector database, CustomerOpsAgent integration, Bad Case, multimodal, MCP, fine-tuning, database, or ORM work is implemented.
 - `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.
+
+## 11. M4 Completion Check
+
+M4 is complete when:
+
+- `POST /api/extraction/run/{batch_id}` exists.
+- `GET /api/extraction/jobs/{job_id}` exists.
+- `GET /api/knowledge/candidates` exists.
+- `GET /api/knowledge/candidates/{candidate_id}` exists.
+- Extraction reads only from `backend/storage/sanitized_batches/`.
+- Extraction does not read raw batch files.
+- Knowledge candidates are saved under `backend/storage/knowledge_candidates/`.
+- Extraction jobs are saved under `backend/storage/extraction_jobs/`.
+- Extraction uses `rule_based_mock` only.
+- No real LLM is used.
+- Candidates are generated from simple sanitized customer -> agent pairs.
+- Every candidate includes:
+  - `candidate_id`
+  - `source_batch_id`
+  - `source_conversation_id`
+  - `source_message_ids`
+  - `knowledge_type`
+  - `question`
+  - `answer`
+  - `intent`
+  - `tags`
+  - `risk_level`
+  - `review_status`
+  - `quality_score`
+  - `extraction_method`
+  - `created_at`
+- Every candidate has `review_status: pending_review`.
+- No candidate is marked `approved`.
+- No candidate is indexed.
+- Frontend can list sanitized batches.
+- Frontend can run extraction for a sanitized batch.
+- Frontend can show extraction summary.
+- Frontend can show candidate list.
+- Candidate UI clearly states pending-review candidates cannot enter RAG.
+- No human review, approved knowledge, knowledge version management, RAG, embedding, vector database, database, ORM, CustomerOpsAgent integration, Bad Case, multimodal, MCP, fine-tuning, or real LLM work is implemented.
+- `docs/04_API_CONTRACT.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.

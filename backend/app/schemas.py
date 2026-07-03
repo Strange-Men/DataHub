@@ -66,6 +66,47 @@ class SanitizedBatch(BaseModel):
     messages: list[SanitizedMessage]
 
 
+class KnowledgeCandidate(BaseModel):
+    candidate_id: str
+    source_batch_id: str
+    source_conversation_id: str
+    source_message_ids: list[str]
+    knowledge_type: Literal[
+        "faq",
+        "standard_answer",
+        "business_rule",
+        "human_handoff_rule",
+        "forbidden_answer_rule",
+    ]
+    question: str
+    answer: str
+    intent: Literal[
+        "shipping",
+        "refund",
+        "order_status",
+        "product_info",
+        "handoff",
+        "prohibited_answer",
+        "general",
+    ]
+    tags: list[str]
+    risk_level: Literal["low", "medium", "high"]
+    review_status: Literal["pending_review"]
+    quality_score: float
+    extraction_method: Literal["rule_based_mock"]
+    created_at: str
+
+
+class ExtractionJobMetadata(BaseModel):
+    job_id: str
+    source_batch_id: str
+    candidate_count: int
+    status: Literal["completed"]
+    extraction_method: Literal["rule_based_mock"]
+    created_at: str
+    completed_at: str
+
+
 class ApiResponse(BaseModel):
     success: bool
     data: object

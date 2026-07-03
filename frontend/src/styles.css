@@ -229,10 +229,40 @@ button:disabled {
   background: #ffffff;
 }
 
+.candidate-card {
+  padding: 14px;
+  border: 1px solid #dfe5ee;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.candidate-card h3 {
+  margin: 12px 0 8px;
+  color: #17202a;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
 .sanitized-message p {
   margin: 10px 0;
   color: #2d3744;
   line-height: 1.55;
+}
+
+.candidate-card p {
+  margin: 0 0 12px;
+  color: #2d3744;
+  line-height: 1.55;
+}
+
+.warning-note {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #e4d5a4;
+  border-radius: 8px;
+  background: #fff9e8;
+  color: #725d18;
+  font-weight: 700;
 }
 
 .message-meta,

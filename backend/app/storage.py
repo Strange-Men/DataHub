@@ -6,7 +6,9 @@ from uuid import uuid4
 
 from app.schemas import (
     CleaningJobMetadata,
+    ExtractionJobMetadata,
     ImportJsonRequest,
+    KnowledgeCandidate,
     SanitizedBatch,
     SanitizedMessage,
     SourceBatchMetadata,
@@ -18,9 +20,13 @@ STORAGE_DIR = BASE_DIR / "storage"
 RAW_BATCH_DIR = STORAGE_DIR / "raw_batches"
 SANITIZED_BATCH_DIR = STORAGE_DIR / "sanitized_batches"
 CLEANING_JOB_DIR = STORAGE_DIR / "cleaning_jobs"
+EXTRACTION_JOB_DIR = STORAGE_DIR / "extraction_jobs"
+KNOWLEDGE_CANDIDATE_DIR = STORAGE_DIR / "knowledge_candidates"
 INDEX_FILE = RAW_BATCH_DIR / "index.json"
 SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
 CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
+EXTRACTION_JOB_INDEX_FILE = EXTRACTION_JOB_DIR / "index.json"
+KNOWLEDGE_CANDIDATE_INDEX_FILE = KNOWLEDGE_CANDIDATE_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -44,12 +50,18 @@ def _ensure_storage() -> None:
     RAW_BATCH_DIR.mkdir(parents=True, exist_ok=True)
     SANITIZED_BATCH_DIR.mkdir(parents=True, exist_ok=True)
     CLEANING_JOB_DIR.mkdir(parents=True, exist_ok=True)
+    EXTRACTION_JOB_DIR.mkdir(parents=True, exist_ok=True)
+    KNOWLEDGE_CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
     if not INDEX_FILE.exists():
         INDEX_FILE.write_text("[]", encoding="utf-8")
     if not SANITIZED_INDEX_FILE.exists():
         SANITIZED_INDEX_FILE.write_text("[]", encoding="utf-8")
     if not CLEANING_JOB_INDEX_FILE.exists():
         CLEANING_JOB_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not EXTRACTION_JOB_INDEX_FILE.exists():
+        EXTRACTION_JOB_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not KNOWLEDGE_CANDIDATE_INDEX_FILE.exists():
+        KNOWLEDGE_CANDIDATE_INDEX_FILE.write_text("[]", encoding="utf-8")
 
 
 def _read_json_list(path: Path) -> list[dict[str, object]]:
@@ -325,3 +337,168 @@ def get_sanitized_batch(batch_id: str) -> SanitizedBatch | None:
     if not isinstance(data, dict):
         return None
     return SanitizedBatch(**data)
+
+
+def _infer_intent(question: str, answer: str) -> tuple[str, list[str]]:
+    text = f"{question} {answer}".lower()
+    if any(term in text for term in ["shipping", "delivery", "dispatch"]):
+        return "shipping", ["shipping", "delivery"]
+    if any(term in text for term in ["refund", "return", "exchange"]):
+        return "refund", ["refund", "return"]
+    if any(term in text for term in ["order", "tracking", "track", "shipment"]):
+        return "order_status", ["order", "tracking"]
+    if any(term in text for term in ["product", "size", "color", "material", "sku"]):
+        return "product_info", ["product"]
+    if any(term in text for term in ["human", "support", "agent", "representative"]):
+        return "handoff", ["handoff", "support"]
+    if any(term in text for term in ["cannot answer", "not allowed", "prohibited"]):
+        return "prohibited_answer", ["policy"]
+    return "general", ["general"]
+
+
+def _infer_knowledge_type(intent: str) -> str:
+    if intent == "handoff":
+        return "human_handoff_rule"
+    if intent == "prohibited_answer":
+        return "forbidden_answer_rule"
+    return "faq"
+
+
+def _quality_score(question: str, answer: str) -> float:
+    score = 0.55
+    if question.endswith("?"):
+        score += 0.1
+    if len(question) >= 12:
+        score += 0.1
+    if len(answer) >= 24:
+        score += 0.1
+    if any(term in f"{question} {answer}".lower() for term in ["shipping", "refund", "order", "tracking", "delivery"]):
+        score += 0.1
+    return round(min(score, 0.95), 2)
+
+
+def _risk_level(question: str, answer: str) -> str:
+    text = f"{question} {answer}".lower()
+    if any(term in text for term in ["legal", "medical", "guarantee", "password", "payment"]):
+        return "high"
+    if any(term in text for term in ["refund", "return", "order", "address"]):
+        return "medium"
+    return "low"
+
+
+def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
+    sanitized = get_sanitized_batch(batch_id)
+    if sanitized is None:
+        return None
+
+    created_at = datetime.now(UTC).isoformat()
+    job_id = f"extract_job_{uuid4().hex[:12]}"
+    candidates: list[KnowledgeCandidate] = []
+    messages_by_conversation: dict[str, list[SanitizedMessage]] = {}
+
+    for message in sanitized.messages:
+        messages_by_conversation.setdefault(message.conversation_id, []).append(message)
+
+    for conversation_id, messages in messages_by_conversation.items():
+        for index, message in enumerate(messages):
+            if message.role != "customer":
+                continue
+            answer_message = next(
+                (candidate for candidate in messages[index + 1:] if candidate.role == "agent"),
+                None,
+            )
+            if answer_message is None:
+                continue
+            question = message.content.strip()
+            answer = answer_message.content.strip()
+            if not question or not answer:
+                continue
+            intent, tags = _infer_intent(question, answer)
+            candidate_id = f"kc_{uuid4().hex[:12]}"
+            candidates.append(
+                KnowledgeCandidate(
+                    candidate_id=candidate_id,
+                    source_batch_id=batch_id,
+                    source_conversation_id=conversation_id,
+                    source_message_ids=[message.source_message_id, answer_message.source_message_id],
+                    knowledge_type=_infer_knowledge_type(intent),  # type: ignore[arg-type]
+                    question=question,
+                    answer=answer,
+                    intent=intent,  # type: ignore[arg-type]
+                    tags=tags,
+                    risk_level=_risk_level(question, answer),  # type: ignore[arg-type]
+                    review_status="pending_review",
+                    quality_score=_quality_score(question, answer),
+                    extraction_method="rule_based_mock",
+                    created_at=created_at,
+                )
+            )
+
+    completed_at = datetime.now(UTC).isoformat()
+    job = ExtractionJobMetadata(
+        job_id=job_id,
+        source_batch_id=batch_id,
+        candidate_count=len(candidates),
+        status="completed",
+        extraction_method="rule_based_mock",
+        created_at=created_at,
+        completed_at=completed_at,
+    )
+
+    _ensure_storage()
+    (EXTRACTION_JOB_DIR / f"{job_id}.json").write_text(
+        json.dumps(job.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    for candidate in candidates:
+        (KNOWLEDGE_CANDIDATE_DIR / f"{candidate.candidate_id}.json").write_text(
+            json.dumps(candidate.model_dump(), ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    existing = [
+        item for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE)
+        if item.get("source_batch_id") != batch_id
+    ]
+    existing.extend(candidate.model_dump() for candidate in candidates)
+    _write_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE, existing)
+
+    job_items = _read_json_list(EXTRACTION_JOB_INDEX_FILE)
+    job_items.append(job.model_dump())
+    _write_json_list(EXTRACTION_JOB_INDEX_FILE, job_items)
+    return job
+
+
+def get_extraction_job(job_id: str) -> ExtractionJobMetadata | None:
+    _ensure_storage()
+    job_file = EXTRACTION_JOB_DIR / f"{job_id}.json"
+    if not job_file.exists():
+        return None
+    try:
+        data = json.loads(job_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return ExtractionJobMetadata(**data)
+
+
+def list_knowledge_candidates() -> list[KnowledgeCandidate]:
+    return [
+        KnowledgeCandidate(**item)
+        for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE)
+    ]
+
+
+def get_knowledge_candidate(candidate_id: str) -> KnowledgeCandidate | None:
+    _ensure_storage()
+    candidate_file = KNOWLEDGE_CANDIDATE_DIR / f"{candidate_id}.json"
+    if not candidate_file.exists():
+        return None
+    try:
+        data = json.loads(candidate_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return KnowledgeCandidate(**data)

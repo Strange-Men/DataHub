@@ -335,27 +335,28 @@ State rule:
 - Sanitized data is not indexed.
 - Sanitized data cannot be retrieved by CustomerOpsAgent.
 
-## 4. Knowledge Extraction APIs
+## 4. M4 Knowledge Candidate Extraction APIs
 
-### 4.1 Start Knowledge Extraction
+M4 extracts reviewable knowledge candidates from sanitized batches only.
 
-`POST /api/extraction/jobs`
+Hard rules:
+
+- Extraction must read only from `backend/storage/sanitized_batches/`.
+- Extraction must not read raw batch files.
+- Candidates are saved under `backend/storage/knowledge_candidates/`.
+- Extraction jobs are saved under `backend/storage/extraction_jobs/`.
+- Every candidate must be `pending_review`.
+- Candidates are not approved knowledge.
+- Candidates must not enter RAG.
+- M4 must not create embeddings, vector records, CustomerOpsAgent retrieval records, or Bad Case records.
+
+### 4.1 Run Knowledge Candidate Extraction
+
+`POST /api/extraction/run/{batch_id}`
 
 Request:
 
-```json
-{
-  "batchId": "batch_001",
-  "knowledgeTypes": [
-    "faq",
-    "standard_answer",
-    "business_rule",
-    "human_handoff_rule",
-    "forbidden_answer_rule"
-  ],
-  "mode": "mock | llm"
-}
-```
+No request body.
 
 Response:
 
@@ -363,54 +364,146 @@ Response:
 {
   "success": true,
   "data": {
-    "jobId": "extract_job_001",
-    "batchId": "batch_001",
-    "status": "queued"
+    "job_id": "extract_job_abc123",
+    "source_batch_id": "batch_abc123",
+    "candidate_count": 2,
+    "status": "completed",
+    "extraction_method": "rule_based_mock",
+    "created_at": "2026-07-03T10:20:00+00:00",
+    "completed_at": "2026-07-03T10:20:00+00:00"
   },
-  "requestId": "req_003"
+  "requestId": "req_004"
 }
 ```
 
 Allowed source states:
 
 - `sanitized`
-- `failed_extraction`
 
 Possible errors:
 
-- `BATCH_NOT_FOUND`
-- `INVALID_STATE`: Batch is not sanitized.
-- `UNSUPPORTED_KNOWLEDGE_TYPE`
-- `LLM_PROVIDER_DISABLED`
+- `SANITIZED_BATCH_NOT_FOUND`: Sanitized batch does not exist. Run cleaning first.
 
-Hard rule:
+Extraction method:
 
-- Extraction must not read from raw records.
+- `rule_based_mock`
+- The first version identifies simple customer -> agent question-answer pairs.
+- No real LLM is called.
 
-### 4.2 List Knowledge Drafts
+### 4.2 Get Extraction Job Status
 
-`GET /api/knowledge/drafts?batchId=batch_001&status=review_pending`
+`GET /api/extraction/jobs/{job_id}`
 
 Response fields:
 
-- `draftId`
-- `knowledgeType`
-- `title`
+- `job_id`
+- `source_batch_id`
+- `candidate_count`
+- `status`
+- `extraction_method`
+- `created_at`
+- `completed_at`
+
+Possible errors:
+
+- `EXTRACTION_JOB_NOT_FOUND`
+
+### 4.3 List Knowledge Candidates
+
+`GET /api/knowledge/candidates`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "candidates": [
+      {
+        "candidate_id": "kc_abc123",
+        "source_batch_id": "batch_abc123",
+        "source_conversation_id": "conv_001",
+        "source_message_ids": ["msg_001", "msg_002"],
+        "knowledge_type": "faq",
+        "question": "How long does shipping take to Germany?",
+        "answer": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+        "intent": "shipping",
+        "tags": ["shipping", "delivery"],
+        "risk_level": "low",
+        "review_status": "pending_review",
+        "quality_score": 0.85,
+        "extraction_method": "rule_based_mock",
+        "created_at": "2026-07-03T10:20:00+00:00"
+      }
+    ]
+  },
+  "requestId": "req_005"
+}
+```
+
+Candidate fields:
+
+- `candidate_id`
+- `source_batch_id`
+- `source_conversation_id`
+- `source_message_ids`
+- `knowledge_type`
 - `question`
 - `answer`
-- `ruleContent`
+- `intent`
 - `tags`
-- `status`
-- `sourceRecordIds`
-- `createdAt`
+- `risk_level`
+- `review_status`
+- `quality_score`
+- `extraction_method`
+- `created_at`
 
-Allowed states returned:
+Allowed `review_status` in M4:
 
-- `review_pending`
-- `needs_revision`
-- `rejected`
+- `pending_review`
 
-Drafts are not retrievable by CustomerOpsAgent.
+### 4.4 Get Knowledge Candidate Detail
+
+`GET /api/knowledge/candidates/{candidate_id}`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "candidate_id": "kc_abc123",
+    "source_batch_id": "batch_abc123",
+    "source_conversation_id": "conv_001",
+    "source_message_ids": ["msg_001", "msg_002"],
+    "knowledge_type": "faq",
+    "question": "How long does shipping take to Germany?",
+    "answer": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+    "intent": "shipping",
+    "tags": ["shipping", "delivery"],
+    "risk_level": "low",
+    "review_status": "pending_review",
+    "quality_score": 0.85,
+    "extraction_method": "rule_based_mock",
+    "created_at": "2026-07-03T10:20:00+00:00"
+  },
+  "requestId": "req_006"
+}
+```
+
+Possible errors:
+
+- `KNOWLEDGE_CANDIDATE_NOT_FOUND`
+
+State rule:
+
+- M4 produces only `pending_review` candidates.
+- M4 does not produce `approved` knowledge.
+- M4 does not produce `indexed` knowledge.
+
+## 4A. Future Knowledge Review APIs Not Implemented In M4
+
+The next stage may add human review, editing, approval, and rejection. These are not implemented in M4.
 
 ## 5. Human Review APIs
 

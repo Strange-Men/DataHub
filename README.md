@@ -2,11 +2,11 @@
 
 DataHub is a lightweight data asset center for AI application projects.
 
-Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M3 cleaning and desensitization: JSON customer service chat records can be saved as raw batches, then converted into sanitized batches in local storage.
+Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M4 knowledge candidate extraction: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, then transformed into pending-review knowledge candidates.
 
 ## Current Scope
 
-Implemented through M3:
+Implemented through M4:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -16,14 +16,16 @@ Implemented through M3:
 - Raw batch metadata listing and lookup.
 - Raw batch cleaning and PII masking.
 - Sanitized batch lookup.
+- Rule-based mock knowledge candidate extraction.
+- Pending-review knowledge candidate lookup.
 - Environment example file.
 - Development status and stage checklist documents.
 
 Not implemented yet:
 
 - Cleaning and desensitization.
-- Knowledge extraction.
 - Human review.
+- Approved knowledge.
 - RAG.
 - CustomerOpsAgent integration.
 - Bad Case feedback.
@@ -65,7 +67,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M3"
+  "phase": "M4"
 }
 ```
 
@@ -173,6 +175,67 @@ Frontend M3 verification:
 5. Confirm sanitized messages show `[EMAIL]`, `[PHONE]`, `[ORDER_ID]`, `[TRACKING_ID]`, and `[ADDRESS]` for the fake sample data.
 
 M3 does not create knowledge drafts, approved knowledge, RAG indexes, embeddings, CustomerOpsAgent integrations, or Bad Case workflows.
+
+## M4 Knowledge Candidate Extraction
+
+Knowledge candidates are saved locally under:
+
+```text
+backend/storage/knowledge_candidates/
+```
+
+Extraction jobs are saved locally under:
+
+```text
+backend/storage/extraction_jobs/
+```
+
+Both directories are ignored by Git through `backend/storage/`.
+
+Extraction method:
+
+```text
+rule_based_mock
+```
+
+The first version only extracts simple sanitized customer -> agent question-answer pairs. It does not call a real LLM.
+
+Run extraction by API:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/extraction/run/{batch_id} `
+  -Method Post
+```
+
+Get extraction job status:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/extraction/jobs/{job_id}
+```
+
+List knowledge candidates:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/knowledge/candidates
+```
+
+Get one candidate:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/knowledge/candidates/{candidate_id}
+```
+
+Frontend M4 verification:
+
+1. Start both backend and frontend.
+2. Import `samples/customer_chat_sample.json`.
+3. Run cleaning for the raw batch.
+4. In Sanitized batches, click `Run extraction`.
+5. Confirm extraction summary shows `candidate_count`.
+6. Confirm candidates show question, answer, intent, tags, quality score, and `pending_review`.
+
+M4 does not create approved knowledge, RAG indexes, embeddings, CustomerOpsAgent integrations, or Bad Case workflows.
 
 ## Development Rules
 

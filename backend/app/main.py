@@ -6,10 +6,14 @@ from app.schemas import ApiResponse, ImportJsonRequest
 from app.storage import (
     create_raw_batch,
     get_cleaning_job,
+    get_extraction_job,
+    get_knowledge_candidate,
     get_raw_batch_metadata,
     get_sanitized_batch,
+    list_knowledge_candidates,
     list_raw_batches,
     run_cleaning,
+    run_extraction,
 )
 
 app = FastAPI(title="DataHub API", version="0.1.0")
@@ -20,7 +24,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M3",
+        "phase": "M4",
     }
 
 
@@ -112,5 +116,69 @@ def get_sanitized_source(batch_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=sanitized.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.post("/api/extraction/run/{batch_id}", response_model=ApiResponse)
+def run_extraction_for_sanitized_batch(batch_id: str) -> ApiResponse:
+    job = run_extraction(batch_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "SANITIZED_BATCH_NOT_FOUND",
+                "message": "Sanitized batch was not found. Run cleaning first.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=job.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/extraction/jobs/{job_id}", response_model=ApiResponse)
+def get_extraction_job_status(job_id: str) -> ApiResponse:
+    job = get_extraction_job(job_id)
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "EXTRACTION_JOB_NOT_FOUND",
+                "message": "Extraction job was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=job.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/knowledge/candidates", response_model=ApiResponse)
+def list_candidates() -> ApiResponse:
+    candidates = [candidate.model_dump() for candidate in list_knowledge_candidates()]
+    return ApiResponse(
+        success=True,
+        data={"candidates": candidates},
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/knowledge/candidates/{candidate_id}", response_model=ApiResponse)
+def get_candidate(candidate_id: str) -> ApiResponse:
+    candidate = get_knowledge_candidate(candidate_id)
+    if candidate is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "KNOWLEDGE_CANDIDATE_NOT_FOUND",
+                "message": "Knowledge candidate was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=candidate.model_dump(),
         requestId=f"req_{uuid4().hex[:12]}",
     )
