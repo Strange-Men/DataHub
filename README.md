@@ -6,7 +6,7 @@ Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository i
 
 ## Current Scope
 
-Implemented through M4:
+Implemented through M5:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -24,8 +24,6 @@ Implemented through M4:
 
 Not implemented yet:
 
-- Cleaning and desensitization.
-- Human review.
 - Approved knowledge.
 - RAG.
 - CustomerOpsAgent integration.
