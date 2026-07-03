@@ -14,7 +14,86 @@ raw text data -> sanitized data -> knowledge drafts -> reviewed knowledge -> RAG
 
 DataHub is a lightweight data asset center for AI application projects.
 
+Long-term positioning:
+
+```text
+DataHub | Multi-source data governance and RAG knowledge platform for Agent clusters
+```
+
 In phase one, DataHub is a text knowledge governance system for CustomerOpsAgent. It is responsible for data import, cleaning, desensitization, knowledge extraction, human review, RAG indexing, retrieval, and Bad Case feedback handling.
+
+## 2A. Long-Term Product Vision
+
+DataHub is not intended to remain only a customer service text RAG tool. Its final product direction is a governed data and knowledge center for multiple AI Agents.
+
+Long-term flow:
+
+```text
+Multi-source business data
+-> cleaning / desensitization / standardization
+-> knowledge extraction / material understanding / human review
+-> text + multimodal RAG knowledge base
+-> data service APIs / MCP Tools
+-> CustomerOpsAgent / SalesAgent / OpsAgent / MaterialAgent and other Agent consumers
+```
+
+Formal product phases:
+
+- Phase 1: Text Customer Service Knowledge Loop.
+- Phase 2: AI Material Center and Multimodal Knowledge.
+- Phase 3: High-quality Dataset Export.
+- Phase 4: MCP Tools and Agent Cluster Integration.
+
+Current implementation scope:
+
+- This PRD's buildable scope remains Phase 1 only.
+- Phase 2, Phase 3, and Phase 4 are product roadmap phases.
+- Roadmap phases should guide architecture boundaries but must not be implemented before the Phase 1 loop is accepted.
+
+### Phase 1: Text Customer Service Knowledge Loop
+
+```text
+Real customer service chat records
+-> cleaning / deduplication / desensitization
+-> FAQ / standard answers / business rules / human-handoff rules / forbidden-answer rules
+-> human review
+-> text RAG knowledge base
+-> CustomerOpsAgent text customer service
+-> Bad Case feedback
+```
+
+### Phase 2: AI Material Center And Multimodal Knowledge
+
+```text
+Ops Agent / AI Material Center generated images, videos, and poster assets
+-> material ingestion
+-> OCR / Caption / tags / SKU binding
+-> human review
+-> multimodal knowledge base
+-> CustomerOpsAgent image-text / multimodal customer service
+```
+
+### Phase 3: High-Quality Dataset Export
+
+```text
+Reviewed customer service knowledge, excellent human replies, Bad Case fixes, high-quality Q&A
+-> sales onboarding materials
+-> FAQ handbook / SOP / script handbook / typical cases / quiz questions
+-> SFT dataset / Preference dataset
+-> reduce AI flavor and improve brand voice, service style, and refusal rules
+```
+
+### Phase 4: MCP Tools And Agent Cluster Integration
+
+```text
+DataHub MCP Tools
+-> search_customer_knowledge
+-> search_multimodal_assets
+-> submit_bad_case
+-> export_training_dataset
+-> export_finetune_dataset
+-> CustomerOpsAgent / SalesAgent / OpsAgent / MaterialAgent unified access
+```
 
 ## 3. Target Users
 
@@ -28,6 +107,7 @@ Non-phase-one users:
 
 - Sales Agent.
 - Operations Agent.
+- MaterialAgent.
 - Multimodal content operators.
 - MCP consumers.
 

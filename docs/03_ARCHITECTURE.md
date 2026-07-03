@@ -10,6 +10,12 @@ DataHub phase one uses a lightweight web application architecture:
 
 The architecture must support the CustomerOpsAgent text knowledge loop without becoming an enterprise data platform.
 
+The long-term architecture should also support DataHub's final positioning:
+
+```text
+DataHub | Multi-source data governance and RAG knowledge platform for Agent clusters
+```
+
 ## 2. High-Level Flow
 
 ```text
@@ -33,6 +39,97 @@ Candidate Data Layer
     +--> Vector store candidate
     +--> File or object storage candidate if needed later
 ```
+
+## 2A. Target Architecture
+
+Final target structure:
+
+```text
+Data Sources
+  - Customer chat logs
+  - Product docs
+  - Bad cases
+  - AI Material Center assets
+  - Human corrections
+
+DataHub Core
+  - Ingestion
+  - Cleaning & Sanitization
+  - Knowledge Extraction
+  - Material Understanding
+  - Human Review
+  - Knowledge Asset Store
+  - RAG Builder
+  - Dataset Export
+  - MCP Tool Layer
+
+Consumers
+  - CustomerOpsAgent
+  - SalesAgent
+  - OpsAgent
+  - MaterialAgent
+  - Fine-tuning pipeline
+```
+
+Current implemented Phase 1 path:
+
+```text
+Customer chat logs
+-> Ingestion
+-> Cleaning & Sanitization
+-> Knowledge Extraction
+-> Human Review
+-> Local RAG Builder
+```
+
+Current Phase 1 modules already started or implemented locally:
+
+- Ingestion.
+- Cleaning & Sanitization.
+- Knowledge Extraction.
+- Human Review.
+- Local RAG Builder.
+
+Future modules not implemented yet:
+
+- CustomerOpsAgent production retrieval interface.
+- Bad Case feedback.
+- Material Understanding.
+- Knowledge Asset Store beyond local files.
+- Dataset Export.
+- MCP Tool Layer.
+- SalesAgent, OpsAgent, and MaterialAgent integrations.
+
+Phase 2 AI Material Center position:
+
+```text
+AI Material Center assets
+-> Ingestion
+-> Material Understanding
+-> Human Review
+-> Knowledge Asset Store
+-> Multimodal RAG Builder
+```
+
+Phase 3 dataset export position:
+
+```text
+Approved knowledge / reviewed Bad Case fixes / high-quality Q&A
+-> Dataset Export
+-> sales training materials
+-> SFT dataset
+-> Preference dataset
+```
+
+Phase 4 MCP tool layer position:
+
+```text
+Knowledge Asset Store + RAG Builder + Dataset Export
+-> MCP Tool Layer
+-> CustomerOpsAgent / SalesAgent / OpsAgent / MaterialAgent
+```
+
+These target modules are architecture reservations and roadmap commitments. They are not current implementation scope until their phase is explicitly started.
 
 ## 3. Frontend: React Management Backend
 

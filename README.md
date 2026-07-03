@@ -1,8 +1,10 @@
 # DataHub
 
-DataHub is a lightweight data asset center for AI application projects.
+DataHub is a multi-source data governance and RAG knowledge platform for Agent clusters.
 
-Phase one focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6 local RAG builder: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, and built into local RAG chunks when approved.
+DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
+
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6 local RAG builder plus M6.1 final vision documentation: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, and built into local RAG chunks when approved.
 
 ## Current Scope
 
@@ -21,6 +23,7 @@ Implemented through M6:
 - Human review state transitions for knowledge candidates.
 - Local JSON RAG chunk building from approved candidates only.
 - Internal keyword/mock RAG search.
+- Final vision and four-phase roadmap documentation.
 - Environment example file.
 - Development status and stage checklist documents.
 
@@ -29,7 +32,27 @@ Not implemented yet:
 - Separate approved knowledge/version management.
 - CustomerOpsAgent integration.
 - Bad Case feedback.
-- Multimodal, MCP, or fine-tuning.
+- Multimodal material ingestion and understanding.
+- Sales training dataset export.
+- Fine-tuning dataset export.
+- MCP tools and Agent cluster integration.
+
+## Final Roadmap
+
+```text
+Phase 1: Text Customer Service Knowledge Loop
+Phase 2: AI Material Center & Multimodal Knowledge
+Phase 3: High-quality Dataset Export
+Phase 4: MCP Tools & Agent Cluster Integration
+```
+
+Current code development remains Phase 1 only. Phase 2, Phase 3, and Phase 4 are formal roadmap phases, not completed features.
+
+Detailed final vision:
+
+```text
+docs/10_FINAL_VISION_AND_ROADMAP.md
+```
 
 ## Frontend
 

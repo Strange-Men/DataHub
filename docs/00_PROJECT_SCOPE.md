@@ -4,6 +4,14 @@
 
 DataHub is a data asset center for AI application projects.
 
+The final vision is broader than phase one:
+
+```text
+DataHub is a multi-source data governance and RAG knowledge platform for Agent clusters.
+```
+
+In the long term, DataHub should govern text data, multimodal assets, reviewed knowledge, dataset exports, and MCP-style tool access for multiple Agents. CustomerOpsAgent is the first phase-one consumer, not the only final consumer.
+
 In the first phase, DataHub focuses on turning real customer service chat records into high-quality, reviewed, traceable knowledge that can be used by CustomerOpsAgent through retrieval APIs.
 
 The first-phase value chain is:
@@ -22,6 +30,34 @@ Customer service chat records
 
 DataHub owns the knowledge lifecycle. CustomerOpsAgent consumes DataHub knowledge but does not maintain the knowledge base directly.
 
+## 1A. Final Vision
+
+DataHub is not only a customer service RAG tool. The target product is:
+
+```text
+DataHub | Multi-source data governance and RAG knowledge platform for Agent clusters
+```
+
+Final target flow:
+
+```text
+Multi-source business data
+-> cleaning / desensitization / standardization
+-> knowledge extraction / material understanding / human review
+-> text + multimodal RAG knowledge base
+-> data service APIs / MCP Tools
+-> CustomerOpsAgent / SalesAgent / OpsAgent / MaterialAgent and other Agent consumers
+```
+
+The roadmap is formal:
+
+- Phase 1: Text customer service knowledge loop for CustomerOpsAgent.
+- Phase 2: AI Material Center and multimodal knowledge.
+- Phase 3: High-quality dataset export for sales training and fine-tuning datasets.
+- Phase 4: MCP Tools and Agent cluster integration.
+
+This final vision guides architecture decisions, but it does not expand the current implementation scope.
+
 ## 2. What DataHub Is Not
 
 DataHub is not:
@@ -39,6 +75,8 @@ DataHub is not:
 ## 3. Phase-One Consumer
 
 CustomerOpsAgent is the only core consumer in phase one.
+
+CustomerOpsAgent is not the only final consumer. Later phases may serve SalesAgent, OpsAgent, MaterialAgent, a fine-tuning pipeline, and an MCP-based Agent cluster.
 
 Rules:
 
@@ -96,23 +134,12 @@ Phase one does not implement:
 - Automatic knowledge publishing without review.
 - Direct database access from CustomerOpsAgent.
 
-## 6. Future Extension Directions
+## 6. Future Product Roadmap
 
-The architecture should leave extension points for:
+The architecture should leave extension points for formal later phases:
 
-- Image assets:
-  - Cleaning
-  - OCR
-  - Caption
-  - Tagging
-  - SKU binding
-  - Human review
-- Video and richer media assets.
-- AI creative asset center integration.
-- Multimodal CustomerOpsAgent.
-- Export of high-quality knowledge for sales onboarding.
-- Export of approved knowledge as fine-tuning datasets.
-- MCP packaging for an agent cluster.
-- Future sales and operations agent consumers.
+- Phase 2: AI Material Center assets, image/video/poster ingestion, OCR, Caption, tags, SKU binding, material review, and multimodal knowledge.
+- Phase 3: Export reviewed knowledge, excellent replies, Bad Case fixes, and high-quality Q&A into sales onboarding materials, FAQ handbooks, SOP, script handbooks, typical cases, quiz questions, SFT datasets, and Preference datasets.
+- Phase 4: Package DataHub as MCP Tools for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future Agent cluster consumers.
 
-These are extension directions only. They must not be implemented in phase one.
+These are roadmap directions only. They must not be implemented in phase one.

@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 Local RAG Builder.
+M6 completed. Current checkpoint: M6.1 Final Vision And Roadmap documentation update.
 
 ## Completed Through M1
 
@@ -121,6 +121,21 @@ M6 Local RAG Builder.
   - `source_message_ids`
 - Added React controls to show approved candidate count, build chunks, list chunks, and test local search.
 
+## Completed In M6.1
+
+- Added `docs/10_FINAL_VISION_AND_ROADMAP.md`.
+- Strengthened DataHub's final positioning:
+  - DataHub is a multi-source data governance and RAG knowledge platform for Agent clusters.
+  - DataHub is not only a CustomerOpsAgent customer service RAG tool.
+- Documented the formal four-phase roadmap:
+  - Phase 1: Text Customer Service Knowledge Loop.
+  - Phase 2: AI Material Center and Multimodal Knowledge.
+  - Phase 3: High-quality Dataset Export.
+  - Phase 4: MCP Tools and Agent Cluster Integration.
+- Updated scope, PRD, architecture, acceptance criteria, and README to align with the final vision.
+- Confirmed that current code development remains Phase 1 only.
+- Confirmed that Phase 2, Phase 3, and Phase 4 are roadmap phases and must not be implemented early.
+
 ## Current Boundaries
 
 Allowed in M6:
@@ -144,6 +159,7 @@ Allowed in M6:
 - Local RAG chunk generation from approved candidates only.
 - Local JSON chunk storage.
 - Local keyword/mock retrieval for DataHub internal testing only.
+- M6.1 documentation-only final vision and roadmap clarification.
 
 Forbidden in M6:
 
@@ -160,6 +176,8 @@ Forbidden in M6:
 - Treating local RAG test as CustomerOpsAgent production retrieval.
 - Real vector database integration.
 - Embedding model integration.
+- M6.1 does not permit new business code.
+- M6.1 does not permit Phase 2, Phase 3, or Phase 4 implementation.
 Forbidden from prior stages remains:
 - CSV import.
 - Excel import.
@@ -213,6 +231,7 @@ Still candidates:
 - Pending, needs-revision, and rejected candidates are skipped.
 - RAG chunks are written to ignored local storage.
 - No CustomerOpsAgent integration, Bad Case workflow, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
+- Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
 Manual verification:
 
@@ -301,7 +320,12 @@ Invoke-RestMethod `
 
 ## Next Suggested Stage
 
-M7 CustomerOpsAgent retrieval integration planning.
+Continue Phase 1 only.
+
+Recommended options:
+
+- M6.5 RAG quality hardening.
+- M7 CustomerOpsAgent retrieval integration planning.
 
 Before M7 starts:
 
@@ -311,3 +335,5 @@ Before M7 starts:
 - Confirm query length and top-k limits.
 
 M7 must not implement Bad Case feedback, multimodal retrieval, MCP, or model fine-tuning unless explicitly approved later.
+
+Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.
