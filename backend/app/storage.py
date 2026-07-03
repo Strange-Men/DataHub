@@ -7,6 +7,11 @@ from uuid import uuid4
 from app.schemas import (
     CandidateUpdateRequest,
     CleaningJobMetadata,
+    CustomerOpsRetrievalFilters,
+    CustomerOpsRetrievalRequest,
+    CustomerOpsRetrievalResponse,
+    CustomerOpsRetrievalResult,
+    CustomerOpsRetrievalTrace,
     ExtractionJobMetadata,
     ImportJsonRequest,
     KnowledgeCandidate,
@@ -30,6 +35,7 @@ EXTRACTION_JOB_DIR = STORAGE_DIR / "extraction_jobs"
 KNOWLEDGE_CANDIDATE_DIR = STORAGE_DIR / "knowledge_candidates"
 REVIEW_RECORD_DIR = STORAGE_DIR / "review_records"
 RAG_CHUNK_DIR = STORAGE_DIR / "rag_chunks"
+RETRIEVAL_LOG_DIR = STORAGE_DIR / "retrieval_logs"
 INDEX_FILE = RAW_BATCH_DIR / "index.json"
 SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
 CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
@@ -37,6 +43,7 @@ EXTRACTION_JOB_INDEX_FILE = EXTRACTION_JOB_DIR / "index.json"
 KNOWLEDGE_CANDIDATE_INDEX_FILE = KNOWLEDGE_CANDIDATE_DIR / "index.json"
 REVIEW_RECORD_INDEX_FILE = REVIEW_RECORD_DIR / "index.json"
 RAG_CHUNK_INDEX_FILE = RAG_CHUNK_DIR / "index.json"
+RETRIEVAL_LOG_INDEX_FILE = RETRIEVAL_LOG_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -64,6 +71,7 @@ def _ensure_storage() -> None:
     KNOWLEDGE_CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
     REVIEW_RECORD_DIR.mkdir(parents=True, exist_ok=True)
     RAG_CHUNK_DIR.mkdir(parents=True, exist_ok=True)
+    RETRIEVAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
     if not INDEX_FILE.exists():
         INDEX_FILE.write_text("[]", encoding="utf-8")
     if not SANITIZED_INDEX_FILE.exists():
@@ -78,6 +86,8 @@ def _ensure_storage() -> None:
         REVIEW_RECORD_INDEX_FILE.write_text("[]", encoding="utf-8")
     if not RAG_CHUNK_INDEX_FILE.exists():
         RAG_CHUNK_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not RETRIEVAL_LOG_INDEX_FILE.exists():
+        RETRIEVAL_LOG_INDEX_FILE.write_text("[]", encoding="utf-8")
 
 
 def _read_json_list(path: Path) -> list[dict[str, object]]:
@@ -789,3 +799,148 @@ def search_rag_chunks(query: str, top_k: int) -> list[RagSearchResult]:
         )
 
     return sorted(results, key=lambda item: item.score, reverse=True)[:top_k]
+
+
+def _answer_from_chunk_text(chunk_text: str) -> str:
+    for line in chunk_text.splitlines():
+        if line.startswith("Answer: "):
+            return line.removeprefix("Answer: ").strip()
+    return ""
+
+
+def _matches_customerops_filters(
+    chunk: RagChunk,
+    filters: CustomerOpsRetrievalFilters | None,
+) -> bool:
+    if filters is None:
+        return True
+    if filters.intent and chunk.intent != filters.intent:
+        return False
+    if filters.risk_level and chunk.risk_level != filters.risk_level:
+        return False
+    if filters.tags:
+        requested_tags = {tag.strip().lower() for tag in filters.tags if tag.strip()}
+        chunk_tags = {tag.lower() for tag in chunk.tags}
+        if requested_tags and not requested_tags.issubset(chunk_tags):
+            return False
+    return True
+
+
+def _customerops_score_chunk(query: str, chunk: RagChunk) -> CustomerOpsRetrievalResult | None:
+    if chunk.review_status != "approved":
+        return None
+    query_tokens = _tokenize(query)
+    if not query_tokens:
+        return None
+    chunk_tokens = _tokenize(
+        " ".join(
+            [
+                chunk.chunk_text,
+                chunk.intent,
+                " ".join(chunk.tags),
+                chunk.knowledge_type,
+            ]
+        )
+    )
+    overlap = query_tokens & chunk_tokens
+    if not overlap:
+        return None
+
+    tag_tokens = {tag.lower() for tag in chunk.tags}
+    tag_overlap = query_tokens & tag_tokens
+    intent_overlap = {chunk.intent} if chunk.intent in query_tokens else set()
+    tag_boost = 0.15 if tag_overlap else 0
+    intent_boost = 0.15 if intent_overlap else 0
+    score = min(
+        1.0,
+        (len(overlap) / len(query_tokens)) + tag_boost + intent_boost,
+    )
+    matched_terms = sorted(overlap | tag_overlap | intent_overlap)
+    return CustomerOpsRetrievalResult(
+        score=round(score, 4),
+        matched_terms=matched_terms,
+        chunk_id=chunk.chunk_id,
+        candidate_id=chunk.candidate_id,
+        source_batch_id=chunk.source_batch_id,
+        source_conversation_id=chunk.source_conversation_id,
+        source_message_ids=chunk.source_message_ids,
+        knowledge_type=chunk.knowledge_type,
+        intent=chunk.intent,
+        tags=chunk.tags,
+        risk_level=chunk.risk_level,
+        quality_score=chunk.quality_score,
+        review_status=chunk.review_status,
+        chunk_text=chunk.chunk_text,
+        build_method=chunk.build_method,
+        answer=_answer_from_chunk_text(chunk.chunk_text),
+    )
+
+
+def run_customerops_retrieval(
+    payload: CustomerOpsRetrievalRequest,
+    query: str,
+    top_k: int,
+) -> CustomerOpsRetrievalResponse:
+    created_at = datetime.now(UTC).isoformat()
+    retrieval_id = f"retrieval_{uuid4().hex[:12]}"
+    results: list[CustomerOpsRetrievalResult] = []
+
+    for chunk in list_rag_chunks():
+        if not _matches_customerops_filters(chunk, payload.filters):
+            continue
+        result = _customerops_score_chunk(query, chunk)
+        if result is not None:
+            results.append(result)
+
+    results = sorted(results, key=lambda item: item.score, reverse=True)[:top_k]
+    trace = CustomerOpsRetrievalTrace(
+        retrieval_id=retrieval_id,
+        query=query,
+        top_k=top_k,
+        filters=payload.filters.model_dump(exclude_none=True) if payload.filters else {},
+        result_count=len(results),
+        result_chunk_ids=[result.chunk_id for result in results],
+        conversation_id=payload.conversation_id,
+        agent_session_id=payload.agent_session_id,
+        created_at=created_at,
+        retrieval_mode="customerops_local_mock_retrieval",
+    )
+    _write_retrieval_trace(trace)
+    return CustomerOpsRetrievalResponse(
+        retrieval_id=retrieval_id,
+        query=query,
+        top_k=top_k,
+        retrieval_mode="customerops_local_mock_retrieval",
+        results=results,
+        created_at=created_at,
+    )
+
+
+def _write_retrieval_trace(trace: CustomerOpsRetrievalTrace) -> None:
+    _ensure_storage()
+    (RETRIEVAL_LOG_DIR / f"{trace.retrieval_id}.json").write_text(
+        json.dumps(trace.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    items = [
+        item for item in _read_json_list(RETRIEVAL_LOG_INDEX_FILE)
+        if item.get("retrieval_id") != trace.retrieval_id
+    ]
+    items.append(trace.model_dump())
+    _write_json_list(RETRIEVAL_LOG_INDEX_FILE, items)
+
+
+def get_customerops_retrieval_trace(
+    retrieval_id: str,
+) -> CustomerOpsRetrievalTrace | None:
+    _ensure_storage()
+    trace_file = RETRIEVAL_LOG_DIR / f"{retrieval_id}.json"
+    if not trace_file.exists():
+        return None
+    try:
+        data = json.loads(trace_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return CustomerOpsRetrievalTrace(**data)

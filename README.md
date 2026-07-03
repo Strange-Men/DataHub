@@ -4,11 +4,11 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M6.5 local RAG quality hardening: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, and searched through local keyword/mock retrieval for DataHub internal testing.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M7 CustomerOpsAgent restricted retrieval: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, and served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records.
 
 ## Current Scope
 
-Implemented through M6.5:
+Implemented through M7:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -26,6 +26,8 @@ Implemented through M6.5:
 - Idempotent local RAG build with duplicate chunk prevention.
 - Local RAG search query and `top_k` validation.
 - Search debug output with `matched_terms` and source trace.
+- CustomerOpsAgent restricted retrieval API over approved local RAG chunks.
+- Retrieval trace lookup for later M8 Bad Case linkage.
 - Final vision and four-phase roadmap documentation.
 - Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
@@ -34,7 +36,6 @@ Implemented through M6.5:
 Not implemented yet:
 
 - Separate approved knowledge/version management.
-- CustomerOpsAgent integration.
 - Bad Case feedback.
 - Multimodal material ingestion and understanding.
 - Sales training dataset export.
@@ -94,7 +95,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M6.5"
+  "phase": "M7"
 }
 ```
 
@@ -431,7 +432,70 @@ Lightweight RAG quality verification:
 python backend\tests\test_rag_quality.py
 ```
 
-The test covers approved-only chunking, repeated build idempotency, safe search validation, source trace, and the absence of CustomerOpsAgent-specific routes.
+The test covers approved-only chunking, repeated build idempotency, safe search validation, source trace, and the absence of Bad Case routes.
+
+## M7 CustomerOpsAgent Restricted Retrieval
+
+Retrieval traces are saved locally under:
+
+```text
+backend/storage/retrieval_logs/
+```
+
+This directory is ignored by Git through `backend/storage/`.
+
+M7 uses:
+
+```text
+customerops_local_mock_retrieval
+```
+
+Rules:
+
+- CustomerOpsAgent retrieval reads only from `backend/storage/rag_chunks/`.
+- Only approved local RAG chunks can be returned.
+- Raw batches, sanitized batches, and knowledge candidates are not read directly by the CustomerOpsAgent endpoint.
+- Each retrieval creates a `retrieval_id` for later M8 Bad Case linkage.
+- Retrieval traces store metadata only: query, top_k, filters, result count, result chunk ids, optional conversation/session ids, created time, and retrieval mode.
+- This does not modify the CustomerOpsAgent repository.
+- This does not implement Bad Case.
+- This is still local JSON plus keyword/mock retrieval, not a real vector database, embedding model, database, ORM, or production RAG index.
+
+Retrieve for CustomerOpsAgent:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/retrieve `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"query":"shipping Germany","top_k":5}'
+```
+
+Read retrieval trace:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/customer-ops-agent/retrievals/{retrieval_id}
+```
+
+Frontend M7 verification:
+
+1. Start both backend and frontend.
+2. Import sample JSON.
+3. Run cleaning.
+4. Run extraction.
+5. Approve at least one candidate.
+6. Build RAG chunks.
+7. In CustomerOpsAgent Retrieval Test, enter a query and top_k.
+8. Click `Test CustomerOps Retrieval`.
+9. Confirm `retrieval_id`, score, matched terms, answer, chunk id, candidate id, and source conversation id are shown.
+
+Lightweight M7 verification:
+
+```powershell
+python backend\tests\test_customerops_retrieval.py
+```
+
+The test covers the full M2-M7 path, approved-only retrieval, retrieval trace lookup, safe query/top_k errors, and the absence of Bad Case APIs.
 
 ## Development Rules
 

@@ -130,6 +130,19 @@ type RagSearchResult = RagChunk & {
   matched_terms: string[];
 };
 
+type CustomerOpsRetrievalResult = RagSearchResult & {
+  answer: string;
+};
+
+type CustomerOpsRetrieval = {
+  retrieval_id: string;
+  query: string;
+  top_k: number;
+  retrieval_mode: "customerops_local_mock_retrieval";
+  results: CustomerOpsRetrievalResult[];
+  created_at: string;
+};
+
 export function App() {
   const [sourceName, setSourceName] = useState("sample_customer_chat");
   const [jsonText, setJsonText] = useState(`{
@@ -204,8 +217,13 @@ export function App() {
   const [ragQuery, setRagQuery] = useState("shipping Germany");
   const [ragTopK, setRagTopK] = useState("5");
   const [ragSearchResults, setRagSearchResults] = useState<RagSearchResult[]>([]);
+  const [customerOpsQuery, setCustomerOpsQuery] = useState("shipping Germany");
+  const [customerOpsTopK, setCustomerOpsTopK] = useState("5");
+  const [customerOpsRetrieval, setCustomerOpsRetrieval] =
+    useState<CustomerOpsRetrieval | null>(null);
   const [isBuildingRag, setIsBuildingRag] = useState(false);
   const [isSearchingRag, setIsSearchingRag] = useState(false);
+  const [isSearchingCustomerOps, setIsSearchingCustomerOps] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -552,6 +570,38 @@ export function App() {
     }
   }
 
+  async function testCustomerOpsRetrieval() {
+    if (!customerOpsQuery.trim()) {
+      setError("CustomerOps retrieval query is required.");
+      return;
+    }
+    setError(null);
+    setIsSearchingCustomerOps(true);
+    setCustomerOpsRetrieval(null);
+    try {
+      const response = await fetch("/api/customer-ops-agent/retrieve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          query: customerOpsQuery.trim(),
+          top_k: Number(customerOpsTopK)
+        })
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("CustomerOps retrieval failed.");
+        return;
+      }
+      setCustomerOpsRetrieval(body.data);
+    } catch {
+      setError("CustomerOps retrieval request failed.");
+    } finally {
+      setIsSearchingCustomerOps(false);
+    }
+  }
+
   const approvedCandidateCount = candidates.filter(
     (candidate) => candidate.review_status === "approved"
   ).length;
@@ -560,11 +610,12 @@ export function App() {
     <main className="app-shell">
       <section className="workspace">
         <p className="eyebrow">DataHub</p>
-        <h1>Local RAG builder</h1>
+        <h1>CustomerOps retrieval</h1>
         <p className="summary">
-          M6.5 builds idempotent local JSON RAG chunks from approved knowledge
-          candidates only. This is an internal retrieval test, not a
-          CustomerOpsAgent integration and not a real vector database.
+          M7 exposes a restricted CustomerOpsAgent retrieval API over approved
+          local RAG chunks. This does not modify the CustomerOpsAgent project,
+          does not implement Bad Case feedback, and does not use a real vector
+          database.
         </p>
 
         <form className="import-form" onSubmit={handleSubmit}>
@@ -1185,6 +1236,97 @@ export function App() {
           )}
         </section>
 
+        <section className="panel">
+          <p className="eyebrow compact">CustomerOpsAgent Retrieval Test</p>
+          <h2>Restricted approved-chunk retrieval</h2>
+          <p className="warning-note">
+            This is DataHub's restricted API for approved rag_chunked results.
+            The CustomerOpsAgent repository has not been modified, Bad Case is
+            not implemented, and retrieval still uses local keyword/mock scoring.
+          </p>
+          <div className="search-row">
+            <label>
+              <span>Query</span>
+              <input
+                value={customerOpsQuery}
+                onChange={(event) => setCustomerOpsQuery(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Top K</span>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={customerOpsTopK}
+                onChange={(event) => setCustomerOpsTopK(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={testCustomerOpsRetrieval}
+              disabled={isSearchingCustomerOps}
+            >
+              {isSearchingCustomerOps
+                ? "Retrieving..."
+                : "Test CustomerOps Retrieval"}
+            </button>
+          </div>
+
+          {customerOpsRetrieval ? (
+            <div className="result-panel compact-panel" aria-live="polite">
+              <h2>Retrieval complete</h2>
+              <dl>
+                <div>
+                  <dt>retrieval_id</dt>
+                  <dd>{customerOpsRetrieval.retrieval_id}</dd>
+                </div>
+                <div>
+                  <dt>mode</dt>
+                  <dd>{customerOpsRetrieval.retrieval_mode}</dd>
+                </div>
+                <div>
+                  <dt>result_count</dt>
+                  <dd>{customerOpsRetrieval.results.length}</dd>
+                </div>
+              </dl>
+            </div>
+          ) : null}
+
+          {customerOpsRetrieval && customerOpsRetrieval.results.length === 0 ? (
+            <p className="empty-state">No approved chunks matched this query.</p>
+          ) : null}
+
+          {customerOpsRetrieval && customerOpsRetrieval.results.length > 0 ? (
+            <div className="message-list">
+              {customerOpsRetrieval.results.map((result) => (
+                <article className="candidate-card" key={result.chunk_id}>
+                  <div className="message-meta">
+                    <span>score {result.score}</span>
+                    <span>{result.chunk_id}</span>
+                    <span>{result.candidate_id}</span>
+                    <span>{result.source_conversation_id}</span>
+                  </div>
+                  <h3>{result.answer || result.intent}</h3>
+                  <p>{result.chunk_text}</p>
+                  <div className="pill-row">
+                    {result.matched_terms.map((term) => (
+                      <span className="pill muted" key={`customerops-match-${term}`}>
+                        match {term}
+                      </span>
+                    ))}
+                    {result.tags.map((tag) => (
+                      <span className="pill" key={`customerops-tag-${tag}`}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
+
         <div className="status-grid" aria-label="Project status">
           <div>
             <span className="label">Frontend</span>
@@ -1196,7 +1338,7 @@ export function App() {
           </div>
           <div>
             <span className="label">Current milestone</span>
-            <strong>M6.5 RAG quality hardening</strong>
+            <strong>M7 CustomerOps retrieval</strong>
           </div>
         </div>
       </section>

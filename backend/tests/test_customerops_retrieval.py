@@ -1,0 +1,186 @@
+import json
+import sys
+import unittest
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+BACKEND_DIR = ROOT_DIR / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from app.main import app  # noqa: E402
+
+
+class CustomerOpsRetrievalTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.client = TestClient(app)
+        self.sample = json.loads(
+            (ROOT_DIR / "samples" / "customer_chat_sample.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+    def _create_candidates(self, suffix: str) -> list[dict[str, object]]:
+        payload = dict(self.sample)
+        payload["source_name"] = f"customerops_retrieval_{suffix}"
+
+        imported = self.client.post("/api/sources/import-json", json=payload)
+        self.assertEqual(imported.status_code, 200, imported.text)
+        batch_id = imported.json()["data"]["batch_id"]
+
+        cleaned = self.client.post(f"/api/cleaning/run/{batch_id}")
+        self.assertEqual(cleaned.status_code, 200, cleaned.text)
+
+        extracted = self.client.post(f"/api/extraction/run/{batch_id}")
+        self.assertEqual(extracted.status_code, 200, extracted.text)
+
+        candidates = self.client.get("/api/knowledge/candidates")
+        self.assertEqual(candidates.status_code, 200, candidates.text)
+        return [
+            candidate
+            for candidate in candidates.json()["data"]["candidates"]
+            if candidate["source_batch_id"] == batch_id
+        ]
+
+    def test_customerops_retrieval_is_restricted_and_traceable(self) -> None:
+        health = self.client.get("/health")
+        self.assertEqual(health.status_code, 200, health.text)
+        self.assertEqual(health.json()["phase"], "M7")
+
+        candidates = [
+            *self._create_candidates("a"),
+            *self._create_candidates("b"),
+        ]
+        self.assertGreaterEqual(len(candidates), 4)
+
+        approve_id = candidates[0]["candidate_id"]
+        reject_id = candidates[1]["candidate_id"]
+        revision_id = candidates[2]["candidate_id"]
+        pending_id = candidates[3]["candidate_id"]
+        unique_term = f"m7unique{approve_id[-6:]}"
+
+        updated = self.client.patch(
+            f"/api/knowledge/candidates/{approve_id}",
+            json={
+                "question": f"How should CustomerOps answer {unique_term}?",
+                "answer": f"{unique_term} shipping support answer.",
+                "intent": "shipping",
+                "tags": ["shipping", unique_term],
+                "risk_level": "low",
+                "quality_score": 0.91,
+            },
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+
+        approved = self.client.post(
+            f"/api/review/{approve_id}/approve",
+            json={
+                "reviewer": "customerops_test",
+                "review_note": "Approved for CustomerOps retrieval.",
+            },
+        )
+        self.assertEqual(approved.status_code, 200, approved.text)
+
+        rejected = self.client.post(
+            f"/api/review/{reject_id}/reject",
+            json={
+                "reviewer": "customerops_test",
+                "review_note": "Rejected for exclusion.",
+            },
+        )
+        self.assertEqual(rejected.status_code, 200, rejected.text)
+
+        revision = self.client.post(
+            f"/api/review/{revision_id}/needs-revision",
+            json={
+                "reviewer": "customerops_test",
+                "review_note": "Needs revision for exclusion.",
+            },
+        )
+        self.assertEqual(revision.status_code, 200, revision.text)
+
+        built = self.client.post("/api/rag/build")
+        self.assertEqual(built.status_code, 200, built.text)
+
+        retrieved = self.client.post(
+            "/api/customer-ops-agent/retrieve",
+            json={
+                "query": unique_term,
+                "top_k": 5,
+                "filters": {"intent": "shipping", "tags": [unique_term]},
+                "conversation_id": "conv_for_test",
+                "agent_session_id": "session_for_test",
+            },
+        )
+        self.assertEqual(retrieved.status_code, 200, retrieved.text)
+        data = retrieved.json()["data"]
+        self.assertTrue(data["retrieval_id"].startswith("retrieval_"))
+        self.assertEqual(data["retrieval_mode"], "customerops_local_mock_retrieval")
+        self.assertGreaterEqual(len(data["results"]), 1)
+
+        result = data["results"][0]
+        self.assertIn("score", result)
+        self.assertIn("matched_terms", result)
+        self.assertIn("chunk_id", result)
+        self.assertIn("candidate_id", result)
+        self.assertIn("source_batch_id", result)
+        self.assertIn("source_conversation_id", result)
+        self.assertIn("source_message_ids", result)
+        self.assertIn("answer", result)
+        self.assertEqual(result["review_status"], "approved")
+
+        result_candidate_ids = {item["candidate_id"] for item in data["results"]}
+        self.assertIn(approve_id, result_candidate_ids)
+        self.assertNotIn(reject_id, result_candidate_ids)
+        self.assertNotIn(revision_id, result_candidate_ids)
+        self.assertNotIn(pending_id, result_candidate_ids)
+
+        forbidden_fields = {"raw_payload", "messages", "reviewer", "review_note"}
+        for item in data["results"]:
+            self.assertTrue(forbidden_fields.isdisjoint(item.keys()))
+
+        trace = self.client.get(
+            f"/api/customer-ops-agent/retrievals/{data['retrieval_id']}"
+        )
+        self.assertEqual(trace.status_code, 200, trace.text)
+        trace_data = trace.json()["data"]
+        self.assertEqual(trace_data["retrieval_id"], data["retrieval_id"])
+        self.assertEqual(trace_data["result_count"], len(data["results"]))
+        self.assertEqual(trace_data["conversation_id"], "conv_for_test")
+        self.assertEqual(trace_data["agent_session_id"], "session_for_test")
+        self.assertNotIn("results", trace_data)
+
+        empty_query = self.client.post(
+            "/api/customer-ops-agent/retrieve",
+            json={"query": "   ", "top_k": 5},
+        )
+        self.assertEqual(empty_query.status_code, 400)
+        self.assertEqual(empty_query.json()["detail"]["code"], "INVALID_QUERY")
+
+        long_query = self.client.post(
+            "/api/customer-ops-agent/retrieve",
+            json={"query": "x" * 501, "top_k": 5},
+        )
+        self.assertEqual(long_query.status_code, 400)
+        self.assertEqual(long_query.json()["detail"]["code"], "QUERY_TOO_LONG")
+
+        bad_top_k = self.client.post(
+            "/api/customer-ops-agent/retrieve",
+            json={"query": "shipping", "top_k": 11},
+        )
+        self.assertEqual(bad_top_k.status_code, 400)
+        self.assertEqual(bad_top_k.json()["detail"]["code"], "INVALID_TOP_K")
+
+        routes = {route.path for route in app.routes}
+        self.assertTrue("/api/customer-ops-agent/retrieve" in routes)
+        self.assertTrue(
+            "/api/customer-ops-agent/retrievals/{retrieval_id}" in routes
+        )
+        self.assertFalse(any("/bad-cases" in path for path in routes))
+
+
+if __name__ == "__main__":
+    unittest.main()

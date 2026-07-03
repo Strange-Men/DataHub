@@ -332,3 +332,41 @@ M6.5 is complete when:
 - Lightweight verification or tests cover approved-only chunking, repeated build idempotency, search validation, and source trace.
 - No CustomerOpsAgent integration, Bad Case, real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
 - `docs/04_API_CONTRACT.md`, `docs/07_ACCEPTANCE_CRITERIA.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, `README.md`, and related API docs are updated.
+
+## 15. M7 CustomerOpsAgent Retrieval Check
+
+M7 is complete when:
+
+- `POST /api/customer-ops-agent/retrieve` exists.
+- `GET /api/customer-ops-agent/retrievals/{retrieval_id}` exists.
+- `/health` reports `phase: M7`.
+- CustomerOpsAgent retrieval reads only from `backend/storage/rag_chunks/`.
+- CustomerOpsAgent retrieval does not read raw batches directly.
+- CustomerOpsAgent retrieval does not read sanitized batches directly.
+- CustomerOpsAgent retrieval does not read knowledge candidates directly.
+- Only approved local `rag_chunked` results are returned.
+- `pending_review`, `needs_revision`, and `rejected` records are not returned.
+- Retrieval request validation covers:
+  - required query
+  - trimmed non-empty query
+  - query maximum length of 500 characters
+  - `top_k` default 5
+  - `top_k` range 1-10
+- Retrieval results include:
+  - `retrieval_id`
+  - `retrieval_mode`
+  - `score`
+  - `matched_terms`
+  - `chunk_id`
+  - `candidate_id`
+  - `source_batch_id`
+  - `source_conversation_id`
+  - `source_message_ids`
+- Retrieval trace records are saved under `backend/storage/retrieval_logs/`.
+- Retrieval traces include result chunk ids for later M8 Bad Case linkage.
+- Frontend may include a small CustomerOpsAgent Retrieval Test section.
+- CustomerOpsAgent repository is not modified.
+- No Bad Case API, Bad Case UI, or human correction workflow is implemented.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
+- `backend/storage/` remains ignored by Git.
+- `docs/04_API_CONTRACT.md`, `docs/07_ACCEPTANCE_CRITERIA.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.

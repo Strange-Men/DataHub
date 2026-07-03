@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-M6
+Implemented APIs: M2-M7
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -21,13 +21,13 @@ Implemented APIs: M2-M6
 - M5 human review.
 - M6 local RAG chunk build and local mock search.
 - M6.5 local RAG quality hardening.
+- M7 CustomerOpsAgent restricted retrieval over approved local RAG chunks.
 
-Planned Phase 1 APIs: M7-M8
+Planned Phase 1 APIs: M8
 
-- CustomerOpsAgent production retrieval.
 - CustomerOpsAgent Bad Case feedback.
 - Bad Case management and resolution.
-- Any production retrieval endpoint that exposes data to CustomerOpsAgent.
+- Future production retrieval hardening beyond local JSON plus mock retrieval.
 
 Future Roadmap APIs: Phase 2-4
 
@@ -42,6 +42,14 @@ Important M6 boundary:
 - Current `/api/rag/search` is not the official CustomerOpsAgent retrieval API.
 - Current M6.5 uses local JSON plus keyword/mock retrieval.
 - Current M6.5 does not use embeddings, a real vector database, database, ORM, or production RAG index.
+
+Important M7 boundary:
+
+- `POST /api/customer-ops-agent/retrieve` is the CustomerOpsAgent-facing restricted retrieval API.
+- M7 still uses local JSON plus keyword/mock retrieval over approved `rag_chunked` records.
+- M7 does not modify the CustomerOpsAgent repository.
+- M7 does not implement Bad Case feedback.
+- M7 does not use embeddings, a real vector database, database, ORM, real LLM, or production RAG index.
 
 ## 0A. Canonical State Names
 
@@ -907,11 +915,11 @@ Response:
 }
 ```
 
-M6/M6.5 search is a DataHub internal test endpoint. It does not mean CustomerOpsAgent integration is complete.
+M6/M6.5 search is a DataHub internal test endpoint. CustomerOpsAgent must use the M7 `/api/customer-ops-agent/retrieve` endpoint instead.
 
 ## 6. Planned Phase 1 APIs: Knowledge Base Management (Not Implemented)
 
-This section describes planned Phase 1 knowledge management capabilities. These APIs are not implemented through M6.
+This section describes planned Phase 1 knowledge management capabilities. These APIs are not implemented through M7.
 
 ### 6.1 List Approved Knowledge
 
@@ -1034,11 +1042,11 @@ Future production retrieval may add:
 
 Hard rule:
 
-- Retrieval must only return approved and indexed knowledge.
+- Retrieval must only return approved retrieval-ready knowledge. At the current local stage, retrieval-ready means approved `rag_chunked` records; future production retrieval may require `indexed`.
 
-## 9. Planned Phase 1 APIs: CustomerOpsAgent Integration (M7-M8, Not Implemented)
+## 9. CustomerOpsAgent Integration
 
-### 9.1 CustomerOpsAgent Knowledge Retrieval
+### 9.1 Implemented API: CustomerOpsAgent Restricted Retrieval (M7)
 
 `POST /api/customer-ops-agent/retrieve`
 
@@ -1046,15 +1054,28 @@ Request:
 
 ```json
 {
-  "conversationId": "customer_conv_001",
-  "userQuery": "Can I return this product after 7 days?",
-  "topK": 5,
-  "context": {
-    "channel": "web_chat",
-    "locale": "zh-CN"
-  }
+  "query": "How long does shipping take to Germany?",
+  "top_k": 5,
+  "filters": {
+    "intent": "shipping",
+    "tags": ["shipping"],
+    "risk_level": "low"
+  },
+  "conversation_id": "optional_conv_id",
+  "agent_session_id": "optional_session_id"
 }
 ```
+
+Validation:
+
+- `query` is required.
+- `query` must be a string.
+- `query` must be non-empty after trimming.
+- `query` maximum length is 500 characters.
+- `top_k` defaults to 5.
+- `top_k` must be between 1 and 10.
+- `filters`, `conversation_id`, and `agent_session_id` are optional.
+- Invalid input returns safe structured errors and does not expose private content.
 
 Response:
 
@@ -1062,18 +1083,31 @@ Response:
 {
   "success": true,
   "data": {
-    "retrievalId": "retrieval_001",
+    "retrieval_id": "retrieval_abc123",
+    "query": "How long does shipping take to Germany?",
+    "top_k": 5,
+    "retrieval_mode": "customerops_local_mock_retrieval",
     "results": [
       {
-        "knowledgeId": "know_001",
-        "knowledgeType": "business_rule",
-        "title": "Return policy",
-        "content": "Approved retrieval content",
-        "score": 0.91,
-        "version": 2,
-        "sourceSummary": "Approved from customer service chat batch batch_001"
+        "score": 0.82,
+        "matched_terms": ["shipping"],
+        "chunk_id": "chunk_kc_abc123",
+        "candidate_id": "kc_abc123",
+        "source_batch_id": "batch_abc123",
+        "source_conversation_id": "conv_001",
+        "source_message_ids": ["msg_001", "msg_002"],
+        "knowledge_type": "faq",
+        "intent": "shipping",
+        "tags": ["shipping", "delivery"],
+        "risk_level": "low",
+        "quality_score": 0.86,
+        "answer": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+        "chunk_text": "Question: ...\nAnswer: ...",
+        "review_status": "approved",
+        "build_method": "local_json_mock_retrieval"
       }
-    ]
+    ],
+    "created_at": "2026-07-03T12:30:00+00:00"
   },
   "requestId": "req_008"
 }
@@ -1081,23 +1115,65 @@ Response:
 
 Allowed data states:
 
-- `indexed` approved knowledge only.
+- `approved` local `rag_chunked` records only.
+- The endpoint reads only `backend/storage/rag_chunks/`.
 
 Forbidden:
 
 - Returning raw records.
-- Returning review-pending drafts.
-- Returning rejected or archived knowledge.
+- Returning sanitized records directly.
+- Returning knowledge candidates directly.
+- Returning `pending_review`, `needs_revision`, or `rejected` records.
 - Allowing CustomerOpsAgent to change knowledge.
+- Creating Bad Cases.
+- Calling a real vector database, embedding model, database, ORM, or real LLM.
 
 Possible errors:
 
+- `INVALID_QUERY`
 - `QUERY_TOO_LONG`
-- `AGENT_NOT_AUTHORIZED`
-- `NO_APPROVED_KNOWLEDGE_AVAILABLE`
-- `RAG_INDEX_UNAVAILABLE`
+- `INVALID_TOP_K`
 
-### 9.2 CustomerOpsAgent Bad Case Feedback
+### 9.2 Implemented API: CustomerOpsAgent Retrieval Trace Lookup (M7)
+
+`GET /api/customer-ops-agent/retrievals/{retrieval_id}`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "retrieval_id": "retrieval_abc123",
+    "query": "How long does shipping take to Germany?",
+    "top_k": 5,
+    "filters": {
+      "intent": "shipping",
+      "tags": ["shipping"]
+    },
+    "result_count": 1,
+    "result_chunk_ids": ["chunk_kc_abc123"],
+    "conversation_id": "optional_conv_id",
+    "agent_session_id": "optional_session_id",
+    "created_at": "2026-07-03T12:30:00+00:00",
+    "retrieval_mode": "customerops_local_mock_retrieval"
+  },
+  "requestId": "req_009"
+}
+```
+
+Storage:
+
+- Retrieval traces are saved under `backend/storage/retrieval_logs/`.
+- The storage directory is ignored by Git.
+- Traces are for later M8 Bad Case linkage.
+- M7 traces store retrieval metadata and result chunk ids, not full raw records.
+
+Possible errors:
+
+- `RETRIEVAL_NOT_FOUND`
+
+### 9.3 Planned Phase 1 API: CustomerOpsAgent Bad Case Feedback (M8, Not Implemented)
 
 `POST /api/customer-ops-agent/bad-cases`
 
@@ -1200,7 +1276,7 @@ Hard rule:
 
 ## 11. Future Roadmap APIs: Phase 2-4 (Not Implemented)
 
-These API groups belong to the formal roadmap, but they are not implemented through M6 and must not be started without an explicit future phase.
+These API groups belong to the formal roadmap, but they are not implemented through M7 and must not be started without an explicit future phase.
 
 ### 11.1 Phase 2 Multimodal Material APIs
 

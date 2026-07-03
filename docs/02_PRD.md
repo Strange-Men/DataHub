@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through M6.5
+### Currently Implemented Through M7
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -84,6 +84,8 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Idempotent RAG build without duplicate chunks.
 - RAG search query and top_k validation.
 - `matched_terms` and source trace returned for local search debugging.
+- CustomerOpsAgent restricted retrieval API over approved local `rag_chunked` results.
+- Retrieval trace records for later M8 Bad Case linkage.
 
 ### Pending In Phase 1
 
@@ -91,7 +93,6 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Manual text paste import.
 - More complete deduplication.
 - Separate approved knowledge or knowledge asset version management.
-- CustomerOpsAgent retrieval integration.
 - Bad Case feedback.
 - Production retrieval/indexing beyond local mock RAG chunks.
 

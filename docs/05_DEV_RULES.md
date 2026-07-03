@@ -80,8 +80,9 @@ Rules:
 - Raw data must not be used for extraction directly.
 - Sanitized data may be used for extraction.
 - Knowledge drafts may be reviewed but not retrieved by CustomerOpsAgent.
-- Approved knowledge may be indexed.
-- Only indexed approved knowledge may be retrieved by CustomerOpsAgent.
+- Approved knowledge may become retrieval-ready.
+- At the current local stage, only approved `rag_chunked` records may be retrieved by CustomerOpsAgent.
+- Future production retrieval may require an `indexed` state.
 - Bad Cases may create or update drafts, but must not directly update the RAG index.
 
 ## 6. Safety Rules

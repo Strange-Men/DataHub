@@ -92,7 +92,7 @@ Current Phase 1 modules already started or implemented locally:
 
 Future modules not implemented yet:
 
-- CustomerOpsAgent production retrieval interface.
+- CustomerOpsAgent production vector retrieval beyond the M7 local restricted retrieval API.
 - Bad Case feedback.
 - Material Understanding.
 - Knowledge Asset Store beyond local files.
@@ -271,8 +271,9 @@ Candidate implementation:
 Responsibilities:
 
 - Provide retrieval APIs for CustomerOpsAgent.
-- Return only approved and indexed knowledge.
-- Include source, version, and knowledge type metadata.
+- Return only approved retrieval-ready knowledge.
+- In M7, retrieval-ready means approved local `rag_chunked` records from `backend/storage/rag_chunks/`.
+- Include source trace, retrieval id, and knowledge type metadata.
 - Apply request validation and access boundaries.
 
 Must enforce:
@@ -280,6 +281,7 @@ Must enforce:
 - CustomerOpsAgent cannot access raw records.
 - CustomerOpsAgent cannot mutate approved knowledge directly.
 - CustomerOpsAgent cannot bypass DataHub review.
+- CustomerOpsAgent cannot read raw batches, sanitized batches, or knowledge candidates directly.
 
 ### 6.7 Bad Case Feedback Module
 

@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. Current checkpoint: M6.5 RAG quality hardening.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. Current checkpoint: M7 CustomerOpsAgent restricted retrieval.
 
 Current code remains Phase 1.
 
@@ -174,6 +174,27 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Confirmed M6.5 remains local JSON plus mock retrieval only.
 - Confirmed M6.5 does not implement CustomerOpsAgent, Bad Case, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
 
+## Completed In M7
+
+- Added CustomerOpsAgent restricted retrieval API: `POST /api/customer-ops-agent/retrieve`.
+- Added retrieval trace lookup API: `GET /api/customer-ops-agent/retrievals/{retrieval_id}`.
+- Added retrieval trace storage under `backend/storage/retrieval_logs/`.
+- CustomerOpsAgent retrieval reads only local RAG chunks under `backend/storage/rag_chunks/`.
+- CustomerOpsAgent retrieval returns approved local `rag_chunked` results only.
+- Retrieval results include:
+  - `retrieval_id`
+  - `retrieval_mode`
+  - `score`
+  - `matched_terms`
+  - `chunk_id`
+  - `candidate_id`
+  - source trace
+- Retrieval traces store query, top_k, filters, result count, result chunk ids, optional conversation/session ids, created time, and retrieval mode.
+- Added lightweight M7 verification script under `backend/tests/`.
+- Updated React UI with a minimal CustomerOpsAgent Retrieval Test section.
+- Confirmed M7 does not modify the CustomerOpsAgent repository.
+- Confirmed M7 does not implement Bad Case, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -205,6 +226,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - duplicate chunk prevention
   - query/top_k validation
   - matched_terms debug output
+- M7 CustomerOpsAgent restricted retrieval:
+  - retrieval API over approved local RAG chunks
+  - retrieval trace lookup
+  - local retrieval log storage
+  - source trace in results
 
 ### Current Forbidden Work
 
@@ -215,9 +241,10 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - SQLite integration.
 - ORM integration.
 - Real LLM integration.
-- CustomerOpsAgent integration.
-- CustomerOpsAgent-specific retrieval API.
+- Modifying the CustomerOpsAgent repository.
 - Bad Case feedback.
+- Bad Case API or UI.
+- Human correction workflow.
 - Treating local RAG test as CustomerOpsAgent production retrieval.
 - Real vector database integration.
 - Embedding model integration.
@@ -245,8 +272,8 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- M6.6 RAG retrieval quality tuning if another local hardening round is explicitly requested.
-- M7 CustomerOpsAgent Retrieval Integration.
+- M7.5 retrieval contract polish if another M7 hardening round is explicitly requested.
+- M8 Bad Case Feedback.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
 
@@ -293,7 +320,11 @@ Still candidates:
 - RAG search validates empty query, query length, and `top_k`.
 - RAG search returns `matched_terms` and source trace.
 - RAG chunks are written to ignored local storage.
-- No CustomerOpsAgent integration, Bad Case workflow, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
+- M7 CustomerOpsAgent retrieval endpoints are defined.
+- CustomerOpsAgent retrieval reads only local RAG chunks.
+- CustomerOpsAgent retrieval returns only approved local `rag_chunked` results.
+- Retrieval traces are written to ignored local storage.
+- No Bad Case workflow, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
 Manual verification:
@@ -381,22 +412,38 @@ Invoke-RestMethod `
   -Body '{"query":"shipping Germany","top_k":5}'
 ```
 
+Retrieve through the CustomerOpsAgent restricted API:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/retrieve `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"query":"shipping Germany","top_k":5}'
+```
+
+Read retrieval trace:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/customer-ops-agent/retrievals/{retrieval_id}
+```
+
 ## Next Suggested Stage
 
 Continue Phase 1 only.
 
 Recommended options:
 
-- M6.6 RAG quality tuning if another local hardening round is explicitly requested.
-- M7 CustomerOpsAgent retrieval integration planning.
+- M7.5 retrieval contract polish if another M7 hardening round is explicitly requested.
+- M8 Bad Case feedback planning.
 
-Before M7 starts:
+Before M8 starts:
 
-- Confirm whether CustomerOpsAgent should use the internal RAG chunks directly or a dedicated restricted retrieval API.
-- Confirm request and response contract for CustomerOpsAgent.
-- Confirm authentication or local development access rules.
-- Confirm query length and top-k limits.
+- Confirm Bad Case request and response contract.
+- Confirm how M8 references `retrieval_id`.
+- Confirm Bad Case status names and human review queue boundaries.
+- Confirm that Bad Case fixes must re-enter the normal candidate and review workflow.
 
-M7 must not implement Bad Case feedback, multimodal retrieval, MCP, or model fine-tuning unless explicitly approved later.
+M8 must not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
 
 Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.

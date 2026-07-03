@@ -152,19 +152,23 @@ Acceptance criteria:
 
 Goal:
 
-- Allow CustomerOpsAgent to retrieve approved knowledge through DataHub APIs.
+- Allow CustomerOpsAgent to retrieve approved local RAG chunks through DataHub APIs.
 
 Acceptance criteria:
 
 - CustomerOpsAgent retrieval API exists.
+- Retrieval trace lookup API exists.
 - Request validation is enforced.
 - Query length limit is enforced.
 - API returns topK approved retrieval-ready results.
 - At the current local stage, retrieval-ready may mean approved `rag_chunked` records.
 - Production `indexed` retrieval is a later hardening step.
 - API returns retrieval id for later Bad Case linkage.
+- Retrieval traces are saved under ignored local storage.
 - API never returns raw records, unapproved drafts, rejected knowledge, or archived knowledge.
 - CustomerOpsAgent has no direct database access.
+- CustomerOpsAgent repository is not modified by DataHub M7.
+- No Bad Case API or workflow is implemented in M7.
 
 ## M8 Bad Case Feedback
 
@@ -245,6 +249,39 @@ M6.5 is complete when:
   - `candidate_id`
   - source trace
 - No CustomerOpsAgent integration, Bad Case workflow, vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
+
+## M7 CustomerOpsAgent Retrieval Completion Check
+
+M7 is complete when:
+
+- `POST /api/customer-ops-agent/retrieve` exists.
+- `GET /api/customer-ops-agent/retrievals/{retrieval_id}` exists.
+- `/health` reports `phase: M7`.
+- Retrieval reads only from `backend/storage/rag_chunks/`.
+- Retrieval does not read raw batches directly.
+- Retrieval does not read sanitized batches directly.
+- Retrieval does not read knowledge candidates directly.
+- Only approved local `rag_chunked` results are returned.
+- `pending_review`, `needs_revision`, and `rejected` data is not returned.
+- Request validation covers:
+  - trimmed non-empty query
+  - query maximum length of 500 characters
+  - `top_k` default 5
+  - `top_k` range 1-10
+- Results include:
+  - `retrieval_id`
+  - `retrieval_mode`
+  - `score`
+  - `matched_terms`
+  - `chunk_id`
+  - `candidate_id`
+  - source trace
+- Retrieval traces are saved under `backend/storage/retrieval_logs/`.
+- Retrieval traces include result chunk ids for later M8 Bad Case linkage.
+- M7 does not implement Bad Case submission, Bad Case UI, or human correction workflow.
+- M7 does not modify the CustomerOpsAgent repository.
+- M7 remains local JSON plus keyword/mock retrieval only.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
 
 ## Future Phase Acceptance Outline
 

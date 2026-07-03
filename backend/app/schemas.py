@@ -197,6 +197,54 @@ class RagSearchResult(BaseModel):
     build_method: str
 
 
+class CustomerOpsRetrievalFilters(BaseModel):
+    intent: Literal[
+        "shipping",
+        "refund",
+        "order_status",
+        "product_info",
+        "handoff",
+        "prohibited_answer",
+        "general",
+    ] | None = None
+    tags: list[str] | None = None
+    risk_level: Literal["low", "medium", "high"] | None = None
+
+
+class CustomerOpsRetrievalRequest(BaseModel):
+    query: str = Field(min_length=1)
+    top_k: int = Field(default=5)
+    filters: CustomerOpsRetrievalFilters | None = None
+    conversation_id: str | None = Field(default=None, max_length=160)
+    agent_session_id: str | None = Field(default=None, max_length=160)
+
+
+class CustomerOpsRetrievalResult(RagSearchResult):
+    answer: str
+
+
+class CustomerOpsRetrievalResponse(BaseModel):
+    retrieval_id: str
+    query: str
+    top_k: int
+    retrieval_mode: Literal["customerops_local_mock_retrieval"]
+    results: list[CustomerOpsRetrievalResult]
+    created_at: str
+
+
+class CustomerOpsRetrievalTrace(BaseModel):
+    retrieval_id: str
+    query: str
+    top_k: int
+    filters: dict[str, object]
+    result_count: int
+    result_chunk_ids: list[str]
+    conversation_id: str | None = None
+    agent_session_id: str | None = None
+    created_at: str
+    retrieval_mode: Literal["customerops_local_mock_retrieval"]
+
+
 class ExtractionJobMetadata(BaseModel):
     job_id: str
     source_batch_id: str

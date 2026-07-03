@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from app.schemas import (
     ApiResponse,
     CandidateUpdateRequest,
+    CustomerOpsRetrievalRequest,
     ImportJsonRequest,
     RagSearchRequest,
     ReviewDecisionRequest,
@@ -14,6 +15,7 @@ from app.storage import (
     build_rag_chunks,
     create_raw_batch,
     get_cleaning_job,
+    get_customerops_retrieval_trace,
     get_extraction_job,
     get_knowledge_candidate,
     get_rag_chunk,
@@ -24,6 +26,7 @@ from app.storage import (
     list_rag_chunks,
     list_raw_batches,
     run_cleaning,
+    run_customerops_retrieval,
     run_extraction,
     search_rag_chunks,
     update_knowledge_candidate,
@@ -37,7 +40,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M6.5",
+        "phase": "M7",
     }
 
 
@@ -329,5 +332,59 @@ def search_local_rag_chunks(payload: RagSearchRequest) -> ApiResponse:
     return ApiResponse(
         success=True,
         data={"results": results},
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.post("/api/customer-ops-agent/retrieve", response_model=ApiResponse)
+def retrieve_for_customerops_agent(payload: CustomerOpsRetrievalRequest) -> ApiResponse:
+    query = payload.query.strip()
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_QUERY",
+                "message": "Query must not be empty.",
+            },
+        )
+    if len(query) > 500:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "QUERY_TOO_LONG",
+                "message": "Query must be 500 characters or fewer.",
+            },
+        )
+    if payload.top_k < 1 or payload.top_k > 10:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_TOP_K",
+                "message": "top_k must be between 1 and 10.",
+            },
+        )
+
+    retrieval = run_customerops_retrieval(payload, query, payload.top_k)
+    return ApiResponse(
+        success=True,
+        data=retrieval.model_dump(),
+        requestId=f"req_{uuid4().hex[:12]}",
+    )
+
+
+@app.get("/api/customer-ops-agent/retrievals/{retrieval_id}", response_model=ApiResponse)
+def get_customerops_retrieval(retrieval_id: str) -> ApiResponse:
+    trace = get_customerops_retrieval_trace(retrieval_id)
+    if trace is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "RETRIEVAL_NOT_FOUND",
+                "message": "Retrieval trace was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=trace.model_dump(),
         requestId=f"req_{uuid4().hex[:12]}",
     )
