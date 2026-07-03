@@ -1,0 +1,39 @@
+{
+  "source_name": "sample_customer_chat",
+  "conversations": [
+    {
+      "conversation_id": "conv_001",
+      "messages": [
+        {
+          "message_id": "msg_001",
+          "role": "customer",
+          "content": "How long does shipping take to Germany?",
+          "timestamp": "2026-07-03T10:00:00"
+        },
+        {
+          "message_id": "msg_002",
+          "role": "agent",
+          "content": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+          "timestamp": "2026-07-03T10:01:00"
+        }
+      ]
+    },
+    {
+      "conversation_id": "conv_002",
+      "messages": [
+        {
+          "message_id": "msg_003",
+          "role": "customer",
+          "content": "Can I change my delivery address after placing an order?",
+          "timestamp": "2026-07-03T11:10:00"
+        },
+        {
+          "message_id": "msg_004",
+          "role": "agent",
+          "content": "Address changes are possible before dispatch. Please contact support with your order reference.",
+          "timestamp": "2026-07-03T11:11:00"
+        }
+      ]
+    }
+  ]
+}
