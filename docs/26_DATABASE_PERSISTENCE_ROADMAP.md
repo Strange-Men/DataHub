@@ -283,7 +283,7 @@ Vercel 前端（不存数据）
 
 ---
 
-### P1-M20：DB Release & Online Persistence Smoke Test
+### P1-M20：DB Release & Online Persistence Smoke Test ✅ (已完成 2026-07-05)
 
 **目标**：数据库版 P1 最终验收。
 
@@ -294,15 +294,37 @@ Vercel 前端（不存数据）
 - Render 后端重启后复测（确认数据仍在）
 - 数据库控制台 SELECT 验证（确认所有表有对应记录）
 - README / 部署文档更新（本地 SQLite 与线上 PostgreSQL 配置说明）
-- 输出数据库版 P1 最终验收报告（`docs/27_DB_RELEASE_REPORT.md`）
+- 输出数据库版 P1 最终验收报告（`docs/31_DB_RELEASE_ONLINE_SMOKE_TEST_REPORT.md`）
+
+**实际落地**：
+
+- 线上 health check 确认 Render 后端连接 PostgreSQL（`database_status.backend=postgresql, status=ok`）
+- 10 张核心表全部通过 DB-first 读写策略在生产环境工作
+- 页面刷新后数据从 PostgreSQL 读取正常
+- Render redeploy 后数据持久保留
+- 新增 smoke test 报告：`docs/31_DB_RELEASE_ONLINE_SMOKE_TEST_REPORT.md`
+- health phase 更新至 P1-M20
+- 更新 DEV_STATUS、STAGE_CHECKLIST、README 等文档
 
 **验收**：
 
-- [ ] 页面操作产生的数据能入库
-- [ ] 页面刷新后仍在
-- [ ] Render 重新部署后仍在
-- [ ] P1 全链路仍能跑通
-- [ ] 文档清楚说明本地 SQLite 与线上 PostgreSQL 的配置方式
+- [x] 页面操作产生的数据能入库
+- [x] 页面刷新后仍在
+- [x] Render 重新部署后仍在
+- [x] P1 全链路仍能跑通
+- [x] 文档清楚说明本地 SQLite 与线上 PostgreSQL 的配置方式
+- [x] 线上 smoke test 报告已输出
+
+**P1-M20 结论**：
+
+P1 数据库持久化版已通过线上 smoke test。P1 可正式定义为：
+
+> **可部署、可持久化、可支撑 P2/P3/P4 的高质量数据中台底座**
+
+后续建议：
+
+1. 单独开一轮 P1 数据库版 release（打 tag `p1-m20-db-release`）。
+2. 进入 P2 前先完成 P2-M0 数据模型与素材中心规划。
 
 ---
 

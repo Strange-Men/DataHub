@@ -1,4 +1,4 @@
-"""Tests for P1-M19 RAG / Agent / Bad Case DB Persistence.
+"""Tests for P1-M20 RAG / Agent / Bad Case DB Persistence.
 
 Verifies:
 - approved candidate builds rag_chunks table.
@@ -658,14 +658,14 @@ class RagAgentBadCaseDbPersistenceTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["data"]["retrieval_id"], retrieval_id)
 
-    # ── 15. Health check reports P1-M19 ──────────────────────────────
+    # ── 15. Health check reports P1-M20 ──────────────────────────────
 
     def test_15_health_reports_p1_m19(self):
-        """Health check should report P1-M19."""
+        """Health check should report P1-M20."""
         resp = self.client.get("/api/health")
         self.assertEqual(resp.status_code, 200)
         health = resp.json()
-        self.assertEqual(health["phase"], "P1-M19")
+        self.assertEqual(health["phase"], "P1-M20")
         self.assertIn("database_status", health)
 
     # ── 16. No real PostgreSQL required ────────────────────────────

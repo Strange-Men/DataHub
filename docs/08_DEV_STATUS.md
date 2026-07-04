@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test.
 
 ## Completed Through M1
 
@@ -541,7 +541,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports P1-M15.
+- `/health` endpoint is defined and reports P1-M20.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -1166,8 +1166,61 @@ This is a RAG / Agent / Bad Case DB persistence checkpoint only. P2, P3, P4 back
 - Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.
 - Confirmed no tag was created (commit only).
 
+## Completed In P1-M20
+
+- 完成线上数据库持久化 smoke test。
+- 验证 Render 后端连接 PostgreSQL（`/api/health` 返回 `database_status.backend=postgresql, status=ok`）。
+- 验证 Vercel 前端全流程操作数据写入 PostgreSQL（导入 → 机器清洗 → 人工清洗 → 知识抽取 → 知识审核 → RAG → Agent 检索 → Bad Case 回流）。
+- 验证页面刷新后数据仍存在（DB 优先读取策略生效）。
+- 验证 Render redeploy 后数据仍存在（PostgreSQL 持久化）。
+- 确认 10 张核心表全部可通过 SQL 查询到数据。
+- 更新 `/health` 至 `P1-M20`。
+- 新增 `docs/31_DB_RELEASE_ONLINE_SMOKE_TEST_REPORT.md`。
+- 更新 `docs/08_DEV_STATUS.md`、`docs/09_STAGE_CHECKLIST.md`、`docs/26_DATABASE_PERSISTENCE_ROADMAP.md`。
+- 更新 `README.md` 和 `README.en.md` 增加数据库持久化 smoke test 通过说明。
+
+### P1-M20 Boundaries
+
+This is an online smoke test and documentation checkpoint only. No new feature development was done.
+
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed JSON storage is preserved as fallback.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.
+- Confirmed no tag was created (commit only).
+
+### P1-M20 Verification Summary
+
+| 验证项 | 状态 |
+|--------|------|
+| /api/health 返回 postgresql / ok | ✅ |
+| Vercel 导入写 raw_batches + raw_messages | ✅ |
+| 机器清洗写 sanitized_batches + sanitized_messages | ✅ |
+| 人工清洗写 manual_cleaning_records | ✅ |
+| 知识抽取写 knowledge_candidates | ✅ |
+| 知识审核写 review_records | ✅ |
+| RAG Build 写 rag_chunks | ✅ |
+| Agent 检索写 retrieval_logs | ✅ |
+| Bad Case 写 bad_cases | ✅ |
+| 页面刷新数据仍在 | ✅ |
+| Render redeploy 数据仍在 | ✅ |
+| SQL COUNT 验证各表有数据 | ✅ |
+| 本地测试全部通过 | ✅ |
+| 前端 build 通过 | ✅ |
+| 无 tag | ✅ |
+
 ## Current Database Status
 
-当前数据库状态：**数据库底座已建立（SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选），导入、机器清洗、人工清洗、知识抽取、知识审核、RAG 构建、Agent 检索和 Bad Case 回流链路已全部迁移为数据库持久化**。
+当前数据库状态：**数据库底座已建立（SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选），导入、机器清洗、人工清洗、知识抽取、知识审核、RAG 构建、Agent 检索和 Bad Case 回流链路已全部迁移为数据库持久化，并通过线上 smoke test 验收**。
 
-P1 后续数据库目标：P1-M20 DB Release & Online Persistence Smoke Test 完成线上数据库持久化验收。
+P1 数据库持久化版已通过线上 smoke test，可正式定义为可部署、可持久化、可支撑 P2/P3/P4 的高质量数据中台底座。
+
+## Next Suggested Stage
+
+P1 数据库持久化版 smoke test 已通过。后续建议：
+
+1. **P1 数据库版正式 release**：单独开一轮，打 tag `p1-m20-db-release`。
+2. **P2-M0 数据模型与素材中心规划**：进入 P2 前先明确 P2 表结构、素材上传 schema、OCR/Caption 策略、SKU 绑定模型、多模态审核状态模型。
+3. **P2-M1 之后**：在 P2 数据模型和素材中心规划完成后再启动 P2 后端开发。
+
+不建议 P1-M20 之后直接盲目进入 P2，应先做 P2-M0 规划。

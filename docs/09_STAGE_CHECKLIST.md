@@ -1068,19 +1068,46 @@ P1-M19 is complete when:
 
 P1-M20 is complete when:
 
-- 完整线上 Smoke Test 通过（Vercel 前端全流程 → Render 后端 → 数据库）。
-- Render 后端重启后复测通过（数据仍在）。
-- 数据库控制台 SELECT 验证通过（所有表有对应记录）。
-- README / 部署文档已更新本地 SQLite 与线上 PostgreSQL 配置说明。
-- `docs/27_DB_RELEASE_REPORT.md` 已输出。
-- P1 全链路仍能跑通。
-- 页面操作产生的数据能入库。
-- 页面刷新后数据仍在。
-- Render 重新部署后数据仍在。
-- 现有测试通过。
-- git status clean。
-- P1-M20 打 release tag：`p1-m20-db-release`。
-- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+- [/] 完整线上 Smoke Test 通过（Vercel 前端全流程 → Render 后端 → 数据库）。
+- [/] Render 后端重启后复测通过（数据仍在）。
+- [/] 数据库控制台 SELECT 验证通过（所有表有对应记录）。
+- [/] README / 部署文档已更新本地 SQLite 与线上 PostgreSQL 配置说明。
+- [/] `docs/31_DB_RELEASE_ONLINE_SMOKE_TEST_REPORT.md` 已输出。
+- [/] P1 全链路仍能跑通。
+- [/] 页面操作产生的数据能入库。
+- [/] 页面刷新后数据仍在。
+- [/] Render 重新部署后数据仍在。
+- [/] 现有测试通过。
+- [/] git status clean。
+- [ ] P1-M20 打 release tag：`p1-m20-db-release`。（本轮不打 tag，commit only）
+- [/] 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+
+本轮已完成 (2026-07-05)：
+
+- [x] /api/health shows postgresql ok
+- [x] Vercel import creates DB records
+- [x] machine cleaning persists
+- [x] manual cleaning persists
+- [x] knowledge candidates persist
+- [x] review records persist
+- [x] RAG chunks persist
+- [x] retrieval logs persist
+- [x] bad cases persist
+- [x] refresh persistence verified
+- [x] Render redeploy persistence verified
+- [x] SQL counts verified
+- [x] existing tests pass
+- [x] frontend build passes
+- [x] no tag
+- [x] docs/31_DB_RELEASE_ONLINE_SMOKE_TEST_REPORT.md created
+- [x] docs/08_DEV_STATUS.md updated
+- [x] docs/09_STAGE_CHECKLIST.md updated
+- [x] docs/26_DATABASE_PERSISTENCE_ROADMAP.md updated
+- [x] README.md and README.en.md updated
+- [x] health phase updated to P1-M20
+- [x] no P2/P3/P4 backend development
+- [x] no real LLM / embedding / vector DB / MCP
+- [x] git status clean
 
 ## 38. P1-M16 To P1-M20 General Rules
 
