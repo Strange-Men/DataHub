@@ -7,7 +7,6 @@ const NAV_ITEMS = [
   { path: "/p2-material-center", label: "AI 素材中心", exact: false },
   { path: "/p3-asset-reuse", label: "数据资产复用", exact: false },
   { path: "/p4-mcp-agents", label: "MCP + Agent 集群", exact: false },
-  { path: "/advanced", label: "高级信息", exact: false },
 ];
 
 export function Layout({

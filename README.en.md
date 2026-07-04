@@ -22,7 +22,7 @@ DataHub is a data asset center for AI agent systems. It turns customer chat logs
 
 The current implementation focuses on the text customer-service knowledge loop. It includes local JSON storage, local keyword retrieval, machine cleaning, manual cleaning, Chinese knowledge review, Bad Case feedback, and legacy RAG migration. Multimodal assets, sales-training exports, fine-tuning datasets, and MCP tools are architectural extensions, not production-connected features in this repository.
 
-The frontend is a Chinese dark admin console for data governance operators. It keeps the text customer-service workflow operational while showing future multimodal, dataset reuse, and MCP/Agent-cluster capabilities as roadmap entries only. The console now presents the main flow as import -> machine cleaning -> manual cleaning -> knowledge review -> RAG / Agent, and it shows backend connection status plus the FastAPI startup command when the backend is not running.
+The frontend is a Chinese dark admin console for data governance operators. It keeps the text customer-service workflow operational while showing future multimodal, dataset reuse, and MCP/Agent-cluster capabilities as roadmap entries only. The console presents the main flow as import -> machine cleaning -> manual cleaning -> knowledge review -> RAG / Agent, and shows friendly backend connection status. The homepage uses a clean Hero section with four capability cards as the unified entry point. API Base URL and backend technical boundaries are not exposed in the public UI.
 
 ## Contents
 

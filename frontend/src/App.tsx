@@ -8,7 +8,7 @@ import { P1TextHub } from "./pages/P1TextHub";
 import { P2MaterialCenter } from "./pages/P2MaterialCenter";
 import { P3AssetReuse } from "./pages/P3AssetReuse";
 import { P4McpAgents } from "./pages/P4McpAgents";
-import { AdvancedPage } from "./pages/AdvancedPage";
+
 
 export function App() {
   const [backendStatus, setBackendStatus] = useState<BackendStatus>({
@@ -68,12 +68,6 @@ export function App() {
           <Route path="/p2-material-center" element={<P2MaterialCenter />} />
           <Route path="/p3-asset-reuse" element={<P3AssetReuse />} />
           <Route path="/p4-mcp-agents" element={<P4McpAgents />} />
-          <Route
-            path="/advanced"
-            element={
-              <AdvancedPage backendStatus={backendStatus} onCheckBackend={checkBackendConnection} />
-            }
-          />
         </Routes>
       </Layout>
     </BrowserRouter>

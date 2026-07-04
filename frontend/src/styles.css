@@ -218,11 +218,48 @@ label { display: grid; gap: 6px; color: #cbd5e1; font-size: 0.88rem; font-weight
 }
 
 .hero-desc {
-  margin: 0 auto 28px;
+  margin: 0 auto 32px;
   max-width: 700px;
   color: var(--muted);
   font-size: 1.05rem;
   line-height: 1.7;
+}
+
+.hero-status {
+  display: grid;
+  gap: 10px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 18px 22px;
+  border: 1px solid rgba(45,212,255,0.12);
+  border-radius: 8px;
+  background: rgba(16,24,39,0.6);
+}
+
+.hero-status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+
+.hero-status-label {
+  color: var(--faint);
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 90px;
+}
+
+.hero-status-value {
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hero-status-active {
+  color: #86efac;
+  font-weight: 700;
 }
 
 .hero-buttons { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; }

@@ -1,4 +1,15 @@
-# 24 — Frontend Product UX Redesign（P1-M15.7）
+# 24 — Frontend Product UX Redesign（P1-M15.7 / P1-M15.8）
+
+## 0. P1-M15.8 更新：首页入口简化
+
+P1-M15.8 在 P1-M15.7 的多页面架构基础上做了以下调整：
+
+- **Hero 区简化**：删除三个重复操作按钮（开始体验、上传客服数据、使用示例数据），Hero 仅负责介绍 DataHub 的价值主张。
+- **统一入口**：四个能力模块卡片作为首页唯一主入口，用户自然知道要体验就点击"客服文本中台"。
+- **移除高级信息导航**：顶部导航栏不再显示"高级信息"，`/advanced` 路由已删除。
+- **隐藏开发者技术细节**：公开前端不再展示 API Base URL、local JSON storage、mock retrieval、no vector DB、no embedding、no MCP 等开发者信息。后端服务状态仅显示用户级文案（服务正常 / 连接中 / 服务暂不可用，可能正在冷启动）。
+- **P1 工作台不变**：P1 所有功能（导入、清洗、审核、RAG、Bad Case）保持完整可用。
+- **P2/P3/P4 产品壳不变**：三个未来页面完整保留，所有操作按钮禁用并标注后续接入。
 
 ## 1. 原前端问题
 
@@ -20,8 +31,7 @@ P1-M15.6 之前的前端存在以下问题：
 ├── 客服文本中台 (/p1-text-hub)       ← P1，已接入真实后端
 ├── AI 素材中心 (/p2-material-center)  ← P2，产品壳
 ├── 数据资产复用 (/p3-asset-reuse)     ← P3，产品壳
-├── MCP + Agent 集群 (/p4-mcp-agents)  ← P4，产品壳
-└── 高级信息 (/advanced)               ← 开发者信息
+└── MCP + Agent 集群 (/p4-mcp-agents)  ← P4，产品壳
 ```
 
 ## 3. P1-P4 每个页面职责

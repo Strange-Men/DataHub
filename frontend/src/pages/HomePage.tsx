@@ -48,58 +48,35 @@ export function HomePage({
   return (
     <div className="home-page">
       <section className="hero-section">
-        <div className="hero-content">
-          <h1 className="hero-title">DataHub 数据治理与 RAG 知识中台</h1>
-          <p className="hero-desc">
-            将客服文本数据经过机器清洗、人工清洗和知识审核，沉淀为可供客服 Agent
-            使用的高质量 RAG 知识库。
-          </p>
-          <div className="hero-buttons">
-            <button
-              type="button"
-              className="btn-primary btn-lg"
-              onClick={() => navigate("/p1-text-hub")}
-            >
-              开始体验
-            </button>
-            <button
-              type="button"
-              className="btn-secondary btn-lg"
-              onClick={() => navigate("/p1-text-hub")}
-            >
-              上传客服数据
-            </button>
-            <button
-              type="button"
-              className="btn-outline btn-lg"
-              onClick={() => {
-                navigate("/p1-text-hub");
-                setTimeout(() => {
-                  const sampleBtn = document.querySelector("[data-sample-btn]") as HTMLButtonElement;
-                  sampleBtn?.click();
-                }, 300);
-              }}
-            >
-              使用示例数据
+        <h1 className="hero-title">DataHub 数据治理与 RAG 知识中台</h1>
+        <p className="hero-desc">
+          将客服文本数据经过机器清洗、人工清洗和知识审核，沉淀为可供客服 Agent
+          使用的高质量 RAG 知识库。
+        </p>
+        <div className="hero-status">
+          <div className="hero-status-row">
+            <span className="hero-status-label">当前已接入</span>
+            <span className="hero-status-value hero-status-active">客服文本中台</span>
+          </div>
+          <div className="hero-status-row">
+            <span className="hero-status-label">后续预留</span>
+            <span className="hero-status-value">AI 素材中心 / 数据资产复用 / MCP + Agent 集群</span>
+          </div>
+          <div className="hero-status-row">
+            <span className="hero-status-label">后端服务</span>
+            <span className="hero-status-value">
+              <span className={`conn-indicator ${backendStatus.state}`} />
+              {backendStatus.state === "connected"
+                ? "服务正常"
+                : backendStatus.state === "checking"
+                  ? "连接中"
+                  : "服务暂不可用，可能正在冷启动"}
+            </span>
+            <button type="button" className="btn-small" onClick={onCheckBackend}>
+              重新检测
             </button>
           </div>
         </div>
-      </section>
-
-      <section className="connection-bar">
-        <div className="connection-info">
-          <span className={`conn-indicator ${backendStatus.state}`} />
-          <span className="conn-text">
-            {backendStatus.state === "connected"
-              ? "后端已连接"
-              : backendStatus.state === "checking"
-                ? "正在检测后端连接..."
-                : "后端暂未连接，可能是 Render 免费实例冷启动。请稍等或点击重新检测。"}
-          </span>
-        </div>
-        <button type="button" className="btn-small" onClick={onCheckBackend}>
-          重新检测
-        </button>
       </section>
 
       <section className="capability-grid">

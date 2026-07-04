@@ -102,6 +102,7 @@ P1:
 - `p1-m15.5-frontend-ux-cleanup-boundary-review`
 - `p1-m15.6-render-deployment-config`
 - `p1-m15.7-product-ux-redesign`
+- `p1-m15.8-homepage-ux-cleanup`
 
 P2:
 
@@ -865,3 +866,29 @@ P1-M15.7 is complete when:
 - No STAR/面试包装/简历包装 wording.
 - No tag is created for this checkpoint (commit only).
 - Commit message uses `[P1-M15.7] feat: redesign DataHub frontend for product demo`.
+
+## 31. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup Check
+
+P1-M15.8 is complete when:
+
+- Homepage Hero section no longer shows three duplicate action buttons (开始体验, 上传客服数据, 使用示例数据).
+- Hero section only communicates what DataHub is and its value proposition.
+- Hero includes a concise status indicator: 当前已接入 / 后续预留 / 后端服务状态.
+- Four capability cards are the sole entry points on the homepage.
+- P1 card ("客服文本中台") is active and clickable with "进入工作台" button.
+- P2/P3/P4 cards are disabled with "暂未接入" labels, not clickable fake features.
+- "高级信息" is removed from the top navigation bar.
+- `/advanced` route is deleted or redirected to home.
+- Public UI does not display: API Base URL, local JSON storage, mock retrieval, no vector DB, no embedding, no real LLM, no DB/ORM, no MCP, source trace technical notes.
+- Backend status displays user-friendly text only: 服务正常 / 连接中 / 服务暂不可用，可能正在冷启动.
+- P1 workbench (`/p1-text-hub`) remains fully functional.
+- P2/P3/P4 pages retain complete product shells with all buttons disabled.
+- No P2/P3/P4 backend development.
+- No tag is created for this checkpoint (commit only).
+- Commit message uses `[P1-M15.8] chore: clean up public homepage UX`.
+- `npm run build` passes in frontend/.
+- Python compile check passes for backend.
+- Backend tests pass.
+- README was not turned into a stage log.
+- No interview packaging or resume packaging.
+- `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.

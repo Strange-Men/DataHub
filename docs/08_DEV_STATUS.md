@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup.
 
 ## Completed Through M1
 
@@ -950,3 +950,38 @@ This is a frontend UX redesign and deployment link fix. No P2/P3/P4 backend deve
 - Confirmed no CustomerOpsAgent repository change.
 - Confirmed no tag was created (commit only).
 - Confirmed `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+
+## Completed In P1-M15.8
+
+- Simplified homepage Hero section:
+  - Removed three duplicate action buttons (开始体验, 上传客服数据, 使用示例数据).
+  - Hero now only communicates what DataHub is and its value proposition.
+  - Added a concise status indicator area showing current access, future roadmap, and backend service state.
+- Unified homepage entry points:
+  - Four capability cards are now the sole entry points into workspaces.
+  - P1 card ("客服文本中台") is active with "进入工作台" button.
+  - P2/P3/P4 cards are disabled with "暂未接入" labels.
+- Removed "高级信息" from public navigation:
+  - Deleted the `/advanced` route from the React Router.
+  - The AdvancedPage component is no longer imported or routed.
+- Removed developer technical details from public UI:
+  - API Base URL no longer displayed in any public-facing page.
+  - local JSON storage, mock retrieval, no vector DB, no embedding, no real LLM, no DB/ORM, no MCP details removed from public view.
+  - Backend status now shows user-friendly text only: 服务正常 / 连接中 / 服务暂不可用，可能正在冷启动.
+- P1 workbench (`/p1-text-hub`) remains fully functional.
+- P2/P3/P4 pages retain complete product shells with all buttons disabled and marked as future access.
+- Updated README.md, README.en.md, and docs to reflect homepage UX changes.
+- Technical boundaries remain documented in docs, not exposed in public frontend.
+
+### P1-M15.8 Boundaries
+
+This is a homepage UX cleanup and public surface cleanup only. No business logic, backend API, or P2/P3/P4 backend development was done.
+
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real multimodal, sales export, fine-tuning export, MCP, vector database, embedding, real LLM, database, or ORM.
+- Confirmed no CustomerOpsAgent repository change.
+- Confirmed no tag was created (commit only).
+- Confirmed `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+- Confirmed P1 workbench remains fully operational.
+- Confirmed P2/P3/P4 pages retain complete product shells.
+- Confirmed README was not turned into a stage log.
