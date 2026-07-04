@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence.
 
 ## Completed Through M1
 
@@ -1078,3 +1078,51 @@ This is an import & cleaning DB persistence checkpoint only. Manual cleaning, kn
 - Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
 - Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.
 - Confirmed no tag was created (commit only).
+
+## Completed In P1-M18
+
+- Extended `backend/app/db_repositories.py` with repository functions for manual cleaning records, knowledge candidates, and review records:
+  - `save_manual_cleaning_record_to_db`
+  - `get_manual_cleaning_records_for_batch_from_db`
+  - `get_effective_manual_cleaning_record`
+  - `save_knowledge_candidates_to_db`
+  - `list_knowledge_candidates_from_db`
+  - `get_knowledge_candidate_from_db`
+  - `update_knowledge_candidate_in_db`
+  - `list_pending_review_candidates_from_db`
+  - `save_review_record_to_db`
+  - `list_review_records_from_db`
+- Modified `backend/app/storage.py`:
+  - `manual_clean_sanitized_message` dual-writes to `manual_cleaning_records` table alongside JSON.
+  - `get_sanitized_batch` merges manual cleaning records from DB into sanitized messages.
+  - `run_extraction` dual-writes candidates to `knowledge_candidates` table alongside JSON.
+  - `list_knowledge_candidates` merges DB candidates with JSON candidates (DB priority, JSON fallback).
+  - `get_knowledge_candidate` reads from DB first, falls back to JSON.
+  - `update_knowledge_candidate` dual-writes candidate edits to DB.
+  - `apply_review_decision` dual-writes review decisions to `review_records` table and updates candidate status in DB.
+  - `list_pending_review_candidates` reads from DB first, falls back to JSON.
+- Updated `/health` to report `P1-M18`.
+- Added `backend/tests/test_manual_review_db_persistence.py` with 16 tests.
+- Updated phase assertions in all existing test files to `P1-M18`.
+- Updated `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, `docs/26_DATABASE_PERSISTENCE_ROADMAP.md`.
+- Added `docs/29_MANUAL_REVIEW_DB_PERSISTENCE_REPORT.md`.
+- Updated `README.md` and `README.en.md` with manual cleaning and review DB persistence note.
+
+### P1-M18 Boundaries
+
+This is a manual cleaning & review DB persistence checkpoint only. RAG, Agent retrieval, and Bad Case APIs are not yet migrated to DB.
+
+- Confirmed no RAG DB migration.
+- Confirmed no Agent retrieval DB migration.
+- Confirmed no Bad Case DB migration.
+- Confirmed JSON storage is preserved as fallback.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.
+- Confirmed no tag was created (commit only).
+
+## Current Database Status
+
+当前数据库状态：**数据库底座已建立（SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选），导入、机器清洗、人工清洗、知识抽取和知识审核链路已迁移为数据库持久化**。
+
+P1 后续数据库目标：P1-M19 逐步将 RAG、Agent 检索与 Bad Case 链路迁移为数据库持久化。

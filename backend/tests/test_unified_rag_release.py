@@ -124,7 +124,7 @@ class UnifiedRagReleaseTest(unittest.TestCase):
     def test_unified_rag_release_sources_and_boundaries(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M16")
+        self.assertEqual(health.json()["phase"], "P1-M18")
 
         chat_candidates = self._create_candidates_from_import(
             self.chat_sample,

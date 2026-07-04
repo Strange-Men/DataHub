@@ -1006,6 +1006,28 @@ P1-M18 is complete when:
 - 不打 tag（commit only，除非明确 release）。
 - 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
 
+本轮已完成 (2026-07-05)：
+
+- [x] 人工清洗写 manual_cleaning_records 表
+- [x] 知识抽取从数据库读取 sanitized messages
+- [x] 知识抽取应用人工清洗 effective content
+- [x] knowledge_candidates 写数据库（幂等：按 source_id + question + answer 去重）
+- [x] 审核动作 (approve/reject/needs_revision) 写 review_records 表
+- [x] candidate review_status 持久化到 knowledge_candidates.status
+- [x] 页面刷新后人工清洗结果仍在（DB 优先读取，merge manual cleaning records）
+- [x] 页面刷新后 candidate 审核状态仍在
+- [x] 重复抽取幂等（同 source_id + question + answer 替换而非重复）
+- [x] 保留 JSON storage 兼容（merge DB + JSON，DB 优先）
+- [x] 新增 test_manual_review_db_persistence.py (16 tests)
+- [x] 现有 P1 核心测试通过（phase 更新至 P1-M18）
+- [x] 前端 build 通过
+- [x] py_compile 通过
+- [x] init_database 通过
+- [x] 不迁移 RAG / Agent / Bad Case
+- [x] 不提交 backend/storage/、.env、datahub.db、API Key
+- [x] 不打 tag
+- [x] git status clean
+
 ## 36. P1-M19 RAG / Agent / Bad Case DB Persistence Check
 
 P1-M19 is complete when:

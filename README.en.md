@@ -18,7 +18,7 @@
 
 > Note: Render free instances may experience cold starts (30-60 seconds on first access). The frontend connects to the backend via the `VITE_API_BASE_URL` environment variable. If the backend is not connected, the frontend displays a friendly status hint instead of a red error.
 
-Current online demo uses the P1 workflow. Import and machine cleaning pipelines now support database persistence; manual cleaning, knowledge review, RAG, and Bad Case pipelines will be migrated in subsequent iterations.
+Current online demo uses the P1 workflow. Import, machine cleaning, manual cleaning, knowledge candidate extraction, and knowledge review pipelines now support database persistence; RAG, Agent retrieval, and Bad Case pipelines will be migrated in subsequent iterations.
 
 DataHub is a data asset center for AI agent systems. It turns customer chat logs, legacy knowledge assets, public evaluation samples, Bad Case corrections, and future multimodal materials into governed, traceable knowledge that can be consumed by agents through restricted APIs.
 

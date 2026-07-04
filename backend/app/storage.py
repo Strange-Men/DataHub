@@ -4,6 +4,7 @@ from difflib import SequenceMatcher
 from hashlib import sha1
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from app.schemas import (
@@ -655,46 +656,62 @@ def get_cleaning_job(job_id: str) -> CleaningJobMetadata | None:
 
 
 def get_sanitized_batch(batch_id: str) -> SanitizedBatch | None:
-    # Check JSON first for manual cleaning modifications (P1-M17)
-    # Manual cleaning is not yet migrated to DB, so if the JSON file
-    # has manual cleaning records, we must prefer JSON over DB.
-    _ensure_storage()
-    batch_file = SANITIZED_BATCH_DIR / f"{batch_id}.json"
-    json_has_manual_cleaning = False
-    json_data: dict[str, object] | None = None
-
-    if batch_file.exists():
-        try:
-            json_data = json.loads(batch_file.read_text(encoding="utf-8"))
-            if isinstance(json_data, dict):
-                messages = json_data.get("messages")
-                if isinstance(messages, list):
-                    for msg in messages:
-                        if isinstance(msg, dict) and msg.get("manual_cleaning_status") == "cleaned":
-                            json_has_manual_cleaning = True
-                            break
-        except json.JSONDecodeError:
-            json_data = None
-
-    # If JSON has manual cleaning changes, prefer JSON (DB is stale)
-    if json_has_manual_cleaning and json_data is not None:
-        return SanitizedBatch(**json_data)  # type: ignore[arg-type]
-
-    # Try DB first (P1-M17)
+    # Try DB first (P1-M17), then merge manual cleaning records from DB (P1-M18)
+    db_result: SanitizedBatch | None = None
+    db_available = False
     try:
         db = SessionLocal()
         try:
             db_result = db_repo.get_sanitized_batch_from_db(db, batch_id)
             if db_result is not None:
-                return db_result
+                db_available = True
+                # Merge manual cleaning records from DB into messages (P1-M18)
+                db_manual_records = db_repo.get_manual_cleaning_records_for_batch_from_db(
+                    db, batch_id
+                )
+                if db_manual_records:
+                    # Build lookup: message_id -> latest record
+                    manual_by_msg: dict[str, dict[str, Any]] = {}
+                    for rec in db_manual_records:
+                        msg_id = rec.get("sanitized_message_id", "")
+                        if msg_id and msg_id not in manual_by_msg:
+                            manual_by_msg[msg_id] = rec
+
+                    # Apply to messages
+                    for i, msg in enumerate(db_result.messages):
+                        msg_id = msg.message_id
+                        mrec = manual_by_msg.get(msg_id) or manual_by_msg.get(
+                            msg.source_message_id
+                        )
+                        if mrec:
+                            db_result.messages[i] = msg.model_copy(
+                                update={
+                                    "manual_cleaning_status": "cleaned",
+                                    "manual_cleaned_content": mrec.get("cleaned_content"),
+                                    "manual_action": mrec.get("action"),
+                                    "cleaner": mrec.get("cleaner"),
+                                    "cleaning_note": mrec.get("note", ""),
+                                    "manual_cleaned_at": mrec.get("created_at"),
+                                }
+                            )
         finally:
             db.close()
     except Exception:
         _logger.exception("Failed to get sanitized batch %s from database", batch_id)
 
+    if db_available and db_result is not None:
+        return db_result
+
     # Fallback to JSON
-    if json_data is not None:
-        return SanitizedBatch(**json_data)  # type: ignore[arg-type]
+    _ensure_storage()
+    batch_file = SANITIZED_BATCH_DIR / f"{batch_id}.json"
+    if batch_file.exists():
+        try:
+            json_data = json.loads(batch_file.read_text(encoding="utf-8"))
+            if isinstance(json_data, dict):
+                return SanitizedBatch(**json_data)  # type: ignore[arg-type]
+        except json.JSONDecodeError:
+            pass
     return None
 
 
@@ -757,6 +774,19 @@ def manual_clean_sanitized_message(
     records = _read_json_list(MANUAL_CLEANING_RECORD_INDEX_FILE)
     records.append(record.model_dump())
     _write_json_list(MANUAL_CLEANING_RECORD_INDEX_FILE, records)
+
+    # Dual-write manual cleaning record to database (P1-M18)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.save_manual_cleaning_record_to_db(db, record)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception(
+            "Failed to save manual cleaning record %s to database", record.record_id
+        )
+
     return record
 
 
@@ -946,6 +976,19 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
     job_items = _read_json_list(EXTRACTION_JOB_INDEX_FILE)
     job_items.append(job.model_dump())
     _write_json_list(EXTRACTION_JOB_INDEX_FILE, job_items)
+
+    # Dual-write knowledge candidates to database (P1-M18)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.save_knowledge_candidates_to_db(db, candidates)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception(
+            "Failed to save knowledge candidates for batch %s to database", batch_id
+        )
+
     return job
 
 
@@ -964,13 +1007,48 @@ def get_extraction_job(job_id: str) -> ExtractionJobMetadata | None:
 
 
 def list_knowledge_candidates() -> list[KnowledgeCandidate]:
-    return [
-        KnowledgeCandidate(**item)
-        for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE)
-    ]
+    # Merge DB candidates with JSON candidates (P1-M18)
+    # DB takes priority for same candidate_id; JSON provides fallback
+    # for candidates not yet in DB (e.g., legacy imports).
+    candidates_by_id: dict[str, KnowledgeCandidate] = {}
+
+    # Load from DB first
+    try:
+        db = SessionLocal()
+        try:
+            db_results = db_repo.list_knowledge_candidates_from_db(db)
+            for c in db_results:
+                candidates_by_id[c.candidate_id] = c
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to list knowledge candidates from database")
+
+    # Merge JSON candidates (lower priority for same ID)
+    for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE):
+        candidate = KnowledgeCandidate(**item)
+        if candidate.candidate_id not in candidates_by_id:
+            candidates_by_id[candidate.candidate_id] = candidate
+
+    return list(candidates_by_id.values())
 
 
 def get_knowledge_candidate(candidate_id: str) -> KnowledgeCandidate | None:
+    # Try DB first (P1-M18)
+    try:
+        db = SessionLocal()
+        try:
+            db_result = db_repo.get_knowledge_candidate_from_db(db, candidate_id)
+            if db_result is not None:
+                return db_result
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception(
+            "Failed to get knowledge candidate %s from database", candidate_id
+        )
+
+    # Fallback to JSON
     _ensure_storage()
     candidate_file = KNOWLEDGE_CANDIDATE_DIR / f"{candidate_id}.json"
     if not candidate_file.exists():
@@ -1000,6 +1078,20 @@ def _write_knowledge_candidate(candidate: KnowledgeCandidate) -> KnowledgeCandid
 
 
 def list_pending_review_candidates() -> list[KnowledgeCandidate]:
+    # Try DB first (P1-M18)
+    try:
+        db = SessionLocal()
+        try:
+            db_results = db_repo.list_pending_review_candidates_from_db(db)
+            if db_results:
+                return db_results
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception(
+            "Failed to list pending review candidates from database"
+        )
+
     allowed = {"pending_review", "needs_revision"}
     return [
         candidate
@@ -1024,12 +1116,29 @@ def update_knowledge_candidate(
             for tag in cleaned_tags
             if str(tag).strip()
         ]
+    now = datetime.now(UTC).isoformat()
     updated = candidate.model_copy(
         update={
             **updates,
-            "updated_at": datetime.now(UTC).isoformat(),
+            "updated_at": now,
         }
     )
+
+    # Dual-write to database (P1-M18)
+    try:
+        db = SessionLocal()
+        try:
+            db_updates = payload.model_dump(exclude_unset=True)
+            if cleaned_tags is not None:
+                db_updates["tags"] = updates["tags"]
+            db_repo.update_knowledge_candidate_in_db(db, candidate_id, db_updates)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception(
+            "Failed to update knowledge candidate %s in database", candidate_id
+        )
+
     return _write_knowledge_candidate(updated)
 
 
@@ -1077,6 +1186,35 @@ def apply_review_decision(
     review_items = _read_json_list(REVIEW_RECORD_INDEX_FILE)
     review_items.append(review.model_dump())
     _write_json_list(REVIEW_RECORD_INDEX_FILE, review_items)
+
+    # Dual-write to database (P1-M18)
+    try:
+        db = SessionLocal()
+        try:
+            # Update candidate status in DB
+            db_repo.update_knowledge_candidate_in_db(
+                db,
+                candidate_id,
+                {
+                    "review_status": status,
+                    "reviewer": payload.reviewer,
+                    "review_note": payload.review_note,
+                    "reviewed_at": reviewed_at,
+                    "updated_at": reviewed_at,
+                },
+            )
+            # Save review record to DB
+            db_repo.save_review_record_to_db(
+                db, review, candidate.model_dump()
+            )
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception(
+            "Failed to persist review decision for candidate %s to database",
+            candidate_id,
+        )
+
     return written
 
 

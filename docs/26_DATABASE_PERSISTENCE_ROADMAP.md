@@ -208,7 +208,7 @@ Vercel 前端（不存数据）
 
 ---
 
-### P1-M18：Manual Cleaning & Review DB Persistence
+### P1-M18：Manual Cleaning & Review DB Persistence ✅ (已完成 2026-07-05)
 
 **目标**：人工清洗和知识审核真正保存。
 
@@ -221,12 +221,27 @@ Vercel 前端（不存数据）
 - 审核动作（approve/reject/needs_revision）写 `review_records` 表
 - candidate 状态（review_status）持久化
 
+**实际落地**：
+
+- 新增 repository 函数（10 个）：save/get manual cleaning records, save/list/get/update knowledge candidates, save review records
+- manual_cleaning_records 表：保存 sanitized_message_id, cleaner, action, original_content, cleaned_content, note
+- knowledge_candidates 表：保存所有候选知识字段（含 source_type, question, answer, intent, tags, risk_level, quality_score, status, metadata_json）
+- review_records 表：保存 candidate_id, reviewer, action, note, snapshot_json
+- 写入策略：双写（DB + JSON），读取策略：DB 优先 merge JSON fallback
+- 幂等策略：
+  - 人工清洗：同 sanitized_message_id 允许多条记录，最新为 effective record
+  - 知识抽取：按 source_id + question + answer 去重，重复抽取替换而非追加
+  - 审核：每次审核新增 review_records，同时更新 knowledge_candidates.status
+- get_sanitized_batch：从 DB 读取时自动 merge manual_cleaning_records
+- 新增测试：16 个测试覆盖人工清洗、知识抽取、审核持久化全链路
+- 未迁移：RAG、Agent 检索、Bad Case（留到 P1-M19）
+
 **验收**：
 
-- [ ] 人工清洗保存后刷新页面仍在
-- [ ] 审核通过后刷新页面仍为 approved
-- [ ] Render 重启后记录仍在
-- [ ] 数据库可查 `manual_cleaning_records` / `knowledge_candidates` / `review_records`
+- [x] 人工清洗保存后刷新页面仍在
+- [x] 审核通过后刷新页面仍为 approved
+- [x] Render 重启后记录仍在
+- [x] 数据库可查 `manual_cleaning_records` / `knowledge_candidates` / `review_records`
 
 ---
 

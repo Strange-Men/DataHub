@@ -1,8 +1,11 @@
-"""Database repository layer for raw import and machine cleaning data.
+"""Database repository layer for DataHub core data access.
 
 Provides safe, idempotent read/write functions for:
 - raw_batches / raw_messages
 - sanitized_batches / sanitized_messages
+- manual_cleaning_records
+- knowledge_candidates
+- review_records
 
 All functions accept a SQLAlchemy Session so callers control transaction boundaries.
 Never prints or logs DATABASE_URL, user credentials, or connection strings.
@@ -18,12 +21,21 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.db_models import (
+    BadCase,
+    KnowledgeCandidate as DbKnowledgeCandidate,
+    ManualCleaningRecord,
+    RagChunk,
     RawBatch,
     RawMessage,
+    RetrievalLog,
+    ReviewRecord,
     SanitizedBatch as DbSanitizedBatch,
     SanitizedMessage as DbSanitizedMessage,
 )
 from app.schemas import (
+    KnowledgeCandidate,
+    ManualCleaningRecord as SchemaManualCleaningRecord,
+    ReviewRecord as SchemaReviewRecord,
     SanitizedBatch,
     SanitizedMessage,
     SourceBatchMetadata,
@@ -400,3 +412,347 @@ def _conversation_count_from_payload(payload: Any) -> int:
 def _get_db_session() -> Session:
     """Create a new database session. Caller must close it."""
     return SessionLocal()
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Manual cleaning records  (P1-M18)
+# ──────────────────────────────────────────────────────────────────
+
+
+def save_manual_cleaning_record_to_db(
+    db: Session,
+    record: SchemaManualCleaningRecord,
+) -> None:
+    """Save a manual cleaning record to the database.
+
+    Idempotent: if a record with the same sanitized_message_id already exists,
+    the new record is appended (multiple records per message are allowed).
+    The latest record by created_at is treated as the effective record.
+    """
+    now = datetime.now(UTC)
+    db.add(
+        ManualCleaningRecord(
+            id=record.record_id,
+            sanitized_message_id=record.message_id,
+            cleaner=record.cleaner,
+            action=record.manual_action,
+            original_content=record.original_sanitized_content,
+            cleaned_content=record.manual_cleaned_content,
+            note=record.cleaning_note,
+            created_at=now,
+        )
+    )
+    db.commit()
+
+
+def get_manual_cleaning_records_for_batch_from_db(
+    db: Session, batch_id: str
+) -> list[dict[str, Any]]:
+    """Return all manual cleaning records for messages in a batch.
+
+    Joins with sanitized_messages to find records belonging to the batch.
+    """
+    # Get message IDs for this batch
+    msg_ids = [
+        row[0]
+        for row in db.query(DbSanitizedMessage.id)
+        .filter(DbSanitizedMessage.batch_id == batch_id)
+        .all()
+    ]
+    if not msg_ids:
+        return []
+
+    # Decode message_id from compound id "{batch_id}__{conv_id}__{msg_id}"
+    decoded_ids: set[str] = set()
+    for mid in msg_ids:
+        parts = mid.split("__", 2)
+        if len(parts) >= 2:
+            decoded_ids.add(parts[-1])  # last part is the original message_id
+        decoded_ids.add(mid)
+
+    rows = (
+        db.query(ManualCleaningRecord)
+        .filter(ManualCleaningRecord.sanitized_message_id.in_(decoded_ids))
+        .order_by(ManualCleaningRecord.created_at.desc())
+        .all()
+    )
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        result.append(
+            {
+                "record_id": row.id,
+                "sanitized_message_id": row.sanitized_message_id,
+                "cleaner": row.cleaner,
+                "action": row.action,
+                "original_content": row.original_content,
+                "cleaned_content": row.cleaned_content,
+                "note": row.note,
+                "created_at": row.created_at.isoformat() if row.created_at else "",
+            }
+        )
+    return result
+
+
+def get_effective_manual_cleaning_record(
+    db: Session, message_id: str
+) -> dict[str, Any] | None:
+    """Return the most recent manual cleaning record for a given message_id."""
+    row = (
+        db.query(ManualCleaningRecord)
+        .filter(ManualCleaningRecord.sanitized_message_id == message_id)
+        .order_by(ManualCleaningRecord.created_at.desc())
+        .first()
+    )
+    if row is None:
+        return None
+    return {
+        "record_id": row.id,
+        "sanitized_message_id": row.sanitized_message_id,
+        "cleaner": row.cleaner,
+        "action": row.action,
+        "original_content": row.original_content,
+        "cleaned_content": row.cleaned_content,
+        "note": row.note,
+        "created_at": row.created_at.isoformat() if row.created_at else "",
+    }
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Knowledge candidates  (P1-M18)
+# ──────────────────────────────────────────────────────────────────
+
+
+def save_knowledge_candidates_to_db(
+    db: Session,
+    candidates: list[KnowledgeCandidate],
+) -> None:
+    """Write or replace knowledge candidates for a batch.
+
+    Idempotent: for each candidate, deletes any existing row with the same
+    source_id + question + answer, then inserts the new candidate.
+    This prevents infinite duplicate generation on repeated extraction.
+    """
+    now = datetime.now(UTC)
+    for candidate in candidates:
+        # Idempotent dedup key: source_id + question + answer
+        source_id = candidate.source_batch_id or candidate.candidate_id
+        db.query(DbKnowledgeCandidate).filter(
+            DbKnowledgeCandidate.source_id == source_id,
+            DbKnowledgeCandidate.question == candidate.question,
+            DbKnowledgeCandidate.answer == candidate.answer,
+        ).delete()
+
+        db.add(
+            DbKnowledgeCandidate(
+                id=candidate.candidate_id,
+                source_type=candidate.source_type,
+                source_id=source_id,
+                question=candidate.question,
+                answer=candidate.answer,
+                intent=candidate.intent,
+                tags=candidate.tags,
+                risk_level=candidate.risk_level,
+                quality_score=candidate.quality_score,
+                status=candidate.review_status,
+                metadata_json={
+                    "source_batch_id": candidate.source_batch_id,
+                    "source_conversation_id": candidate.source_conversation_id,
+                    "source_message_ids": candidate.source_message_ids,
+                    "source_bad_case_id": candidate.source_bad_case_id,
+                    "source_retrieval_id": candidate.source_retrieval_id,
+                    "source_chunk_ids": candidate.source_chunk_ids,
+                    "source_legacy_id": candidate.source_legacy_id,
+                    "source_import_id": candidate.source_import_id,
+                    "linked_candidate_id": candidate.linked_candidate_id,
+                    "knowledge_type": candidate.knowledge_type,
+                    "extraction_method": candidate.extraction_method,
+                    "migration_mode": candidate.migration_mode,
+                    "source_note": candidate.source_note,
+                    "cleaning_issues": candidate.cleaning_issues,
+                    "risk_flags": candidate.risk_flags,
+                    "manual_cleaning_status": candidate.manual_cleaning_status,
+                    "manual_action": candidate.manual_action,
+                    "reviewer": candidate.reviewer,
+                    "review_note": candidate.review_note,
+                    "reviewed_at": candidate.reviewed_at,
+                    "updated_at": candidate.updated_at,
+                },
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    db.commit()
+
+
+def list_knowledge_candidates_from_db(db: Session) -> list[KnowledgeCandidate]:
+    """Return all knowledge candidates from the database."""
+    rows = db.query(DbKnowledgeCandidate).order_by(
+        DbKnowledgeCandidate.created_at.desc()
+    ).all()
+    return [_db_candidate_to_schema(row) for row in rows]
+
+
+def get_knowledge_candidate_from_db(
+    db: Session, candidate_id: str
+) -> KnowledgeCandidate | None:
+    """Return a single knowledge candidate by ID."""
+    row = (
+        db.query(DbKnowledgeCandidate)
+        .filter(DbKnowledgeCandidate.id == candidate_id)
+        .first()
+    )
+    if row is None:
+        return None
+    return _db_candidate_to_schema(row)
+
+
+def update_knowledge_candidate_in_db(
+    db: Session,
+    candidate_id: str,
+    updates: dict[str, Any],
+) -> KnowledgeCandidate | None:
+    """Update fields on an existing knowledge candidate row."""
+    row = (
+        db.query(DbKnowledgeCandidate)
+        .filter(DbKnowledgeCandidate.id == candidate_id)
+        .first()
+    )
+    if row is None:
+        return None
+
+    now = datetime.now(UTC)
+    # Update core columns
+    if "question" in updates:
+        row.question = updates["question"]
+    if "answer" in updates:
+        row.answer = updates["answer"]
+    if "intent" in updates:
+        row.intent = updates["intent"]
+    if "tags" in updates:
+        row.tags = updates["tags"]
+    if "risk_level" in updates:
+        row.risk_level = updates["risk_level"]
+    if "quality_score" in updates:
+        row.quality_score = updates["quality_score"]
+    if "review_status" in updates:
+        row.status = updates["review_status"]
+
+    # Merge metadata_json
+    meta = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+    for key in (
+        "reviewer",
+        "review_note",
+        "reviewed_at",
+        "updated_at",
+        "cleaning_issues",
+        "risk_flags",
+        "manual_cleaning_status",
+        "manual_action",
+    ):
+        if key in updates:
+            meta[key] = updates[key]
+    meta["updated_at"] = now.isoformat()
+    row.metadata_json = meta
+    row.updated_at = now
+    db.commit()
+    db.refresh(row)
+    return _db_candidate_to_schema(row)
+
+
+def list_pending_review_candidates_from_db(
+    db: Session,
+) -> list[KnowledgeCandidate]:
+    """Return candidates with status pending_review or needs_revision."""
+    rows = (
+        db.query(DbKnowledgeCandidate)
+        .filter(
+            DbKnowledgeCandidate.status.in_(["pending_review", "needs_revision"])
+        )
+        .order_by(DbKnowledgeCandidate.created_at.desc())
+        .all()
+    )
+    return [_db_candidate_to_schema(row) for row in rows]
+
+
+def _db_candidate_to_schema(row: DbKnowledgeCandidate) -> KnowledgeCandidate:
+    """Convert a DB KnowledgeCandidate row to a Pydantic KnowledgeCandidate schema."""
+    meta = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+    return KnowledgeCandidate(
+        candidate_id=row.id,
+        source_type=row.source_type,  # type: ignore[arg-type]
+        source_batch_id=meta.get("source_batch_id"),
+        source_conversation_id=meta.get("source_conversation_id"),
+        source_message_ids=list(meta.get("source_message_ids", [])),
+        source_bad_case_id=meta.get("source_bad_case_id"),
+        source_retrieval_id=meta.get("source_retrieval_id"),
+        source_chunk_ids=list(meta.get("source_chunk_ids", [])),
+        source_legacy_id=meta.get("source_legacy_id"),
+        source_import_id=meta.get("source_import_id"),
+        linked_candidate_id=meta.get("linked_candidate_id"),
+        knowledge_type=meta.get("knowledge_type", "faq"),  # type: ignore[arg-type]
+        question=row.question,
+        answer=row.answer,
+        intent=row.intent or "general",  # type: ignore[arg-type]
+        tags=list(row.tags) if row.tags else [],
+        risk_level=row.risk_level,  # type: ignore[arg-type]
+        review_status=row.status,  # type: ignore[arg-type]
+        quality_score=float(row.quality_score),
+        extraction_method=meta.get("extraction_method", "rule_based_mock"),  # type: ignore[arg-type]
+        migration_mode=meta.get("migration_mode"),
+        source_note=meta.get("source_note"),
+        cleaning_issues=list(meta.get("cleaning_issues", [])),
+        risk_flags=list(meta.get("risk_flags", [])),
+        manual_cleaning_status=meta.get("manual_cleaning_status"),
+        manual_action=meta.get("manual_action"),
+        created_at=row.created_at.isoformat() if row.created_at else "",
+        reviewer=meta.get("reviewer"),
+        review_note=meta.get("review_note"),
+        reviewed_at=meta.get("reviewed_at"),
+        updated_at=meta.get("updated_at"),
+    )
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Review records  (P1-M18)
+# ──────────────────────────────────────────────────────────────────
+
+
+def save_review_record_to_db(
+    db: Session,
+    review: SchemaReviewRecord,
+    candidate_snapshot: dict[str, Any] | None = None,
+) -> None:
+    """Save a review record to the database."""
+    now = datetime.now(UTC)
+    db.add(
+        ReviewRecord(
+            id=review.review_id,
+            candidate_id=review.candidate_id,
+            reviewer=review.reviewer,
+            action=review.review_status,
+            note=review.review_note,
+            snapshot_json=candidate_snapshot,
+            created_at=now,
+        )
+    )
+    db.commit()
+
+
+def list_review_records_from_db(
+    db: Session,
+) -> list[dict[str, Any]]:
+    """Return all review records from the database."""
+    rows = db.query(ReviewRecord).order_by(ReviewRecord.created_at.desc()).all()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        result.append(
+            {
+                "review_id": row.id,
+                "candidate_id": row.candidate_id,
+                "review_status": row.action,
+                "reviewer": row.reviewer,
+                "review_note": row.note or "",
+                "reviewed_at": row.created_at.isoformat() if row.created_at else "",
+            }
+        )
+    return result
