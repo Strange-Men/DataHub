@@ -240,3 +240,17 @@ Manual cleaning affects knowledge extraction:
 - `needs_review`: extraction skips the message by default.
 
 Manual cleaning does not approve knowledge and does not write RAG chunks. Cleaned messages still go through knowledge extraction and human review before they can become retrieval-ready knowledge.
+
+## 17. Final P1 Release Note
+
+In the final Phase 1 release, this guide is used together with the Chinese DataHub admin console.
+
+Cleaner responsibilities remain:
+
+- Protect privacy.
+- Preserve business meaning.
+- Remove low-value noise.
+- Mark uncertain content for review.
+- Never overwrite raw data.
+
+After manual cleaning, the knowledge still goes through extraction and knowledge review. Manual cleaning is a quality gate, not an approval gate.

@@ -191,6 +191,51 @@ const phaseCards = [
   }
 ];
 
+const governanceCards = [
+  {
+    title: "原始数据",
+    value: "raw batch",
+    description: "客服聊天、公开样本、旧 RAG 导入的入口层。",
+    status: "只读留痕"
+  },
+  {
+    title: "机器清洗",
+    value: "quality score",
+    description: "重复、噪声、PII、质量分与建议动作。",
+    status: "已接入"
+  },
+  {
+    title: "人工清洗",
+    value: "manual record",
+    description: "清洗员修正 sanitized 内容，不覆盖 raw。",
+    status: "已接入"
+  },
+  {
+    title: "知识审核",
+    value: "approved only",
+    description: "审核人员编辑、通过、驳回或打回修改。",
+    status: "已接入"
+  },
+  {
+    title: "RAG 知识库",
+    value: "local chunks",
+    description: "仅 approved candidate 可构建本地 RAG chunk。",
+    status: "已接入"
+  },
+  {
+    title: "Agent 检索",
+    value: "traceable",
+    description: "CustomerOpsAgent 受限检索与 retrieval_id 留痕。",
+    status: "已接入"
+  },
+  {
+    title: "Bad Case 回流",
+    value: "draft loop",
+    description: "坏例绑定 retrieval_id，人工转为待审核草稿。",
+    status: "已接入"
+  }
+];
+
 const reviewStatusOptions: ReviewStatus[] = [
   "pending_review",
   "needs_revision",
@@ -692,6 +737,19 @@ export function App() {
 
       {error ? <div className="message error">{error}</div> : null}
       {message ? <div className="message success">{message}</div> : null}
+
+      <section className="governance-grid" aria-label="DataHub governance overview">
+        {governanceCards.map((card) => (
+          <article className="governance-card" key={card.title}>
+            <div>
+              <span className="governance-label">{card.title}</span>
+              <strong>{card.value}</strong>
+            </div>
+            <p>{card.description}</p>
+            <span className={`status-badge status-${card.status}`}>{card.status}</span>
+          </article>
+        ))}
+      </section>
 
       <section className="phase-grid" aria-label="DataHub phase modules">
         {phaseCards.map((card) => (

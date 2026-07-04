@@ -323,3 +323,17 @@ After approval:
 - Source trace remains available for debugging and Bad Case feedback.
 
 Approval does not remove the need for future monitoring. Bad Cases can still reveal outdated or weak knowledge.
+
+## 21. Final P1 Release Note
+
+In the final Phase 1 release, the knowledge review console is the last human gate before local RAG.
+
+Reviewers should remember:
+
+- Approved candidates can be chunked and retrieved by CustomerOpsAgent.
+- Pending, needs-revision, and rejected candidates must stay outside RAG.
+- Bad Case drafts are useful but still require normal review.
+- Legacy RAG items can be trusted imports, but risky content should still be sampled and corrected.
+- Public dataset content is useful for validation, not proof of private business policy.
+
+The reviewer is responsible for protecting answer quality, source traceability, and safety boundaries.

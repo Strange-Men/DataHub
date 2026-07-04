@@ -558,6 +558,33 @@ Acceptance outline:
 - Final P1 high-quality DataHub acceptance report is produced.
 - P2 multimodal material ingestion remains a prepared next phase, not implemented inside P1-M15 unless separately requested.
 
+## P1-M15 Acceptance Criteria
+
+P1-M15 is accepted when:
+
+- `/health` reports `phase: P1-M15`.
+- `backend/tests/test_p1_high_quality_datahub_release.py` exists and passes.
+- The test verifies:
+  - import -> advanced cleaning -> sanitized quality fields
+  - manual cleaning `keep_edited`, `drop`, and `needs_review` behavior
+  - extraction from cleaned data into `pending_review` candidates
+  - candidate editing and approval
+  - approved-only local RAG build
+  - pending, needs-revision, and rejected candidates excluded from RAG
+  - CustomerOpsAgent restricted retrieval over approved chunks
+  - Bad Case submission and Bad Case to pending-review draft
+  - trusted legacy RAG candidates still entering unified RAG
+  - repeated RAG build idempotency
+  - source trace preservation
+- The Chinese frontend is upgraded to a unified dark product style.
+- P1/P2/P3/P4 capability cards remain visible.
+- P2/P3/P4 are marked Roadmap / not connected.
+- `docs/21_P1_HIGH_QUALITY_DATAHUB_RELEASE_REPORT.md` exists.
+- README files remain product-oriented and do not claim P2/P3/P4 are implemented.
+- No real vector database, embedding model, database, ORM, real LLM, MCP, multimodal, sales export, fine-tuning export, or CustomerOpsAgent repository modification is introduced.
+- New tag uses `p1-m15-high-quality-datahub-release`.
+- Historical tags are not moved, deleted, or renamed.
+
 ## P1-M13 Acceptance Criteria
 
 P1-M13 is accepted when:

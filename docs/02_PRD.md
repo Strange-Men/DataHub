@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through P1-M12
+### Currently Implemented Through P1-M15
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -104,6 +104,14 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Message-level `cleaning_issues`, `risk_flags`, `quality_score`, `quality_level`, and `suggested_action`.
 - Enhanced duplicate, near-duplicate, low-quality, noise, and PII risk detection.
 - Extraction skips sanitized messages marked `suggested_action: drop`.
+- Chinese manual cleaning workbench and manual cleaning API.
+- Extraction uses manual cleaning decisions:
+  - `drop` and `needs_review` are skipped.
+  - `keep_edited` uses `manual_cleaned_content`.
+  - `keep` uses sanitized content.
+- Chinese knowledge review console.
+- Candidate editing, approve, reject, and needs-revision operations from the frontend.
+- Final high-quality DataHub P1 verification across machine cleaning, manual cleaning, extraction, review, local RAG, CustomerOpsAgent retrieval, Bad Case feedback, Bad Case draft creation, and legacy RAG.
 
 ### Pending In Phase 1
 
@@ -482,3 +490,33 @@ Hard rule:
 - Only `approved` candidates can enter local RAG chunks.
 - `pending_review`, `needs_revision`, and `rejected` candidates cannot enter RAG.
 - P1-M14 does not implement Phase 2, Phase 3, Phase 4, real vector search, embeddings, database, ORM, real LLM, or MCP.
+
+## 11. P1-M15 Product Update: High-quality DataHub Final Release
+
+P1-M15 completes the high-quality Phase 1 release.
+
+Validated product loop:
+
+```text
+data import
+-> advanced machine cleaning
+-> manual cleaning
+-> knowledge extraction
+-> knowledge review
+-> approved-only local RAG
+-> CustomerOpsAgent restricted retrieval
+-> Bad Case feedback
+-> Bad Case to pending-review draft
+```
+
+Frontend product update:
+
+- The Chinese admin console now uses a unified dark data governance / AgentOps product style.
+- P1 remains operational.
+- P2, P3, and P4 remain Roadmap / not connected.
+
+Final P1 boundaries:
+
+- Storage remains local JSON.
+- Retrieval remains local keyword/mock retrieval.
+- No real vector database, embedding model, database, ORM, real LLM, MCP, multimodal implementation, sales export, fine-tuning export, or CustomerOpsAgent repository change is included.

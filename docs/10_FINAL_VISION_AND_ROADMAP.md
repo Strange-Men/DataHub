@@ -294,3 +294,24 @@ This strengthens the final approval gate before RAG:
 - Only approved candidates can enter RAG.
 
 P1-M14 remains Phase 1 text knowledge governance. It does not implement Phase 2, Phase 3, or Phase 4.
+
+## 8. P1-M15 Update
+
+P1-M15 completes the Phase 1 high-quality DataHub release.
+
+Validated final P1 loop:
+
+```text
+machine cleaning
+-> manual cleaning
+-> knowledge extraction
+-> knowledge review
+-> unified local RAG
+-> CustomerOpsAgent retrieval
+-> Bad Case feedback
+-> pending-review draft
+```
+
+The Chinese admin console now uses a unified dark AgentOps / data governance product style. P1 remains the only implemented product phase. P2, P3, and P4 remain formal roadmap phases and are not implemented in P1-M15.
+
+After this checkpoint, the recommended next activity is project review and architecture explanation material preparation before deciding whether to start Phase 2.

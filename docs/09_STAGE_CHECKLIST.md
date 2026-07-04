@@ -97,7 +97,7 @@ P1:
 - `p1-m11-unified-rag-release`
 - `p1-m12-advanced-data-cleaning`
 - `p1-m13-chinese-admin-console`
-- `p1-m14-knowledge-review-quality-console`
+- `p1-m14-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
 
 P2:
@@ -777,3 +777,22 @@ P1-M15 must not start unless explicitly requested.
   machine cleaning -> manual cleaning -> extraction -> human review -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case feedback.
 - Publish the final P1 high-quality DataHub acceptance report.
 - P2 multimodal material ingestion remains out of scope unless explicitly started after P1-M15.
+
+## 27. P1-M15 High-quality DataHub Release Check
+
+P1-M15 is complete when:
+
+- The frontend workflow file has been read.
+- The dark design reference has been read.
+- `/health` reports `P1-M15`.
+- `backend/tests/test_p1_high_quality_datahub_release.py` verifies the final P1 loop.
+- Existing P1 tests still pass.
+- The frontend builds successfully.
+- The Chinese frontend uses a unified dark AgentOps / data governance style.
+- P1/P2/P3/P4 cards remain visible.
+- P2/P3/P4 cards remain Roadmap / not connected.
+- `docs/21_P1_HIGH_QUALITY_DATAHUB_RELEASE_REPORT.md` exists.
+- README remains product-oriented and does not become a development log.
+- No P2/P3/P4, vector database, embedding, database, ORM, real LLM, MCP, or CustomerOpsAgent repository change is introduced.
+- `backend/storage/`, `frontend/node_modules/`, and `frontend/dist/` are not committed.
+- New tag uses `p1-m15-high-quality-datahub-release`.

@@ -12,7 +12,7 @@ English version: [README.en.md](./README.en.md)
 
 DataHub 是一个面向 AI Agent 集群的数据资产中心，用来把客服聊天记录、历史知识库、公开评测样本、Bad Case 修正和后续多模态素材统一纳入治理流程，经过清洗、脱敏、人工修正、知识抽取、审核和 RAG 构建后，提供给 CustomerOpsAgent 等 Agent 以受限 API 调用。
 
-当前实现聚焦文本客服知识闭环，并已经具备本地 JSON 存储、本地关键词检索、人工清洗、中文知识审核、Bad Case 回流和 Legacy RAG 迁移能力。多模态素材中心、销售培训数据导出、微调数据集导出和 MCP Tools 属于架构预留能力，尚未作为生产功能接入。
+当前实现聚焦文本客服知识闭环，并已经具备本地 JSON 存储、本地关键词检索、人工清洗、中文知识审核、Bad Case 回流和 Legacy RAG 迁移能力。前端已经升级为全中文暗黑管理台，用于数据治理人员查看质量标签、执行人工清洗、处理知识审核和管理统一 RAG 入口。多模态素材中心、销售培训数据导出、微调数据集导出和 MCP Tools 属于架构预留能力，尚未作为生产功能接入。
 
 ## 目录
 
@@ -124,6 +124,7 @@ DataHub 只返回 approved 且已构建为 retrieval-ready chunk 的知识，不
 | bad_case_to_draft_count | 1 |
 | P1 flow / public dataset / legacy migration / unified RAG tests | passed |
 | advanced cleaning tests | passed |
+| manual cleaning / review quality / high-quality release tests | passed |
 
 这些结果证明 DataHub 的治理链路可跑通，但当前检索仍是 local keyword/mock retrieval，不代表生产级向量检索质量。
 
@@ -222,6 +223,7 @@ python -m py_compile backend\app\main.py backend\app\schemas.py backend\app\stor
 python backend\tests\test_advanced_cleaning.py
 python backend\tests\test_manual_cleaning.py
 python backend\tests\test_review_quality_console.py
+python backend\tests\test_p1_high_quality_datahub_release.py
 python backend\tests\test_customerops_retrieval.py
 python backend\tests\test_rag_quality.py
 python backend\tests\test_bad_case_feedback.py

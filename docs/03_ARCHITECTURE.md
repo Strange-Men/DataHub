@@ -513,3 +513,34 @@ Backend:
 - RAG build continues to accept only `review_status: approved`.
 
 This stage does not introduce database, ORM, vector database, embedding, real LLM, MCP, CustomerOpsAgent repository changes, or P2/P3/P4 features.
+
+## 12. P1-M15 High-quality DataHub Release Architecture
+
+P1-M15 is the final Phase 1 high-quality DataHub release checkpoint.
+
+It does not add a new backend module. It verifies that the existing modules work as one governed data platform:
+
+```text
+Ingestion
+-> Advanced Machine Cleaning
+-> Manual Cleaning Workbench
+-> Knowledge Extraction
+-> Knowledge Review Console
+-> Local RAG Builder
+-> CustomerOpsAgent Restricted Retrieval
+-> Bad Case Feedback
+-> Bad Case To Pending-Review Draft
+```
+
+Frontend:
+
+- The Chinese admin console is upgraded into a dark AgentOps / data governance product interface.
+- P1 remains operational.
+- P2, P3, and P4 remain visible only as Roadmap / not connected capability areas.
+
+Backend:
+
+- `/health` reports `P1-M15`.
+- Existing APIs remain the source of truth.
+- No CustomerOpsAgent repository change is made.
+- No new vector database, embedding model, database, ORM, real LLM, MCP, multimodal, sales export, or fine-tuning implementation is introduced.

@@ -14,6 +14,8 @@ DataHub is a data asset center for AI agent systems. It turns customer chat logs
 
 The current implementation focuses on the text customer-service knowledge loop. It includes local JSON storage, local keyword retrieval, machine cleaning, manual cleaning, Chinese knowledge review, Bad Case feedback, and legacy RAG migration. Multimodal assets, sales-training exports, fine-tuning datasets, and MCP tools are architectural extensions, not production-connected features in this repository.
 
+The frontend is a Chinese dark admin console for data governance operators. It keeps the text customer-service workflow operational while showing future multimodal, dataset reuse, and MCP/Agent-cluster capabilities as roadmap entries only.
+
 ## Contents
 
 - [Why DataHub](#why-datahub)
@@ -124,6 +126,7 @@ Only verified repository results are listed here:
 | bad_case_to_draft_count | 1 |
 | P1 flow / public dataset / legacy migration / unified RAG tests | passed |
 | advanced cleaning tests | passed |
+| manual cleaning / review quality / high-quality release tests | passed |
 
 These results validate the workflow, not production-grade retrieval quality. The current retrieval implementation is still local keyword/mock retrieval.
 
@@ -222,6 +225,7 @@ python -m py_compile backend\app\main.py backend\app\schemas.py backend\app\stor
 python backend\tests\test_advanced_cleaning.py
 python backend\tests\test_manual_cleaning.py
 python backend\tests\test_review_quality_console.py
+python backend\tests\test_p1_high_quality_datahub_release.py
 python backend\tests\test_customerops_retrieval.py
 python backend\tests\test_rag_quality.py
 python backend\tests\test_bad_case_feedback.py

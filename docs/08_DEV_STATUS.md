@@ -2,15 +2,14 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. Current checkpoint: P1-M12 Advanced Data Cleaning.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. Current checkpoint: P1-M15 High-quality DataHub Final Release.
 
 Current code remains Phase 1.
 
 Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be implemented early.
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
-P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. Current checkpoint: P1-M14 Knowledge Review Quality Console.
-P1-M15 is now the planned final Phase 1 high-quality data platform release.
+P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
 
 ## Completed Through M1
 
@@ -506,18 +505,16 @@ Forbidden from prior stages remains:
 
 ## Next Allowed Stage Candidates
 
-P1-M11 is released as the unified DataHub RAG release. P1 high-quality DataHub final release is now planned for P1-M15.
+P1-M11 is the unified DataHub RAG release. P1-M15 is the high-quality DataHub final Phase 1 release and is now complete.
 
 Allowed candidates:
 
-- P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
-- P1-M14 Knowledge Review Quality Console.
-- P1-M15 High-quality DataHub P1 Final Release.
 - Pause development for project review, resume packaging, and architecture retrospective.
+- Prepare P1-P4 architecture explanation materials.
+- Start P2-M1 only after separate scope approval.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
 
-- P2-M1 Material Ingestion before P1-M15 is accepted.
 - Phase 2 AI Material Center or multimodal implementation without explicit approval.
 - Phase 3 sales training export or fine-tuning dataset export.
 - Phase 4 MCP Tools or Agent cluster integration.
@@ -542,7 +539,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports P1-M12.
+- `/health` endpoint is defined and reports P1-M15.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -587,6 +584,9 @@ Still candidates:
 - Unified release verification confirms CustomerOpsAgent retrieval can return approved `chat_logs`, `public_dataset`, `legacy_rag`, and approved `bad_case` chunks through one response shape.
 - P1-M12 advanced cleaning verification confirms sanitized messages include quality fields and summary metrics.
 - P1-M12 extraction skips messages marked `suggested_action: drop`.
+- P1-M13 manual cleaning verification confirms sanitized messages can be manually kept, edited, dropped, or marked needs-review without modifying raw batches.
+- P1-M14 review console verification confirms candidate editing and approve/reject/needs-revision boundaries.
+- P1-M15 final release verification confirms the full high-quality loop from import through Bad Case draft creation.
 - No Bad Case automatic approval, direct existing candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
@@ -742,7 +742,7 @@ P1:
 - `p1-m11-unified-rag-release`
 - `p1-m12-advanced-data-cleaning`
 - `p1-m13-chinese-admin-console`
-- `p1-m14-knowledge-review-quality-console`
+- `p1-m14-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
 
 P2:
@@ -764,15 +764,15 @@ P4:
 
 ## Next Suggested Stage
 
-Continue Phase 1 only.
+P1 high-quality text data governance is complete.
 
 Recommended option:
 
-- Continue to P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
+- Pause feature development.
+- Prepare P1-P4 project retrospective, architecture walkthrough, and resume/project explanation materials.
 
 Before P2 starts:
 
-- Complete P1-M13, P1-M14, and P1-M15 unless the user explicitly changes the roadmap.
 - Confirm Phase 2 material ingestion scope.
 - Confirm whether multimodal storage, OCR, Caption, and SKU binding are still only roadmap or ready to implement.
 - Confirm the next phase-prefixed tag name.
@@ -833,3 +833,35 @@ Still forbidden:
 Next recommended stage:
 
 - P1-M15 High-quality DataHub Final Release.
+
+## Completed In P1-M15
+
+- Added final P1 high-quality release verification.
+- Updated `/health` to report `P1-M15`.
+- Added `backend/tests/test_p1_high_quality_datahub_release.py`.
+- Verified the full high-quality loop:
+  - import
+  - advanced machine cleaning
+  - manual cleaning
+  - knowledge extraction
+  - knowledge review
+  - local RAG build
+  - CustomerOpsAgent restricted retrieval
+  - Bad Case feedback
+  - Bad Case to pending-review draft
+  - legacy RAG trusted import
+- Upgraded the Chinese admin console to a unified dark AgentOps / data governance product style.
+- Kept P1/P2/P3/P4 capability cards visible.
+- Kept P2/P3/P4 marked as Roadmap / not connected.
+- Added final report at `docs/21_P1_HIGH_QUALITY_DATAHUB_RELEASE_REPORT.md`.
+- Confirmed P1-M15 does not implement Phase 2, Phase 3, Phase 4, real vector database, embedding, database, ORM, real LLM, MCP, or CustomerOpsAgent repository changes.
+
+## Current Final P1 Status
+
+P1 is complete as a high-quality text customer service data governance platform with unified local RAG.
+
+Recommended next move:
+
+- Pause feature development.
+- Prepare P1-P4 project review and architecture explanation materials.
+- Start P2-M1 only after a separate scope confirmation.

@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-P1-M14
+Implemented APIs: M2-P1-M15
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -32,10 +32,10 @@ Implemented APIs: M2-P1-M14
 - P1-M12 advanced machine cleaning; no new public API surface, but cleaning responses and sanitized messages include additional quality and governance fields.
 - P1-M13 manual cleaning API for sanitized messages.
 - P1-M14 Chinese knowledge review console using existing candidate and review APIs.
+- P1-M15 final high-quality DataHub release verification; no new public API surface.
 
-Planned Phase 1 APIs: After P1-M14
+Planned Phase 1 APIs: After P1-M15
 
-- P1-M15 final high-quality DataHub release verification; no new API surface is required by default.
 - Approval and RAG rebuild for Bad Case-generated drafts through existing review/RAG steps.
 - Future production retrieval hardening beyond local JSON plus mock retrieval.
 
@@ -231,6 +231,24 @@ Important P1-M12 boundary:
 - P1-M12 keeps all existing cleaning response fields and adds machine quality fields.
 - P1-M12 advanced cleaning remains deterministic Python logic with standard library helpers only.
 - P1-M12 does not implement manual cleaning UI, production data quality services, embeddings, vector database, database, ORM, real LLM, MCP, or P2/P3/P4 features.
+
+Important P1-M15 boundary:
+
+- P1-M15 is the final high-quality DataHub Phase 1 release.
+- P1-M15 does not add a new API surface.
+- P1-M15 verifies the existing API chain:
+  - import
+  - cleaning
+  - manual cleaning
+  - extraction
+  - review
+  - RAG build
+  - CustomerOpsAgent retrieval
+  - Bad Case feedback
+  - Bad Case to pending-review draft
+  - legacy RAG import
+- P1-M15 keeps storage as local JSON and retrieval as local keyword/mock retrieval.
+- P1-M15 does not introduce embeddings, a vector database, database, ORM, real LLM, production auth, MCP, or P2/P3/P4 features.
 
 ## 0A. Canonical State Names
 

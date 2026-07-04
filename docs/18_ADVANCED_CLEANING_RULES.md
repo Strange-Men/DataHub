@@ -227,3 +227,17 @@ Extraction behavior:
 Manual cleaning records are saved under `backend/storage/manual_cleaning_records/`, which remains ignored by Git.
 
 The detailed cleaner-facing guide is `docs/19_MANUAL_CLEANING_GUIDE.md`.
+
+## 13. P1-M15 Final Release Use
+
+P1-M15 validates that the machine cleaning fields defined here are not isolated metadata.
+
+They are used by the full P1 loop:
+
+- Cleaners inspect `quality_score`, `quality_level`, `suggested_action`, `cleaning_issues`, and `risk_flags`.
+- Manual cleaning can keep, edit, drop, or mark messages for review.
+- Extraction skips dropped or needs-review messages.
+- Reviewers inspect inherited cleaning issues and risk flags before approving candidates.
+- Only approved candidates can enter local RAG.
+
+P1-M15 does not change the deterministic rule-based nature of cleaning. It remains local Python logic without real LLM, embedding, database, ORM, or vector database integration.

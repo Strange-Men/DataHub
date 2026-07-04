@@ -269,3 +269,26 @@ P1-M14 preserves the P1 RAG boundary:
 - Only approved candidates can become local RAG chunks.
 - Pending, needs-revision, and rejected candidates cannot become chunks.
 - No production vector database, embedding model, database, ORM, real LLM, MCP, or P2/P3/P4 feature is introduced.
+
+## 15. P1-M15 Addendum
+
+P1-M15 completes the high-quality DataHub Phase 1 release on top of the unified RAG foundation.
+
+Added verification:
+
+- Advanced machine cleaning quality fields are present on sanitized messages.
+- Manual cleaning decisions guide extraction.
+- Knowledge review edits and approvals control RAG entry.
+- Approved candidates enter local RAG.
+- Pending, needs-revision, and rejected candidates remain outside RAG.
+- CustomerOpsAgent retrieval returns approved chunks with source trace.
+- Bad Cases bind to retrieval ids and create only pending-review drafts.
+- Legacy trusted imports still enter unified local RAG.
+- Repeated RAG build remains idempotent.
+
+Frontend update:
+
+- The Chinese admin console is upgraded to a dark data governance / AgentOps product interface.
+- P2/P3/P4 remain Roadmap / not connected.
+
+The final P1 report is `docs/21_P1_HIGH_QUALITY_DATAHUB_RELEASE_REPORT.md`.
