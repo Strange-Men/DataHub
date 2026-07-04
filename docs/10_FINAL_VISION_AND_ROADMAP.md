@@ -50,9 +50,10 @@ Phase 1 proves the governed knowledge lifecycle:
 
 Current status:
 
-- Implemented through M6 local RAG chunks and local mock retrieval.
-- CustomerOpsAgent production retrieval is not implemented yet.
-- Bad Case feedback is not implemented yet.
+- Implemented through P1-M9 core-loop release freeze.
+- Current retrieval is CustomerOpsAgent restricted local mock retrieval over approved local RAG chunks.
+- Bad Case feedback and Bad Case to `pending_review` draft creation are implemented.
+- P1-M9.5 public dataset evaluation, P1-M10 legacy RAG migration, and P1-M11 unified RAG release are not implemented yet.
 
 ### Phase 2: AI Material Center And Multimodal Knowledge
 
@@ -202,6 +203,9 @@ Customer chat logs
 -> Knowledge Extraction
 -> Human Review
 -> Local RAG Builder
+-> CustomerOpsAgent Restricted Retrieval
+-> Bad Case Feedback
+-> Bad Case To Pending Review Draft
 ```
 
 Future modules are real roadmap modules, not current implementation commitments.
@@ -218,7 +222,8 @@ Designed and implemented a DataHub data asset center for cross-border e-commerce
 
 Important wording rules:
 
-- Current completed work should be described as Phase 1 text customer service knowledge governance through M6 local mock RAG retrieval.
-- CustomerOpsAgent production retrieval is not implemented until M7.
-- Bad Case feedback is not implemented until M8.
+- Current completed work should be described as Phase 1 text customer service knowledge governance through P1-M9 core-loop freeze.
+- CustomerOpsAgent restricted retrieval is implemented locally from M7 onward.
+- Bad Case feedback is implemented from M8 onward.
+- Bad Case to pending-review draft creation is implemented from M8.5 onward.
 - Phase 2, Phase 3, and Phase 4 should be described as architecture reservations or roadmap extensions unless they are actually implemented later.

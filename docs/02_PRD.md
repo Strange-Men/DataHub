@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through M8.5
+### Currently Implemented Through P1-M9
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -90,6 +90,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Bad Case queue listing, detail lookup, and manual status / review note updates.
 - Human-triggered Bad Case conversion into new `pending_review` knowledge candidates.
 - Bad Case source trace on generated candidates.
+- P1 core-loop release freeze verification.
 
 ### Pending In Phase 1
 
@@ -99,6 +100,9 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Separate approved knowledge or knowledge asset version management.
 - Approval of Bad Case-generated drafts through the normal M5 review workflow.
 - RAG rebuild after approved Bad Case-generated drafts.
+- Public dataset evaluation.
+- CustomerOpsAgent legacy RAG migration into DataHub.
+- Unified CustomerOpsAgent RAG release.
 - Production retrieval/indexing beyond local mock RAG chunks.
 
 ### Phase 1: Text Customer Service Knowledge Loop

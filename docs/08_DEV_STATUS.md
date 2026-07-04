@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. Current checkpoint: M8.5 Bad Case resolution to draft.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. Current checkpoint: P1-M9 Phase-One Release Freeze.
 
 Current code remains Phase 1.
 
@@ -265,6 +265,23 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Extended Bad Case feedback tests to cover draft creation boundaries.
 - Confirmed M8.5 does not auto-approve candidates, modify existing candidates, modify RAG chunks, rebuild RAG, re-index, modify the CustomerOpsAgent repository, or introduce vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
 
+## Completed In P1-M9
+
+- Added `backend/tests/test_phase_one_flow.py` for full P1 core loop verification.
+- Added `docs/13_P1_RELEASE_FREEZE_REPORT.md`.
+- Verified the P1 core loop:
+  - JSON import
+  - cleaning and sanitization
+  - knowledge extraction
+  - human approval
+  - local RAG chunk build
+  - CustomerOpsAgent restricted retrieval
+  - Bad Case submission
+  - Bad Case to `pending_review` draft
+- Confirmed rejected and needs-revision candidates do not enter RAG.
+- Confirmed Bad Case-generated drafts are not auto-approved and do not modify RAG chunks.
+- Established phase-prefixed tag naming for new tags from P1-M9 onward.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -315,6 +332,10 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - pending-review candidate creation from Bad Cases
   - Bad Case source trace on generated candidates
   - linked_candidate_id recorded on Bad Cases
+- P1-M9 release freeze:
+  - full-chain verification
+  - release report
+  - phase-prefixed tag naming rule
 
 ### Current Forbidden Work
 
@@ -361,7 +382,9 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- M9 Phase-One Release Freeze.
+- P1-M9.5 Public Dataset Evaluation.
+- P1-M10 Legacy RAG Migration.
+- P1-M11 Unified RAG Release.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
 
@@ -389,7 +412,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports M8.5.
+- `/health` endpoint is defined and reports P1-M9.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -421,6 +444,7 @@ Still candidates:
 - M8.5 Bad Case to pending-review draft API is defined.
 - Bad Case-generated candidates are written to ignored local candidate storage.
 - Bad Case-generated candidates remain `pending_review`.
+- P1-M9 full-chain verification test is defined.
 - No Bad Case automatic approval, direct existing candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
@@ -562,20 +586,50 @@ Invoke-RestMethod `
   -Body '{"question":"Where is my order?","answer":"Please provide your order number or tracking number. If tracking is unavailable, we will escalate this to a human agent.","intent":"order_status","tags":["order","tracking","handoff"],"risk_level":"medium","quality_score":0.7,"knowledge_type":"faq"}'
 ```
 
+## Phase-Prefixed Tag Naming Rule
+
+Historical tags are kept as-is. Do not rewrite old tags.
+
+Starting from P1-M9, all new tags must use phase-prefixed naming.
+
+P1:
+
+- `p1-m9-phase-one-release-freeze`
+- `p1-m9.5-public-dataset-eval`
+- `p1-m10-legacy-rag-migration`
+- `p1-m11-unified-rag-release`
+
+P2:
+
+- `p2-m1-material-ingestion`
+- `p2-m2-multimodal-understanding`
+- `p2-m3-multimodal-review`
+- `p2-m4-multimodal-rag`
+
+P3:
+
+- `p3-m1-training-dataset-export`
+- `p3-m2-finetune-dataset-export`
+
+P4:
+
+- `p4-m1-mcp-tool-layer`
+- `p4-m2-agent-cluster-integration`
+
 ## Next Suggested Stage
 
 Continue Phase 1 only.
 
 Recommended option:
 
-- M9 Phase-One release freeze.
+- P1-M9.5 Public Dataset Evaluation.
 
-Before M9 starts:
+Before P1-M9.5 starts:
 
-- Confirm the full Phase 1 loop acceptance criteria.
-- Confirm remaining known limitations.
-- Confirm release verification and tag naming.
+- Confirm allowed public dataset source.
+- Confirm no real private customer data is used.
+- Confirm evaluation metrics and sample size.
 
-M8.5 must not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
+P1-M9 must not implement public dataset evaluation, legacy RAG migration, unified RAG switching, multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
 
 Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.

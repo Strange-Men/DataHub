@@ -197,18 +197,18 @@ Goal:
 
 Acceptance criteria:
 
-- Full flow works end to end:
+- P1 core flow works end to end:
 
 ```text
 import
 -> clean and desensitize
 -> extract drafts
 -> human review
--> index approved knowledge
+-> build local RAG chunks from approved candidates
 -> CustomerOpsAgent retrieval
 -> Bad Case feedback
 -> human correction
--> review and re-index
+-> pending_review draft creation
 ```
 
 - Security rules are verified.
@@ -216,7 +216,11 @@ import
 - Source traceability exists for approved knowledge.
 - Documentation reflects the implemented behavior.
 - Known limitations are recorded.
-- Git tag or release marker is created if the repository is initialized.
+- Git tag `p1-m9-phase-one-release-freeze` is created.
+- Historical tags are not moved, deleted, or renamed.
+- P1-M9.5 public dataset evaluation is not implemented.
+- P1-M10 legacy RAG migration is not implemented.
+- P1-M11 unified RAG release is not implemented.
 - Future extensions are documented but not implemented:
   - Multimodal.
   - MCP.
@@ -420,3 +424,21 @@ M8.5 is complete when:
 - RAG build is not triggered automatically.
 - The CustomerOpsAgent repository is not modified.
 - No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
+
+## P1-M9 Release Freeze Completion Check
+
+P1-M9 is complete when:
+
+- `backend/tests/test_phase_one_flow.py` verifies the P1 core loop.
+- `/health` reports `phase: P1-M9`.
+- Existing M6.5, M7.5, and M8.5 tests pass.
+- The release report exists at `docs/13_P1_RELEASE_FREEZE_REPORT.md`.
+- README documents P1-M9 status and remaining P1 milestones.
+- `docs/08_DEV_STATUS.md` and `docs/09_STAGE_CHECKLIST.md` document phase-prefixed tag naming.
+- P1-M9 tag is `p1-m9-phase-one-release-freeze`.
+- Rejected and needs-revision candidates are not chunked into RAG.
+- CustomerOpsAgent retrieval reads only approved local RAG chunks.
+- Bad Case-generated drafts remain `pending_review`.
+- Bad Case-generated drafts do not automatically approve, rebuild RAG, or re-index.
+- No CustomerOpsAgent repository changes are made.
+- No public dataset evaluation, legacy RAG migration, unified RAG switching, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.

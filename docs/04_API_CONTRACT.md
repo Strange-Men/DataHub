@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-M8.5
+Implemented APIs: M2-P1-M9
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -25,6 +25,7 @@ Implemented APIs: M2-M8.5
 - M7.5 CustomerOpsAgent retrieval contract polish, auth placeholder, and unified CustomerOps retrieval errors.
 - M8 CustomerOpsAgent Bad Case submission and DataHub Bad Case queue management.
 - M8.5 Bad Case conversion into pending-review knowledge candidate drafts.
+- P1-M9 phase-one release freeze verification; no new API surface.
 
 Planned Phase 1 APIs: M9
 

@@ -83,6 +83,7 @@ Customer chat logs
 -> CustomerOpsAgent Restricted Retrieval
 -> Bad Case Queue
 -> Bad Case To Draft
+-> P1 Core Loop Release Verification
 ```
 
 Current Phase 1 modules already started or implemented locally:
@@ -95,11 +96,15 @@ Current Phase 1 modules already started or implemented locally:
 - CustomerOpsAgent Restricted Retrieval.
 - Bad Case Queue.
 - Bad Case To Draft.
+- P1 Core Loop Release Verification.
 
 Future modules not implemented yet:
 
 - CustomerOpsAgent production vector retrieval beyond the M7 local restricted retrieval API.
 - Bad Case-generated draft approval and RAG rebuild beyond M8.5.
+- P1-M9.5 public dataset evaluation.
+- P1-M10 legacy RAG migration into DataHub.
+- P1-M11 unified RAG release.
 - Material Understanding.
 - Knowledge Asset Store beyond local files.
 - Dataset Export.

@@ -83,6 +83,36 @@ At the end of each stage, verify:
 - `docs/08_DEV_STATUS.md` is updated.
 - API, architecture, or acceptance docs are updated if behavior changed.
 
+## 7A. Phase-Prefixed Tag Naming Rule
+
+Historical tags are kept as-is. Do not rewrite old tags.
+
+Starting from P1-M9, all new tags must use phase-prefixed naming.
+
+P1:
+
+- `p1-m9-phase-one-release-freeze`
+- `p1-m9.5-public-dataset-eval`
+- `p1-m10-legacy-rag-migration`
+- `p1-m11-unified-rag-release`
+
+P2:
+
+- `p2-m1-material-ingestion`
+- `p2-m2-multimodal-understanding`
+- `p2-m3-multimodal-review`
+- `p2-m4-multimodal-rag`
+
+P3:
+
+- `p3-m1-training-dataset-export`
+- `p3-m2-finetune-dataset-export`
+
+P4:
+
+- `p4-m1-mcp-tool-layer`
+- `p4-m2-agent-cluster-integration`
+
 ## 8. M1 Completion Check
 
 M1 is complete when:
@@ -506,3 +536,36 @@ M8.5 is complete when:
 - No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
 - `backend/storage/` remains ignored by Git.
 - README, API contract, architecture, acceptance criteria, development status, stage checklist, and CustomerOps retrieval contract are updated.
+
+## 19. P1-M9 Phase-One Release Freeze Check
+
+P1-M9 is complete when:
+
+- `/health` reports `phase: P1-M9`.
+- `backend/tests/test_phase_one_flow.py` exists.
+- The P1 full-chain test covers:
+  - JSON import
+  - cleaning / sanitization
+  - extraction
+  - human approval
+  - local RAG build
+  - CustomerOpsAgent retrieval
+  - Bad Case submit
+  - Bad Case to `pending_review` draft
+- Existing tests still pass:
+  - `backend/tests/test_customerops_retrieval.py`
+  - `backend/tests/test_rag_quality.py`
+  - `backend/tests/test_bad_case_feedback.py`
+- Rejected and needs-revision candidates do not enter RAG.
+- Bad Case-generated drafts are not auto-approved.
+- Bad Case-generated drafts do not modify RAG chunks.
+- RAG is not rebuilt automatically by draft creation.
+- `docs/13_P1_RELEASE_FREEZE_REPORT.md` exists.
+- README and core docs describe the P1-M9 freeze status.
+- Version naming rules use phase-prefixed tags from P1-M9 onward.
+- Historical tags are not moved, deleted, or renamed.
+- P1-M9.5 public dataset evaluation is not implemented.
+- P1-M10 legacy RAG migration is not implemented.
+- P1-M11 unified RAG release is not implemented.
+- P2/P3/P4 features are not implemented.
+- `backend/storage/` remains ignored by Git.

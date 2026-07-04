@@ -117,7 +117,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M8.5",
+        "phase": "P1-M9",
     }
 
 

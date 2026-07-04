@@ -4,11 +4,11 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M8.5 Bad Case resolution to draft: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records, linked to a managed Bad Case queue, and converted by humans into new pending-review drafts.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at P1-M9 Phase-One Release Freeze: the P1 core loop has been verified from JSON chat import through Bad Case to pending-review draft creation.
 
 ## Current Scope
 
-Implemented through M8.5:
+Implemented through P1-M9:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -34,6 +34,7 @@ Implemented through M8.5:
 - CustomerOpsAgent Bad Case submission with `retrieval_id` validation.
 - Bad Case queue listing, detail lookup, and manual status/note updates.
 - Bad Case to pending-review knowledge candidate draft creation.
+- P1 core loop release freeze report and full-chain verification test.
 - Final vision and four-phase roadmap documentation.
 - Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
@@ -102,7 +103,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M8.5"
+  "phase": "P1-M9"
 }
 ```
 
@@ -648,6 +649,41 @@ python backend\tests\test_bad_case_feedback.py
 ```
 
 The test covers missing and ignored Bad Cases, invalid draft payloads, pending-review candidate creation, source trace preservation, Bad Case `linked_candidate_id` updates, and the boundary that draft creation does not auto-approve, modify RAG chunks, or auto-rebuild RAG.
+
+## P1-M9 Phase-One Release Freeze
+
+P1-M9 freezes and verifies the current Phase 1 core loop:
+
+```text
+JSON chat import
+-> cleaning / sanitization
+-> knowledge candidate extraction
+-> human review
+-> local RAG chunk build
+-> CustomerOpsAgent restricted retrieval
+-> Bad Case feedback
+-> Bad Case to pending_review draft
+```
+
+Release report:
+
+```text
+docs/13_P1_RELEASE_FREEZE_REPORT.md
+```
+
+Run the P1 core flow verification:
+
+```powershell
+python backend\tests\test_phase_one_flow.py
+```
+
+P1-M9 is not the final P1 unified RAG release. Remaining P1 milestones are:
+
+- `P1-M9.5 Public Dataset Evaluation`
+- `P1-M10 Legacy RAG Migration`
+- `P1-M11 Unified RAG Release`
+
+Starting from P1-M9, new Git tags use phase-prefixed names. Historical tags remain unchanged.
 
 ## Development Rules
 

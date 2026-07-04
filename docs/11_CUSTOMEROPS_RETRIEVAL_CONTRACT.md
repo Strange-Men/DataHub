@@ -7,7 +7,7 @@ This document defines the current DataHub retrieval contract for CustomerOpsAgen
 Current related stage:
 
 ```text
-M8.5 Bad Case Resolution To Draft
+P1-M9 Phase-One Release Freeze
 ```
 
 The contract is read-only and restricted to approved local RAG chunks.
@@ -86,6 +86,8 @@ M8 still does not support:
 - Production authentication.
 
 M8.5 implements human-triggered Bad Case conversion into new `pending_review` drafts. It does not approve those drafts or put them into RAG.
+
+P1-M9 freezes and verifies this contract as part of the Phase 1 core loop. It does not add new CustomerOpsAgent-facing APIs beyond the M7/M8 surface.
 
 ## 6. CustomerOpsAgent Rules
 
