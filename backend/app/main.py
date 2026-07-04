@@ -1,6 +1,7 @@
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import JSONResponse
 
 from app.schemas import (
     ApiResponse,
@@ -35,12 +36,46 @@ from app.storage import (
 app = FastAPI(title="DataHub API", version="0.1.0")
 
 
+def _request_id() -> str:
+    return f"req_{uuid4().hex[:12]}"
+
+
+def _customerops_error(
+    code: str,
+    message: str,
+    status_code: int,
+    details: dict[str, object] | None = None,
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "success": False,
+            "error": {
+                "code": code,
+                "message": message,
+                "details": details or {},
+            },
+            "requestId": _request_id(),
+        },
+    )
+
+
+def _authorize_customerops_client(client_header: str | None) -> JSONResponse | None:
+    if client_header != "CustomerOpsAgent":
+        return _customerops_error(
+            code="UNAUTHORIZED_CLIENT",
+            message="CustomerOpsAgent client header is required.",
+            status_code=401,
+        )
+    return None
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M7",
+        "phase": "M7.5",
     }
 
 
@@ -50,7 +85,7 @@ def import_json_source(payload: ImportJsonRequest) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=metadata.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -60,7 +95,7 @@ def list_sources() -> ApiResponse:
     return ApiResponse(
         success=True,
         data={"sources": batches},
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -78,7 +113,7 @@ def get_source(batch_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=metadata.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -96,7 +131,7 @@ def run_cleaning_for_source(batch_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=job.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -114,7 +149,7 @@ def get_cleaning_job_status(job_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=job.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -132,7 +167,7 @@ def get_sanitized_source(batch_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=sanitized.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -150,7 +185,7 @@ def run_extraction_for_sanitized_batch(batch_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=job.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -168,7 +203,7 @@ def get_extraction_job_status(job_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=job.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -178,7 +213,7 @@ def list_candidates() -> ApiResponse:
     return ApiResponse(
         success=True,
         data={"candidates": candidates},
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -196,7 +231,7 @@ def get_candidate(candidate_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=candidate.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -206,7 +241,7 @@ def list_pending_review() -> ApiResponse:
     return ApiResponse(
         success=True,
         data={"candidates": candidates},
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -224,7 +259,7 @@ def update_candidate(candidate_id: str, payload: CandidateUpdateRequest) -> ApiR
     return ApiResponse(
         success=True,
         data=candidate.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -241,7 +276,7 @@ def _review_response(candidate_id: str, status: str, payload: ReviewDecisionRequ
     return ApiResponse(
         success=True,
         data=candidate.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -266,7 +301,7 @@ def build_local_rag_chunks() -> ApiResponse:
     return ApiResponse(
         success=True,
         data=result.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -276,7 +311,7 @@ def list_local_rag_chunks() -> ApiResponse:
     return ApiResponse(
         success=True,
         data={"chunks": chunks},
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -294,7 +329,7 @@ def get_local_rag_chunk(chunk_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=chunk.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
@@ -332,59 +367,65 @@ def search_local_rag_chunks(payload: RagSearchRequest) -> ApiResponse:
     return ApiResponse(
         success=True,
         data={"results": results},
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
-@app.post("/api/customer-ops-agent/retrieve", response_model=ApiResponse)
-def retrieve_for_customerops_agent(payload: CustomerOpsRetrievalRequest) -> ApiResponse:
+@app.post("/api/customer-ops-agent/retrieve", response_model=None)
+def retrieve_for_customerops_agent(
+    payload: CustomerOpsRetrievalRequest,
+    x_datahub_client: str | None = Header(default=None, alias="X-DataHub-Client"),
+) -> ApiResponse | JSONResponse:
+    auth_error = _authorize_customerops_client(x_datahub_client)
+    if auth_error is not None:
+        return auth_error
+
     query = payload.query.strip()
     if not query:
-        raise HTTPException(
+        return _customerops_error(
+            code="INVALID_QUERY",
+            message="Query must not be empty.",
             status_code=400,
-            detail={
-                "code": "INVALID_QUERY",
-                "message": "Query must not be empty.",
-            },
         )
     if len(query) > 500:
-        raise HTTPException(
+        return _customerops_error(
+            code="QUERY_TOO_LONG",
+            message="Query must be 500 characters or fewer.",
             status_code=400,
-            detail={
-                "code": "QUERY_TOO_LONG",
-                "message": "Query must be 500 characters or fewer.",
-            },
         )
     if payload.top_k < 1 or payload.top_k > 10:
-        raise HTTPException(
+        return _customerops_error(
+            code="INVALID_TOP_K",
+            message="top_k must be between 1 and 10.",
             status_code=400,
-            detail={
-                "code": "INVALID_TOP_K",
-                "message": "top_k must be between 1 and 10.",
-            },
         )
 
     retrieval = run_customerops_retrieval(payload, query, payload.top_k)
     return ApiResponse(
         success=True,
         data=retrieval.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )
 
 
-@app.get("/api/customer-ops-agent/retrievals/{retrieval_id}", response_model=ApiResponse)
-def get_customerops_retrieval(retrieval_id: str) -> ApiResponse:
+@app.get("/api/customer-ops-agent/retrievals/{retrieval_id}", response_model=None)
+def get_customerops_retrieval(
+    retrieval_id: str,
+    x_datahub_client: str | None = Header(default=None, alias="X-DataHub-Client"),
+) -> ApiResponse | JSONResponse:
+    auth_error = _authorize_customerops_client(x_datahub_client)
+    if auth_error is not None:
+        return auth_error
+
     trace = get_customerops_retrieval_trace(retrieval_id)
     if trace is None:
-        raise HTTPException(
+        return _customerops_error(
+            code="RETRIEVAL_NOT_FOUND",
+            message="Retrieval trace was not found.",
             status_code=404,
-            detail={
-                "code": "RETRIEVAL_NOT_FOUND",
-                "message": "Retrieval trace was not found.",
-            },
         )
     return ApiResponse(
         success=True,
         data=trace.model_dump(),
-        requestId=f"req_{uuid4().hex[:12]}",
+        requestId=_request_id(),
     )

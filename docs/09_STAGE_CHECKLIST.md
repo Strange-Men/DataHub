@@ -370,3 +370,51 @@ M7 is complete when:
 - No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
 - `backend/storage/` remains ignored by Git.
 - `docs/04_API_CONTRACT.md`, `docs/07_ACCEPTANCE_CRITERIA.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `README.md` are updated.
+
+## 16. M7.5 Retrieval Contract Polish Check
+
+M7.5 is complete when:
+
+- `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md` exists.
+- The contract document defines current APIs:
+  - `POST /api/customer-ops-agent/retrieve`
+  - `GET /api/customer-ops-agent/retrievals/{retrieval_id}`
+- The contract document explains current capabilities:
+  - read-only retrieval
+  - approved local `rag_chunked` results only
+  - `retrieval_id`
+  - source trace
+  - matched terms
+  - score
+- The contract document explains current non-capabilities:
+  - no Bad Case submit
+  - no real vector database
+  - no embedding
+  - no real LLM
+  - no database
+  - no direct knowledge mutation
+- Both CustomerOpsAgent retrieval APIs require:
+  - `X-DataHub-Client: CustomerOpsAgent`
+- Missing or invalid client header returns `UNAUTHORIZED_CLIENT`.
+- The header is documented as a local development auth placeholder only.
+- No API key, real token, or `.env` secret is introduced.
+- CustomerOpsAgent retrieval errors use the safe structured shape:
+  - `success: false`
+  - `error.code`
+  - `error.message`
+  - `error.details`
+  - `requestId`
+- Tests cover:
+  - missing client header
+  - wrong client header
+  - valid client header
+  - empty query
+  - overlong query
+  - `top_k` below 1
+  - `top_k` above 10
+  - missing retrieval trace
+  - approved-only result trace fields
+- README and API contract include PowerShell examples with the required header.
+- CustomerOpsAgent repository is not modified.
+- No Bad Case API, Bad Case UI, human correction workflow, production auth, vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
+- `backend/storage/` remains ignored by Git.

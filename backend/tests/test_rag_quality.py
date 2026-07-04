@@ -48,11 +48,13 @@ class RagQualityTest(unittest.TestCase):
     def test_rag_build_is_approved_only_and_idempotent(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "M7")
+        self.assertEqual(health.json()["phase"], "M7.5")
 
         candidates = [
             *self._create_candidates("a"),
             *self._create_candidates("b"),
+            *self._create_candidates("c"),
+            *self._create_candidates("d"),
         ]
         self.assertGreaterEqual(len(candidates), 4)
 

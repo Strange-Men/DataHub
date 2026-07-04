@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-M7
+Implemented APIs: M2-M7.5
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -22,6 +22,7 @@ Implemented APIs: M2-M7
 - M6 local RAG chunk build and local mock search.
 - M6.5 local RAG quality hardening.
 - M7 CustomerOpsAgent restricted retrieval over approved local RAG chunks.
+- M7.5 CustomerOpsAgent retrieval contract polish, auth placeholder, and unified CustomerOps retrieval errors.
 
 Planned Phase 1 APIs: M8
 
@@ -50,6 +51,14 @@ Important M7 boundary:
 - M7 does not modify the CustomerOpsAgent repository.
 - M7 does not implement Bad Case feedback.
 - M7 does not use embeddings, a real vector database, database, ORM, real LLM, or production RAG index.
+
+Important M7.5 boundary:
+
+- CustomerOpsAgent retrieval APIs require `X-DataHub-Client: CustomerOpsAgent`.
+- This header is a local development auth placeholder, not production authentication.
+- M7.5 does not introduce API keys, real tokens, or `.env` secrets.
+- M7.5 does not implement Bad Case feedback.
+- The detailed CustomerOpsAgent contract is documented in `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md`.
 
 ## 0A. Canonical State Names
 
@@ -1046,9 +1055,22 @@ Hard rule:
 
 ## 9. CustomerOpsAgent Integration
 
-### 9.1 Implemented API: CustomerOpsAgent Restricted Retrieval (M7)
+### 9.1 Implemented API: CustomerOpsAgent Restricted Retrieval (M7/M7.5)
 
 `POST /api/customer-ops-agent/retrieve`
+
+Required header:
+
+```text
+X-DataHub-Client: CustomerOpsAgent
+```
+
+Auth placeholder:
+
+- The header is required for local development.
+- This is not production authentication.
+- Missing or invalid header returns `UNAUTHORIZED_CLIENT`.
+- No API key, real token, or `.env` secret is introduced in M7.5.
 
 Request:
 
@@ -1130,13 +1152,34 @@ Forbidden:
 
 Possible errors:
 
+- `UNAUTHORIZED_CLIENT`
 - `INVALID_QUERY`
 - `QUERY_TOO_LONG`
 - `INVALID_TOP_K`
 
-### 9.2 Implemented API: CustomerOpsAgent Retrieval Trace Lookup (M7)
+Error shape:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED_CLIENT",
+    "message": "CustomerOpsAgent client header is required.",
+    "details": {}
+  },
+  "requestId": "req_abc123"
+}
+```
+
+### 9.2 Implemented API: CustomerOpsAgent Retrieval Trace Lookup (M7/M7.5)
 
 `GET /api/customer-ops-agent/retrievals/{retrieval_id}`
+
+Required header:
+
+```text
+X-DataHub-Client: CustomerOpsAgent
+```
 
 Response:
 
@@ -1171,7 +1214,25 @@ Storage:
 
 Possible errors:
 
+- `UNAUTHORIZED_CLIENT`
 - `RETRIEVAL_NOT_FOUND`
+
+PowerShell examples:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/retrieve `
+  -Method Post `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"} `
+  -ContentType 'application/json' `
+  -Body '{"query":"shipping Germany","top_k":5}'
+```
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/retrievals/{retrieval_id} `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"}
+```
 
 ### 9.3 Planned Phase 1 API: CustomerOpsAgent Bad Case Feedback (M8, Not Implemented)
 

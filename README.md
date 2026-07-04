@@ -4,11 +4,11 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M7 CustomerOpsAgent restricted retrieval: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, and served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M7.5 retrieval contract polish: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, and served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records and a local development auth placeholder.
 
 ## Current Scope
 
-Implemented through M7:
+Implemented through M7.5:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -28,6 +28,9 @@ Implemented through M7:
 - Search debug output with `matched_terms` and source trace.
 - CustomerOpsAgent restricted retrieval API over approved local RAG chunks.
 - Retrieval trace lookup for later M8 Bad Case linkage.
+- Local development auth placeholder for CustomerOpsAgent retrieval: `X-DataHub-Client: CustomerOpsAgent`.
+- Unified safe error responses for CustomerOpsAgent retrieval APIs.
+- CustomerOpsAgent retrieval contract document.
 - Final vision and four-phase roadmap documentation.
 - Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
@@ -95,7 +98,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M7"
+  "phase": "M7.5"
 }
 ```
 
@@ -434,7 +437,7 @@ python backend\tests\test_rag_quality.py
 
 The test covers approved-only chunking, repeated build idempotency, safe search validation, source trace, and the absence of Bad Case routes.
 
-## M7 CustomerOpsAgent Restricted Retrieval
+## M7 / M7.5 CustomerOpsAgent Restricted Retrieval
 
 Retrieval traces are saved locally under:
 
@@ -454,6 +457,9 @@ Rules:
 
 - CustomerOpsAgent retrieval reads only from `backend/storage/rag_chunks/`.
 - Only approved local RAG chunks can be returned.
+- CustomerOpsAgent retrieval requires `X-DataHub-Client: CustomerOpsAgent`.
+- The header is a local development auth placeholder, not production authentication.
+- No API key or real token is introduced.
 - Raw batches, sanitized batches, and knowledge candidates are not read directly by the CustomerOpsAgent endpoint.
 - Each retrieval creates a `retrieval_id` for later M8 Bad Case linkage.
 - Retrieval traces store metadata only: query, top_k, filters, result count, result chunk ids, optional conversation/session ids, created time, and retrieval mode.
@@ -467,6 +473,7 @@ Retrieve for CustomerOpsAgent:
 Invoke-RestMethod `
   -Uri http://127.0.0.1:8000/api/customer-ops-agent/retrieve `
   -Method Post `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"} `
   -ContentType 'application/json' `
   -Body '{"query":"shipping Germany","top_k":5}'
 ```
@@ -474,7 +481,15 @@ Invoke-RestMethod `
 Read retrieval trace:
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8000/api/customer-ops-agent/retrievals/{retrieval_id}
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/retrievals/{retrieval_id} `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"}
+```
+
+CustomerOpsAgent retrieval contract:
+
+```text
+docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md
 ```
 
 Frontend M7 verification:
@@ -495,7 +510,7 @@ Lightweight M7 verification:
 python backend\tests\test_customerops_retrieval.py
 ```
 
-The test covers the full M2-M7 path, approved-only retrieval, retrieval trace lookup, safe query/top_k errors, and the absence of Bad Case APIs.
+The test covers the full M2-M7.5 path, auth placeholder errors, approved-only retrieval, retrieval trace lookup, safe query/top_k errors, and the absence of Bad Case APIs.
 
 ## Development Rules
 

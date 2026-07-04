@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. Current checkpoint: M7 CustomerOpsAgent restricted retrieval.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. Current checkpoint: M7.5 retrieval contract polish.
 
 Current code remains Phase 1.
 
@@ -195,6 +195,32 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Confirmed M7 does not modify the CustomerOpsAgent repository.
 - Confirmed M7 does not implement Bad Case, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
 
+## Completed In M7.5
+
+- Added `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md`.
+- Added local development auth placeholder for CustomerOpsAgent retrieval APIs:
+  - `X-DataHub-Client: CustomerOpsAgent`
+- Required the auth placeholder on:
+  - `POST /api/customer-ops-agent/retrieve`
+  - `GET /api/customer-ops-agent/retrievals/{retrieval_id}`
+- Unified CustomerOpsAgent retrieval API error responses into:
+  - `success: false`
+  - `error.code`
+  - `error.message`
+  - `error.details`
+  - `requestId`
+- Added test coverage for:
+  - missing client header
+  - invalid client header
+  - valid client header
+  - empty query
+  - overlong query
+  - `top_k` below 1
+  - `top_k` above 10
+  - missing retrieval trace
+- Updated README, API contract, acceptance criteria, development status, and stage checklist.
+- Confirmed M7.5 does not introduce API keys, real tokens, `.env` secrets, production auth, Bad Case, CustomerOpsAgent repository changes, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -231,6 +257,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - retrieval trace lookup
   - local retrieval log storage
   - source trace in results
+- M7.5 retrieval contract polish:
+  - CustomerOpsAgent contract document
+  - local auth placeholder header
+  - unified CustomerOps retrieval error responses
+  - PowerShell examples with headers
 
 ### Current Forbidden Work
 
@@ -245,6 +276,9 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Bad Case feedback.
 - Bad Case API or UI.
 - Human correction workflow.
+- Production authentication.
+- API key or real token introduction.
+- `.env` secret introduction.
 - Treating local RAG test as CustomerOpsAgent production retrieval.
 - Real vector database integration.
 - Embedding model integration.
@@ -272,7 +306,6 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- M7.5 retrieval contract polish if another M7 hardening round is explicitly requested.
 - M8 Bad Case Feedback.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
@@ -323,6 +356,8 @@ Still candidates:
 - M7 CustomerOpsAgent retrieval endpoints are defined.
 - CustomerOpsAgent retrieval reads only local RAG chunks.
 - CustomerOpsAgent retrieval returns only approved local `rag_chunked` results.
+- CustomerOpsAgent retrieval requires `X-DataHub-Client: CustomerOpsAgent`.
+- CustomerOpsAgent retrieval errors use the unified safe error shape.
 - Retrieval traces are written to ignored local storage.
 - No Bad Case workflow, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
@@ -432,10 +467,9 @@ Invoke-RestMethod http://127.0.0.1:8000/api/customer-ops-agent/retrievals/{retri
 
 Continue Phase 1 only.
 
-Recommended options:
+Recommended option:
 
-- M7.5 retrieval contract polish if another M7 hardening round is explicitly requested.
-- M8 Bad Case feedback planning.
+- M8 Bad Case feedback planning and implementation.
 
 Before M8 starts:
 

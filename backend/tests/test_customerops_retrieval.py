@@ -45,14 +45,33 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
             if candidate["source_batch_id"] == batch_id
         ]
 
+    def _customerops_headers(self) -> dict[str, str]:
+        return {"X-DataHub-Client": "CustomerOpsAgent"}
+
+    def _assert_customerops_error(
+        self,
+        response,
+        status_code: int,
+        code: str,
+    ) -> None:
+        self.assertEqual(response.status_code, status_code, response.text)
+        body = response.json()
+        self.assertFalse(body["success"])
+        self.assertEqual(body["error"]["code"], code)
+        self.assertIn("message", body["error"])
+        self.assertEqual(body["error"]["details"], {})
+        self.assertTrue(body["requestId"].startswith("req_"))
+
     def test_customerops_retrieval_is_restricted_and_traceable(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "M7")
+        self.assertEqual(health.json()["phase"], "M7.5")
 
         candidates = [
             *self._create_candidates("a"),
             *self._create_candidates("b"),
+            *self._create_candidates("c"),
+            *self._create_candidates("d"),
         ]
         self.assertGreaterEqual(len(candidates), 4)
 
@@ -105,8 +124,30 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
         built = self.client.post("/api/rag/build")
         self.assertEqual(built.status_code, 200, built.text)
 
+        missing_header = self.client.post(
+            "/api/customer-ops-agent/retrieve",
+            json={"query": unique_term, "top_k": 5},
+        )
+        self._assert_customerops_error(
+            missing_header,
+            401,
+            "UNAUTHORIZED_CLIENT",
+        )
+
+        wrong_header = self.client.post(
+            "/api/customer-ops-agent/retrieve",
+            headers={"X-DataHub-Client": "OtherAgent"},
+            json={"query": unique_term, "top_k": 5},
+        )
+        self._assert_customerops_error(
+            wrong_header,
+            401,
+            "UNAUTHORIZED_CLIENT",
+        )
+
         retrieved = self.client.post(
             "/api/customer-ops-agent/retrieve",
+            headers=self._customerops_headers(),
             json={
                 "query": unique_term,
                 "top_k": 5,
@@ -143,7 +184,8 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
             self.assertTrue(forbidden_fields.isdisjoint(item.keys()))
 
         trace = self.client.get(
-            f"/api/customer-ops-agent/retrievals/{data['retrieval_id']}"
+            f"/api/customer-ops-agent/retrievals/{data['retrieval_id']}",
+            headers=self._customerops_headers(),
         )
         self.assertEqual(trace.status_code, 200, trace.text)
         trace_data = trace.json()["data"]
@@ -155,24 +197,46 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
 
         empty_query = self.client.post(
             "/api/customer-ops-agent/retrieve",
+            headers=self._customerops_headers(),
             json={"query": "   ", "top_k": 5},
         )
-        self.assertEqual(empty_query.status_code, 400)
-        self.assertEqual(empty_query.json()["detail"]["code"], "INVALID_QUERY")
+        self._assert_customerops_error(empty_query, 400, "INVALID_QUERY")
 
         long_query = self.client.post(
             "/api/customer-ops-agent/retrieve",
+            headers=self._customerops_headers(),
             json={"query": "x" * 501, "top_k": 5},
         )
-        self.assertEqual(long_query.status_code, 400)
-        self.assertEqual(long_query.json()["detail"]["code"], "QUERY_TOO_LONG")
+        self._assert_customerops_error(long_query, 400, "QUERY_TOO_LONG")
+
+        low_top_k = self.client.post(
+            "/api/customer-ops-agent/retrieve",
+            headers=self._customerops_headers(),
+            json={"query": "shipping", "top_k": 0},
+        )
+        self._assert_customerops_error(low_top_k, 400, "INVALID_TOP_K")
 
         bad_top_k = self.client.post(
             "/api/customer-ops-agent/retrieve",
+            headers=self._customerops_headers(),
             json={"query": "shipping", "top_k": 11},
         )
-        self.assertEqual(bad_top_k.status_code, 400)
-        self.assertEqual(bad_top_k.json()["detail"]["code"], "INVALID_TOP_K")
+        self._assert_customerops_error(bad_top_k, 400, "INVALID_TOP_K")
+
+        missing_trace_header = self.client.get(
+            "/api/customer-ops-agent/retrievals/retrieval_missing"
+        )
+        self._assert_customerops_error(
+            missing_trace_header,
+            401,
+            "UNAUTHORIZED_CLIENT",
+        )
+
+        missing_trace = self.client.get(
+            "/api/customer-ops-agent/retrievals/retrieval_missing",
+            headers=self._customerops_headers(),
+        )
+        self._assert_customerops_error(missing_trace, 404, "RETRIEVAL_NOT_FOUND")
 
         routes = {route.path for route in app.routes}
         self.assertTrue("/api/customer-ops-agent/retrieve" in routes)

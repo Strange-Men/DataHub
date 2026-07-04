@@ -283,6 +283,35 @@ M7 is complete when:
 - M7 remains local JSON plus keyword/mock retrieval only.
 - No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
 
+## M7.5 Retrieval Contract Polish Completion Check
+
+M7.5 is complete when:
+
+- `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md` exists.
+- The contract document defines:
+  - `POST /api/customer-ops-agent/retrieve`
+  - `GET /api/customer-ops-agent/retrievals/{retrieval_id}`
+  - required `X-DataHub-Client: CustomerOpsAgent` header
+  - current capabilities
+  - current non-capabilities
+  - CustomerOpsAgent do/don't rules
+  - PowerShell examples
+  - M8 `retrieval_id` linkage
+- Both CustomerOpsAgent retrieval APIs require the local auth placeholder header.
+- Missing or invalid `X-DataHub-Client` returns `UNAUTHORIZED_CLIENT`.
+- CustomerOpsAgent retrieval API errors use the safe structure:
+  - `success: false`
+  - `error.code`
+  - `error.message`
+  - `error.details`
+  - `requestId`
+- Empty query returns `INVALID_QUERY`.
+- Overlong query returns `QUERY_TOO_LONG`.
+- `top_k` below 1 or above 10 returns `INVALID_TOP_K`.
+- Missing retrieval trace returns `RETRIEVAL_NOT_FOUND`.
+- No RAG chunks still returns an empty result list, not an error.
+- No API key, real token, `.env` secret, production auth, Bad Case API, CustomerOpsAgent repository change, vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
+
 ## Future Phase Acceptance Outline
 
 These outlines describe the long-term product roadmap. They are not permission to start implementation before Phase 1 is accepted.

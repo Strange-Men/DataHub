@@ -275,6 +275,8 @@ Responsibilities:
 - In M7, retrieval-ready means approved local `rag_chunked` records from `backend/storage/rag_chunks/`.
 - Include source trace, retrieval id, and knowledge type metadata.
 - Apply request validation and access boundaries.
+- In M7.5, require `X-DataHub-Client: CustomerOpsAgent` as a local development auth placeholder.
+- M7.5 auth placeholder is not a production token, API key, or `.env` secret.
 
 Must enforce:
 

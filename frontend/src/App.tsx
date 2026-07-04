@@ -550,7 +550,8 @@ export function App() {
       const response = await fetch("/api/rag/search", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "X-DataHub-Client": "CustomerOpsAgent"
         },
         body: JSON.stringify({
           query: ragQuery.trim(),
@@ -1243,6 +1244,7 @@ export function App() {
             This is DataHub's restricted API for approved rag_chunked results.
             The CustomerOpsAgent repository has not been modified, Bad Case is
             not implemented, and retrieval still uses local keyword/mock scoring.
+            The test sends the local X-DataHub-Client header placeholder.
           </p>
           <div className="search-row">
             <label>
