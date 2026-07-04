@@ -68,13 +68,15 @@ class SanitizedBatch(BaseModel):
 
 class KnowledgeCandidate(BaseModel):
     candidate_id: str
-    source_type: Literal["sanitized_batch", "bad_case"] = "sanitized_batch"
+    source_type: Literal["sanitized_batch", "bad_case", "legacy_rag"] = "sanitized_batch"
     source_batch_id: str | None = None
-    source_conversation_id: str
+    source_conversation_id: str | None = None
     source_message_ids: list[str]
     source_bad_case_id: str | None = None
     source_retrieval_id: str | None = None
     source_chunk_ids: list[str] = Field(default_factory=list)
+    source_legacy_id: str | None = None
+    source_import_id: str | None = None
     linked_candidate_id: str | None = None
     knowledge_type: Literal[
         "faq",
@@ -98,7 +100,13 @@ class KnowledgeCandidate(BaseModel):
     risk_level: Literal["low", "medium", "high"]
     review_status: Literal["pending_review", "needs_revision", "approved", "rejected"]
     quality_score: float
-    extraction_method: Literal["rule_based_mock", "bad_case_resolution"]
+    extraction_method: Literal[
+        "rule_based_mock",
+        "bad_case_resolution",
+        "legacy_rag_migration",
+    ]
+    migration_mode: Literal["trusted_import", "review_required"] | None = None
+    source_note: str | None = None
     created_at: str
     reviewer: str | None = None
     review_note: str | None = None
@@ -140,9 +148,17 @@ class ReviewRecord(BaseModel):
 class RagChunk(BaseModel):
     chunk_id: str
     candidate_id: str
-    source_batch_id: str
-    source_conversation_id: str
+    source_type: Literal["sanitized_batch", "bad_case", "legacy_rag"] = "sanitized_batch"
+    source_batch_id: str | None = None
+    source_conversation_id: str | None = None
     source_message_ids: list[str]
+    source_bad_case_id: str | None = None
+    source_retrieval_id: str | None = None
+    source_chunk_ids: list[str] = Field(default_factory=list)
+    source_legacy_id: str | None = None
+    source_import_id: str | None = None
+    migration_mode: Literal["trusted_import", "review_required"] | None = None
+    source_note: str | None = None
     knowledge_type: Literal[
         "faq",
         "standard_answer",
@@ -189,9 +205,17 @@ class RagSearchResult(BaseModel):
     matched_terms: list[str]
     chunk_id: str
     candidate_id: str
-    source_batch_id: str
-    source_conversation_id: str
+    source_type: str
+    source_batch_id: str | None = None
+    source_conversation_id: str | None = None
     source_message_ids: list[str]
+    source_bad_case_id: str | None = None
+    source_retrieval_id: str | None = None
+    source_chunk_ids: list[str] = Field(default_factory=list)
+    source_legacy_id: str | None = None
+    source_import_id: str | None = None
+    migration_mode: str | None = None
+    source_note: str | None = None
     knowledge_type: str
     intent: str
     tags: list[str]
@@ -300,6 +324,57 @@ class BadCaseDraftRequest(BaseModel):
     knowledge_type: str = Field(default="faq", max_length=80)
     reviewer: str | None = Field(default=None, max_length=120)
     review_note: str | None = Field(default=None, max_length=2000)
+
+
+class LegacyRagItem(BaseModel):
+    legacy_id: str = Field(min_length=1, max_length=160)
+    question: str = Field(min_length=1, max_length=500)
+    answer: str = Field(min_length=1, max_length=2000)
+    intent: Literal[
+        "shipping",
+        "refund",
+        "order_status",
+        "product_info",
+        "handoff",
+        "prohibited_answer",
+        "general",
+    ] = "general"
+    tags: list[str] = Field(default_factory=list)
+    risk_level: Literal["low", "medium", "high"] = "medium"
+    quality_score: float = Field(default=0.75, ge=0, le=1)
+    knowledge_type: Literal[
+        "faq",
+        "standard_answer",
+        "business_rule",
+        "human_handoff_rule",
+        "forbidden_answer_rule",
+    ] = "faq"
+    source_note: str | None = Field(default=None, max_length=1000)
+
+
+class LegacyRagImportRequest(BaseModel):
+    source_name: str = Field(min_length=1, max_length=160)
+    source_type: Literal["legacy_rag"] = "legacy_rag"
+    trusted_import: bool = False
+    exported_at: str | None = Field(default=None, max_length=80)
+    items: list[LegacyRagItem] = Field(min_length=1)
+
+
+class LegacyRagImportMetadata(BaseModel):
+    import_id: str
+    source_name: str
+    source_type: Literal["legacy_rag"]
+    trusted_import: bool
+    migration_mode: Literal["trusted_import", "review_required"]
+    item_count: int
+    created_candidate_count: int
+    updated_count: int
+    approved_count: int
+    pending_review_count: int
+    skipped_count: int
+    skipped_reasons: dict[str, int]
+    created_at: str
+    candidate_ids: list[str]
 
 
 class ExtractionJobMetadata(BaseModel):

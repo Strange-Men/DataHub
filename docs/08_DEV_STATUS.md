@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. Current checkpoint: P1-M9.5 Public Dataset Evaluation.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. Current checkpoint: P1-M10 Legacy RAG Migration.
 
 Current code remains Phase 1.
 
@@ -302,6 +302,31 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - Bad Case to `pending_review` draft
 - Confirmed P1-M9.5 does not migrate CustomerOpsAgent legacy RAG, switch unified RAG, implement P2/P3/P4, or introduce database, ORM, embedding, vector database, or real LLM integrations.
 
+## Completed In P1-M10
+
+- Added legacy RAG import API: `POST /api/legacy-rag/import`.
+- Added legacy import listing API: `GET /api/legacy-rag/imports`.
+- Added legacy import detail API: `GET /api/legacy-rag/imports/{import_id}`.
+- Added fake legacy RAG export sample at `samples/legacy_rag_export_sample.json`.
+- Added legacy import metadata storage under `backend/storage/legacy_rag_imports/`.
+- Converted legacy RAG items into normal DataHub knowledge candidates.
+- Added legacy candidate trace fields:
+  - `source_type: legacy_rag`
+  - `source_legacy_id`
+  - `source_import_id`
+  - `migration_mode`
+  - `source_note`
+- Added `trusted_import=true` mode for approved legacy candidates.
+- Added `trusted_import=false` mode for pending-review legacy candidates.
+- Added stable candidate ids derived from `source_name + legacy_id`.
+- Added duplicate import protection so repeated imports do not create duplicate candidates.
+- Propagated legacy source trace into RAG chunks and CustomerOpsAgent retrieval results.
+- Added `backend/tests/test_legacy_rag_migration.py`.
+- Added `docs/15_LEGACY_RAG_MIGRATION_REPORT.md`.
+- Confirmed P1-M10 does not read or modify the CustomerOpsAgent repository.
+- Confirmed P1-M10 does not switch CustomerOpsAgent to DataHub-only retrieval.
+- Confirmed P1-M10 does not introduce database, ORM, embedding, vector database, real LLM, or P2/P3/P4 features.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -361,6 +386,12 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - conversion script
   - evaluation runner
   - report and automated public sample flow test
+- P1-M10 legacy RAG migration:
+  - fake legacy RAG export sample
+  - DataHub-side legacy import APIs
+  - trusted and review-required migration modes
+  - idempotent legacy candidate generation
+  - legacy source trace through candidate, chunk, and retrieval
 
 ### Current Forbidden Work
 
@@ -407,7 +438,6 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- P1-M10 Legacy RAG Migration.
 - P1-M11 Unified RAG Release.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
@@ -436,7 +466,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports P1-M9.
+- `/health` endpoint is defined and reports P1-M10.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -472,6 +502,12 @@ Still candidates:
 - P1-M9.5 public dataset evaluation test is defined.
 - `samples/public_dataset_eval_sample.json` contains only a small public converted sample.
 - Full public dataset files are not committed.
+- P1-M10 legacy RAG import endpoints are defined.
+- Legacy candidates are written to ignored local candidate storage.
+- Legacy import metadata is written to ignored local storage.
+- Trusted legacy candidates can become local RAG chunks.
+- Review-required legacy candidates remain out of RAG.
+- CustomerOpsAgent retrieval can return legacy chunks with source trace.
 - No Bad Case automatic approval, direct existing candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
@@ -649,14 +685,14 @@ Continue Phase 1 only.
 
 Recommended option:
 
-- P1-M10 Legacy RAG Migration.
+- P1-M11 Unified RAG Release.
 
-Before P1-M10 starts:
+Before P1-M11 starts:
 
-- Confirm the exact CustomerOpsAgent legacy RAG source location.
-- Confirm migration will not bypass DataHub review and RAG boundaries.
+- Confirm CustomerOpsAgent should stop using its old RAG path.
+- Confirm DataHub retrieval response contract is sufficient for CustomerOpsAgent.
 - Confirm rollback and checkpoint strategy.
 
-P1-M9.5 must not implement legacy RAG migration, unified RAG switching, multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
+P1-M10 must not implement unified RAG switching, multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
 
 Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.

@@ -4,11 +4,11 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at P1-M9.5 Public Dataset Evaluation: the P1 core loop has been verified with the local sample data and a small public customer-support dataset sample.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at P1-M10 Legacy RAG Migration: CustomerOpsAgent legacy RAG export samples can be imported into DataHub and normalized into the same candidate, local RAG chunk, and retrieval format.
 
 ## Current Scope
 
-Implemented through P1-M9:
+Implemented through P1-M10:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -36,6 +36,11 @@ Implemented through P1-M9:
 - Bad Case to pending-review knowledge candidate draft creation.
 - P1 core loop release freeze report and full-chain verification test.
 - P1-M9.5 public dataset small-sample evaluation with report and lightweight test.
+- P1-M10 legacy RAG export import APIs.
+- Trusted legacy import to approved candidates.
+- Review-required legacy import to pending-review candidates.
+- Idempotent legacy candidate generation using stable `source_name + legacy_id` ids.
+- Legacy source trace through candidate, local RAG chunk, and CustomerOpsAgent retrieval results.
 - Final vision and four-phase roadmap documentation.
 - Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
@@ -104,7 +109,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "P1-M9"
+  "phase": "P1-M10"
 }
 ```
 
@@ -745,6 +750,94 @@ docs/14_PUBLIC_DATASET_EVAL_REPORT.md
 ```
 
 P1-M9.5 remains local JSON plus keyword/mock retrieval. It does not migrate CustomerOpsAgent legacy RAG, switch CustomerOpsAgent to a unified RAG, add embeddings, add a vector database, add a database/ORM, or implement Phase 2/3/4.
+
+## P1-M10 Legacy RAG Migration
+
+P1-M10 imports a CustomerOpsAgent legacy RAG export shape into DataHub without reading or modifying the CustomerOpsAgent repository.
+
+Sample file:
+
+```text
+samples/legacy_rag_export_sample.json
+```
+
+Legacy imports are saved locally under:
+
+```text
+backend/storage/legacy_rag_imports/
+```
+
+Generated candidates are saved under the existing candidate layer:
+
+```text
+backend/storage/knowledge_candidates/
+```
+
+Rules:
+
+- `trusted_import=true` creates `approved` candidates with `migration_mode: trusted_import`.
+- `trusted_import=false` creates `pending_review` candidates with `migration_mode: review_required`.
+- All migrated candidates use `source_type: legacy_rag`.
+- All migrated candidates use `extraction_method: legacy_rag_migration`.
+- Stable candidate ids are derived from `source_name + legacy_id`.
+- Re-importing the same legacy item does not create duplicate candidates.
+- Trusted legacy candidates can enter the existing local RAG build.
+- Review-required legacy candidates cannot enter RAG until normal review approval.
+- CustomerOpsAgent retrieval can return approved legacy chunks with `source_type`, `source_legacy_id`, and `source_import_id`.
+- P1-M10 does not switch CustomerOpsAgent to DataHub-only RAG. That is P1-M11.
+
+Import sample legacy RAG export:
+
+```powershell
+$payload = Get-Content .\samples\legacy_rag_export_sample.json -Raw
+
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/legacy-rag/import `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body $payload
+```
+
+List legacy imports:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/legacy-rag/imports
+```
+
+Get import detail:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/legacy-rag/imports/{import_id}
+```
+
+Then build and retrieve using existing APIs:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/rag/build `
+  -Method Post
+
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/retrieve `
+  -Method Post `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"} `
+  -ContentType 'application/json' `
+  -Body '{"query":"shipping Germany","top_k":5}'
+```
+
+Migration report:
+
+```text
+docs/15_LEGACY_RAG_MIGRATION_REPORT.md
+```
+
+Automated verification:
+
+```powershell
+python backend\tests\test_legacy_rag_migration.py
+```
+
+P1-M10 still uses local JSON plus keyword/mock retrieval. It does not modify the CustomerOpsAgent repository, does not switch CustomerOpsAgent to DataHub-only retrieval, does not add embeddings, does not add a vector database, does not add a database/ORM, and does not implement Phase 2/3/4.
 
 ## Development Rules
 

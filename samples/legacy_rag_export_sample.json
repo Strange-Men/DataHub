@@ -1,0 +1,39 @@
+{
+  "source_name": "customerops_legacy_rag_sample",
+  "source_type": "legacy_rag",
+  "trusted_import": true,
+  "exported_at": "2026-07-03T10:00:00+00:00",
+  "items": [
+    {
+      "legacy_id": "legacy_shipping_001",
+      "question": "How long does shipping take to Germany?",
+      "answer": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+      "intent": "shipping",
+      "tags": ["shipping", "delivery"],
+      "risk_level": "low",
+      "quality_score": 0.85,
+      "source_note": "Fake sample migrated from a CustomerOpsAgent legacy RAG export."
+    },
+    {
+      "legacy_id": "legacy_refund_001",
+      "question": "How can a customer request a refund?",
+      "answer": "Ask the customer for the order number, confirm the item status, and explain the refund review timeline.",
+      "intent": "refund",
+      "tags": ["refund", "return"],
+      "risk_level": "medium",
+      "quality_score": 0.82,
+      "source_note": "Fake sample migrated from a CustomerOpsAgent legacy RAG export."
+    },
+    {
+      "legacy_id": "legacy_handoff_001",
+      "question": "When should the customer be transferred to a human agent?",
+      "answer": "Escalate to a human agent when the customer reports payment risk, missing tracking information, repeated failed self-service attempts, or unsafe account changes.",
+      "intent": "handoff",
+      "tags": ["handoff", "support"],
+      "risk_level": "medium",
+      "quality_score": 0.8,
+      "knowledge_type": "human_handoff_rule",
+      "source_note": "Fake sample migrated from a CustomerOpsAgent legacy RAG export."
+    }
+  ]
+}

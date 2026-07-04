@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through P1-M9
+### Currently Implemented Through P1-M10
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -91,6 +91,12 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Human-triggered Bad Case conversion into new `pending_review` knowledge candidates.
 - Bad Case source trace on generated candidates.
 - P1 core-loop release freeze verification.
+- Public dataset small-sample evaluation.
+- CustomerOpsAgent legacy RAG export import.
+- Legacy RAG items standardized into DataHub knowledge candidates.
+- Trusted legacy import to approved candidates.
+- Review-required legacy import to pending-review candidates.
+- Legacy source trace through candidates, local RAG chunks, and CustomerOpsAgent retrieval results.
 
 ### Pending In Phase 1
 
@@ -100,8 +106,6 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Separate approved knowledge or knowledge asset version management.
 - Approval of Bad Case-generated drafts through the normal M5 review workflow.
 - RAG rebuild after approved Bad Case-generated drafts.
-- Public dataset evaluation.
-- CustomerOpsAgent legacy RAG migration into DataHub.
 - Unified CustomerOpsAgent RAG release.
 - Production retrieval/indexing beyond local mock RAG chunks.
 
@@ -201,6 +205,18 @@ CustomerOpsAgent queries DataHub through retrieval APIs and receives approved kn
 ### 4.7 Handle Bad Cases
 
 CustomerOpsAgent submits Bad Cases with a `retrieval_id`. DataHub stores them for human handling. Current M8.5 allows a human to convert a Bad Case into a new `pending_review` candidate. The generated draft still requires M5 review and does not enter RAG automatically.
+
+### 4.8 Migrate Legacy RAG Knowledge
+
+CustomerOpsAgent legacy RAG knowledge can be exported into a standard JSON shape and imported by DataHub. DataHub converts legacy items into normal knowledge candidates with `source_type: legacy_rag`.
+
+Current P1-M10 behavior:
+
+- `trusted_import=true` creates `approved` candidates for already-live legacy RAG knowledge.
+- `trusted_import=false` creates `pending_review` candidates for uncertain legacy knowledge.
+- Both modes preserve `source_legacy_id`, `source_import_id`, `migration_mode`, and source notes.
+- Only approved legacy candidates can enter local RAG chunks.
+- P1-M10 does not modify CustomerOpsAgent or switch it to DataHub-only retrieval.
 
 ## 5. Phase-One Functional Requirements
 

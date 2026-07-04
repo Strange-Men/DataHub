@@ -1,5 +1,6 @@
 import json
 import re
+from hashlib import sha1
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -19,6 +20,9 @@ from app.schemas import (
     ExtractionJobMetadata,
     ImportJsonRequest,
     KnowledgeCandidate,
+    LegacyRagImportMetadata,
+    LegacyRagImportRequest,
+    LegacyRagItem,
     RagBuildResult,
     RagChunk,
     RagSearchResult,
@@ -41,6 +45,7 @@ REVIEW_RECORD_DIR = STORAGE_DIR / "review_records"
 RAG_CHUNK_DIR = STORAGE_DIR / "rag_chunks"
 RETRIEVAL_LOG_DIR = STORAGE_DIR / "retrieval_logs"
 BAD_CASE_DIR = STORAGE_DIR / "bad_cases"
+LEGACY_RAG_IMPORT_DIR = STORAGE_DIR / "legacy_rag_imports"
 INDEX_FILE = RAW_BATCH_DIR / "index.json"
 SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
 CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
@@ -50,6 +55,7 @@ REVIEW_RECORD_INDEX_FILE = REVIEW_RECORD_DIR / "index.json"
 RAG_CHUNK_INDEX_FILE = RAG_CHUNK_DIR / "index.json"
 RETRIEVAL_LOG_INDEX_FILE = RETRIEVAL_LOG_DIR / "index.json"
 BAD_CASE_INDEX_FILE = BAD_CASE_DIR / "index.json"
+LEGACY_RAG_IMPORT_INDEX_FILE = LEGACY_RAG_IMPORT_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -79,6 +85,7 @@ def _ensure_storage() -> None:
     RAG_CHUNK_DIR.mkdir(parents=True, exist_ok=True)
     RETRIEVAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
     BAD_CASE_DIR.mkdir(parents=True, exist_ok=True)
+    LEGACY_RAG_IMPORT_DIR.mkdir(parents=True, exist_ok=True)
     if not INDEX_FILE.exists():
         INDEX_FILE.write_text("[]", encoding="utf-8")
     if not SANITIZED_INDEX_FILE.exists():
@@ -97,6 +104,8 @@ def _ensure_storage() -> None:
         RETRIEVAL_LOG_INDEX_FILE.write_text("[]", encoding="utf-8")
     if not BAD_CASE_INDEX_FILE.exists():
         BAD_CASE_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not LEGACY_RAG_IMPORT_INDEX_FILE.exists():
+        LEGACY_RAG_IMPORT_INDEX_FILE.write_text("[]", encoding="utf-8")
 
 
 def _read_json_list(path: Path) -> list[dict[str, object]]:
@@ -674,9 +683,17 @@ def build_rag_chunks() -> RagBuildResult:
         next_chunk = RagChunk(
             chunk_id=chunk_id,
             candidate_id=candidate.candidate_id,
+            source_type=candidate.source_type,
             source_batch_id=candidate.source_batch_id,
             source_conversation_id=candidate.source_conversation_id,
             source_message_ids=candidate.source_message_ids,
+            source_bad_case_id=candidate.source_bad_case_id,
+            source_retrieval_id=candidate.source_retrieval_id,
+            source_chunk_ids=candidate.source_chunk_ids,
+            source_legacy_id=candidate.source_legacy_id,
+            source_import_id=candidate.source_import_id,
+            migration_mode=candidate.migration_mode,
+            source_note=candidate.source_note,
             knowledge_type=candidate.knowledge_type,
             intent=candidate.intent,
             tags=candidate.tags,
@@ -793,9 +810,17 @@ def search_rag_chunks(query: str, top_k: int) -> list[RagSearchResult]:
                 matched_terms=matched_terms,
                 chunk_id=chunk.chunk_id,
                 candidate_id=chunk.candidate_id,
+                source_type=chunk.source_type,
                 source_batch_id=chunk.source_batch_id,
                 source_conversation_id=chunk.source_conversation_id,
                 source_message_ids=chunk.source_message_ids,
+                source_bad_case_id=chunk.source_bad_case_id,
+                source_retrieval_id=chunk.source_retrieval_id,
+                source_chunk_ids=chunk.source_chunk_ids,
+                source_legacy_id=chunk.source_legacy_id,
+                source_import_id=chunk.source_import_id,
+                migration_mode=chunk.migration_mode,
+                source_note=chunk.source_note,
                 knowledge_type=chunk.knowledge_type,
                 intent=chunk.intent,
                 tags=chunk.tags,
@@ -870,9 +895,17 @@ def _customerops_score_chunk(query: str, chunk: RagChunk) -> CustomerOpsRetrieva
         matched_terms=matched_terms,
         chunk_id=chunk.chunk_id,
         candidate_id=chunk.candidate_id,
+        source_type=chunk.source_type,
         source_batch_id=chunk.source_batch_id,
         source_conversation_id=chunk.source_conversation_id,
         source_message_ids=chunk.source_message_ids,
+        source_bad_case_id=chunk.source_bad_case_id,
+        source_retrieval_id=chunk.source_retrieval_id,
+        source_chunk_ids=chunk.source_chunk_ids,
+        source_legacy_id=chunk.source_legacy_id,
+        source_import_id=chunk.source_import_id,
+        migration_mode=chunk.migration_mode,
+        source_note=chunk.source_note,
         knowledge_type=chunk.knowledge_type,
         intent=chunk.intent,
         tags=chunk.tags,
@@ -1104,3 +1137,152 @@ def create_candidate_from_bad_case(
         )
     )
     return candidate
+
+
+def _legacy_candidate_id(source_name: str, legacy_id: str) -> str:
+    digest = sha1(
+        f"{source_name.strip().lower()}::{legacy_id.strip().lower()}".encode("utf-8")
+    ).hexdigest()[:16]
+    return f"kc_legacy_{digest}"
+
+
+def _clean_legacy_tags(tags: list[str]) -> list[str]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for tag in [*tags, "legacy_rag"]:
+        value = str(tag).strip()
+        if not value:
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append(value)
+    return cleaned
+
+
+def _legacy_candidate_changed(
+    previous: KnowledgeCandidate,
+    current: KnowledgeCandidate,
+) -> bool:
+    comparable_previous = previous.model_dump(
+        exclude={
+            "created_at",
+            "updated_at",
+            "reviewed_at",
+            "reviewer",
+            "review_note",
+        }
+    )
+    comparable_current = current.model_dump(
+        exclude={
+            "created_at",
+            "updated_at",
+            "reviewed_at",
+            "reviewer",
+            "review_note",
+        }
+    )
+    return comparable_previous != comparable_current
+
+
+def import_legacy_rag(payload: LegacyRagImportRequest) -> LegacyRagImportMetadata:
+    _ensure_storage()
+    now = datetime.now(UTC).isoformat()
+    import_id = f"legacy_import_{uuid4().hex[:12]}"
+    migration_mode = "trusted_import" if payload.trusted_import else "review_required"
+    review_status = "approved" if payload.trusted_import else "pending_review"
+    created_candidate_count = 0
+    updated_count = 0
+    skipped_reasons: dict[str, int] = {}
+    candidate_ids: list[str] = []
+
+    for item in payload.items:
+        candidate_id = _legacy_candidate_id(payload.source_name, item.legacy_id)
+        previous = get_knowledge_candidate(candidate_id)
+        candidate = KnowledgeCandidate(
+            candidate_id=candidate_id,
+            source_type="legacy_rag",
+            source_batch_id=None,
+            source_conversation_id=None,
+            source_message_ids=[],
+            source_legacy_id=item.legacy_id,
+            source_import_id=previous.source_import_id if previous else import_id,
+            knowledge_type=item.knowledge_type,
+            question=item.question.strip(),
+            answer=item.answer.strip(),
+            intent=item.intent,
+            tags=_clean_legacy_tags(item.tags),
+            risk_level=item.risk_level,
+            review_status=review_status,  # type: ignore[arg-type]
+            quality_score=item.quality_score,
+            extraction_method="legacy_rag_migration",
+            migration_mode=migration_mode,  # type: ignore[arg-type]
+            source_note=item.source_note,
+            created_at=previous.created_at if previous else now,
+            updated_at=now,
+        )
+        candidate_ids.append(candidate_id)
+
+        if previous is None:
+            _write_knowledge_candidate(candidate)
+            created_candidate_count += 1
+        elif _legacy_candidate_changed(previous, candidate):
+            _write_knowledge_candidate(candidate)
+            updated_count += 1
+        else:
+            skipped_reasons["unchanged"] = skipped_reasons.get("unchanged", 0) + 1
+
+    candidates = [
+        candidate
+        for candidate in (get_knowledge_candidate(candidate_id) for candidate_id in candidate_ids)
+        if candidate is not None
+    ]
+    metadata = LegacyRagImportMetadata(
+        import_id=import_id,
+        source_name=payload.source_name,
+        source_type="legacy_rag",
+        trusted_import=payload.trusted_import,
+        migration_mode=migration_mode,  # type: ignore[arg-type]
+        item_count=len(payload.items),
+        created_candidate_count=created_candidate_count,
+        updated_count=updated_count,
+        approved_count=sum(1 for candidate in candidates if candidate.review_status == "approved"),
+        pending_review_count=sum(
+            1 for candidate in candidates if candidate.review_status == "pending_review"
+        ),
+        skipped_count=sum(skipped_reasons.values()),
+        skipped_reasons=skipped_reasons,
+        created_at=now,
+        candidate_ids=candidate_ids,
+    )
+
+    (LEGACY_RAG_IMPORT_DIR / f"{import_id}.json").write_text(
+        json.dumps(metadata.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    items = _read_json_list(LEGACY_RAG_IMPORT_INDEX_FILE)
+    items.append(metadata.model_dump())
+    _write_json_list(LEGACY_RAG_IMPORT_INDEX_FILE, items)
+    return metadata
+
+
+def list_legacy_rag_imports() -> list[LegacyRagImportMetadata]:
+    return [
+        LegacyRagImportMetadata(**item)
+        for item in _read_json_list(LEGACY_RAG_IMPORT_INDEX_FILE)
+    ]
+
+
+def get_legacy_rag_import(import_id: str) -> LegacyRagImportMetadata | None:
+    _ensure_storage()
+    import_file = LEGACY_RAG_IMPORT_DIR / f"{import_id}.json"
+    if not import_file.exists():
+        return None
+    try:
+        data = json.loads(import_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return LegacyRagImportMetadata(**data)

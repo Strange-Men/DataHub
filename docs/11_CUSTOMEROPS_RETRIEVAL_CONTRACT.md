@@ -7,7 +7,7 @@ This document defines the current DataHub retrieval contract for CustomerOpsAgen
 Current related stage:
 
 ```text
-P1-M9 Phase-One Release Freeze
+P1-M10 Legacy RAG Migration
 ```
 
 The contract is read-only and restricted to approved local RAG chunks.
@@ -59,6 +59,7 @@ The retrieval API supports:
 - Source trace in every result.
 - `matched_terms` in every result.
 - Keyword/mock `score` in every result.
+- Legacy RAG source trace when a result came from P1-M10 migration.
 - Optional filters for `intent`, `tags`, and `risk_level`.
 - Optional `conversation_id`.
 - Optional `agent_session_id`.
@@ -88,6 +89,8 @@ M8 still does not support:
 M8.5 implements human-triggered Bad Case conversion into new `pending_review` drafts. It does not approve those drafts or put them into RAG.
 
 P1-M9 freezes and verifies this contract as part of the Phase 1 core loop. It does not add new CustomerOpsAgent-facing APIs beyond the M7/M8 surface.
+
+P1-M10 adds DataHub-side legacy RAG migration. CustomerOpsAgent retrieval may now return approved chunks with `source_type: legacy_rag`, `source_legacy_id`, and `source_import_id`. P1-M10 still does not modify the CustomerOpsAgent repository or switch CustomerOpsAgent to DataHub-only retrieval.
 
 ## 6. CustomerOpsAgent Rules
 
@@ -163,9 +166,12 @@ Response:
         "matched_terms": ["shipping"],
         "chunk_id": "chunk_kc_abc123",
         "candidate_id": "kc_abc123",
+        "source_type": "sanitized_batch",
         "source_batch_id": "batch_abc123",
         "source_conversation_id": "conv_001",
         "source_message_ids": ["msg_001", "msg_002"],
+        "source_legacy_id": null,
+        "source_import_id": null,
         "knowledge_type": "faq",
         "intent": "shipping",
         "tags": ["shipping", "delivery"],

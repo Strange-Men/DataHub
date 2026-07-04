@@ -31,6 +31,7 @@ FastAPI API Service
     +--> RAG Build Module
     +--> CustomerOpsAgent Interface Module
     +--> Bad Case Feedback Module
+    +--> Legacy RAG Migration Module
     |
     v
 Candidate Data Layer
@@ -84,6 +85,11 @@ Customer chat logs
 -> Bad Case Queue
 -> Bad Case To Draft
 -> P1 Core Loop Release Verification
+CustomerOpsAgent legacy RAG export
+-> Legacy RAG Migration
+-> Knowledge Candidates
+-> Local RAG Builder
+-> CustomerOpsAgent Restricted Retrieval Test
 ```
 
 Current Phase 1 modules already started or implemented locally:
@@ -97,13 +103,13 @@ Current Phase 1 modules already started or implemented locally:
 - Bad Case Queue.
 - Bad Case To Draft.
 - P1 Core Loop Release Verification.
+- P1-M9.5 Public Dataset Evaluation.
+- P1-M10 Legacy RAG Migration.
 
 Future modules not implemented yet:
 
 - CustomerOpsAgent production vector retrieval beyond the M7 local restricted retrieval API.
 - Bad Case-generated draft approval and RAG rebuild beyond M8.5.
-- P1-M9.5 public dataset evaluation.
-- P1-M10 legacy RAG migration into DataHub.
 - P1-M11 unified RAG release.
 - Material Understanding.
 - Knowledge Asset Store beyond local files.
@@ -316,6 +322,31 @@ Must enforce:
 - M8.5 must create new drafts only; it must not directly update existing candidates.
 - M8.5 must not automatically rebuild or re-index RAG.
 - Bad Case fixes require review before indexing.
+
+### 6.8 Legacy RAG Migration Module
+
+Responsibilities:
+
+- Accept CustomerOpsAgent legacy RAG exports in a stable JSON format.
+- Convert legacy question-answer items into DataHub knowledge candidates.
+- Preserve legacy source trace:
+  - `source_type: legacy_rag`
+  - `source_legacy_id`
+  - `source_import_id`
+  - `migration_mode`
+  - `source_note`
+- Support trusted migration for already-live legacy RAG knowledge.
+- Support review-required migration for uncertain legacy knowledge.
+- Prevent duplicate candidates for the same `source_name + legacy_id`.
+- Save import metadata under `backend/storage/legacy_rag_imports/`.
+
+Must enforce:
+
+- CustomerOpsAgent repository is not read or modified.
+- Trusted imports may create `approved` candidates, but they remain traceable as legacy migrations.
+- Review-required imports must create only `pending_review` candidates.
+- Legacy imports do not directly create RAG chunks; existing RAG build rules still apply.
+- P1-M10 does not switch CustomerOpsAgent to DataHub-only retrieval.
 
 ## 7. Data State Boundaries
 

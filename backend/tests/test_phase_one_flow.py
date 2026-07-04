@@ -105,7 +105,7 @@ class PhaseOneFlowTest(unittest.TestCase):
     def test_phase_one_core_loop_freeze(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M9")
+        self.assertEqual(health.json()["phase"], "P1-M10")
 
         approved_candidate = self._create_batch_candidates("p1_m9_approved")[0]
         rejected_candidate = self._create_batch_candidates("p1_m9_rejected")[0]

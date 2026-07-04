@@ -442,3 +442,32 @@ P1-M9 is complete when:
 - Bad Case-generated drafts do not automatically approve, rebuild RAG, or re-index.
 - No CustomerOpsAgent repository changes are made.
 - No public dataset evaluation, legacy RAG migration, unified RAG switching, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
+
+## P1-M10 Legacy RAG Migration Completion Check
+
+P1-M10 is complete when:
+
+- `/health` reports `phase: P1-M10`.
+- `POST /api/legacy-rag/import` exists.
+- `GET /api/legacy-rag/imports` exists.
+- `GET /api/legacy-rag/imports/{import_id}` exists.
+- `samples/legacy_rag_export_sample.json` exists and contains fake legacy RAG data only.
+- Legacy import metadata is saved under `backend/storage/legacy_rag_imports/`.
+- Generated legacy candidates are saved under `backend/storage/knowledge_candidates/`.
+- Generated legacy candidates include:
+  - `source_type: legacy_rag`
+  - `source_legacy_id`
+  - `source_import_id`
+  - `migration_mode`
+  - `extraction_method: legacy_rag_migration`
+- `trusted_import=true` creates `approved` candidates.
+- `trusted_import=false` creates `pending_review` candidates.
+- Re-importing the same `source_name + legacy_id` does not create duplicate candidates.
+- Changed legacy items update the same stable candidate instead of creating a duplicate.
+- Trusted approved legacy candidates can enter existing local RAG build.
+- Review-required legacy candidates cannot enter local RAG build.
+- CustomerOpsAgent retrieval can return approved legacy chunks with source trace.
+- CustomerOpsAgent repository is not read or modified.
+- P1-M11 unified RAG switch is not implemented.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
+- `backend/storage/` remains ignored by Git.

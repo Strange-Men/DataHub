@@ -286,3 +286,49 @@ public customer support sample
 ```
 
 The full public dataset is not committed. P1-M9.5 does not migrate CustomerOpsAgent legacy RAG, does not switch unified RAG, does not introduce embeddings or a vector database, and does not implement P2/P3/P4.
+
+## 14. P1-M10 Legacy RAG Migration Addendum
+
+P1-M10 has now been completed as the DataHub-side migration checkpoint for CustomerOpsAgent legacy RAG knowledge assets.
+
+Implemented migration entry points:
+
+```text
+POST /api/legacy-rag/import
+GET  /api/legacy-rag/imports
+GET  /api/legacy-rag/imports/{import_id}
+```
+
+Submitted fake sample:
+
+```text
+samples/legacy_rag_export_sample.json
+```
+
+Submitted report and verification:
+
+```text
+docs/15_LEGACY_RAG_MIGRATION_REPORT.md
+backend/tests/test_legacy_rag_migration.py
+```
+
+P1-M10 validates this flow:
+
+```text
+CustomerOpsAgent legacy RAG export sample
+-> DataHub legacy RAG import
+-> DataHub knowledge candidates
+-> existing local RAG build
+-> CustomerOpsAgent restricted retrieval test
+```
+
+Boundary:
+
+- CustomerOpsAgent repository is not read or modified.
+- CustomerOpsAgent is not switched to DataHub-only retrieval.
+- Trusted legacy import can create approved candidates.
+- Review-required legacy import creates pending-review candidates.
+- Duplicate legacy imports do not create duplicate candidates.
+- Legacy source trace is preserved through candidate, chunk, and retrieval result.
+- P1-M10 remains local JSON plus keyword/mock retrieval.
+- P1-M10 does not introduce embeddings, a vector database, database, ORM, real LLM, or P2/P3/P4 features.

@@ -11,6 +11,7 @@ from app.schemas import (
     CandidateUpdateRequest,
     CustomerOpsRetrievalRequest,
     ImportJsonRequest,
+    LegacyRagImportRequest,
     RagSearchRequest,
     ReviewDecisionRequest,
 )
@@ -25,11 +26,13 @@ from app.storage import (
     get_customerops_retrieval_trace,
     get_extraction_job,
     get_knowledge_candidate,
+    get_legacy_rag_import,
     get_rag_chunk,
     get_raw_batch_metadata,
     get_sanitized_batch,
     list_knowledge_candidates,
     list_bad_cases,
+    list_legacy_rag_imports,
     list_pending_review_candidates,
     list_rag_chunks,
     list_raw_batches,
@@ -37,6 +40,7 @@ from app.storage import (
     run_customerops_retrieval,
     run_extraction,
     search_rag_chunks,
+    import_legacy_rag,
     update_bad_case,
     update_knowledge_candidate,
 )
@@ -117,8 +121,46 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "P1-M9",
+        "phase": "P1-M10",
     }
+
+
+@app.post("/api/legacy-rag/import", response_model=ApiResponse)
+def import_legacy_rag_export(payload: LegacyRagImportRequest) -> ApiResponse:
+    metadata = import_legacy_rag(payload)
+    return ApiResponse(
+        success=True,
+        data=metadata.model_dump(),
+        requestId=_request_id(),
+    )
+
+
+@app.get("/api/legacy-rag/imports", response_model=ApiResponse)
+def list_legacy_imports() -> ApiResponse:
+    imports = [item.model_dump() for item in list_legacy_rag_imports()]
+    return ApiResponse(
+        success=True,
+        data={"imports": imports},
+        requestId=_request_id(),
+    )
+
+
+@app.get("/api/legacy-rag/imports/{import_id}", response_model=ApiResponse)
+def get_legacy_import(import_id: str) -> ApiResponse:
+    metadata = get_legacy_rag_import(import_id)
+    if metadata is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "LEGACY_RAG_IMPORT_NOT_FOUND",
+                "message": "Legacy RAG import was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=metadata.model_dump(),
+        requestId=_request_id(),
+    )
 
 
 @app.post("/api/sources/import-json", response_model=ApiResponse)

@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-P1-M9
+Implemented APIs: M2-P1-M10
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -26,11 +26,13 @@ Implemented APIs: M2-P1-M9
 - M8 CustomerOpsAgent Bad Case submission and DataHub Bad Case queue management.
 - M8.5 Bad Case conversion into pending-review knowledge candidate drafts.
 - P1-M9 phase-one release freeze verification; no new API surface.
+- P1-M9.5 public dataset evaluation; no new API surface.
+- P1-M10 legacy RAG migration import APIs.
 
-Planned Phase 1 APIs: M9
+Planned Phase 1 APIs: P1-M11
 
 - Approval and RAG rebuild for Bad Case-generated drafts through existing review/RAG steps.
-- Phase-one release freeze and hardening.
+- CustomerOpsAgent unified DataHub RAG release.
 - Future production retrieval hardening beyond local JSON plus mock retrieval.
 
 Future Roadmap APIs: Phase 2-4
@@ -80,6 +82,17 @@ Important M8.5 boundary:
 - M8.5 does not auto-approve candidates.
 - M8.5 does not modify existing candidates or RAG chunks.
 - M8.5 does not rebuild or re-index RAG.
+
+Important P1-M10 boundary:
+
+- `POST /api/legacy-rag/import` imports CustomerOpsAgent legacy RAG export JSON into DataHub.
+- P1-M10 does not read or modify the CustomerOpsAgent repository.
+- P1-M10 does not switch CustomerOpsAgent to DataHub-only retrieval.
+- Legacy items become normal DataHub knowledge candidates.
+- `trusted_import=true` creates approved candidates with `migration_mode: trusted_import`.
+- `trusted_import=false` creates pending-review candidates with `migration_mode: review_required`.
+- Existing `/api/rag/build` is still the only way to create RAG chunks.
+- Existing `/api/customer-ops-agent/retrieve` is used only for retrieval verification.
 
 ## 0A. Canonical State Names
 
@@ -1477,6 +1490,150 @@ Hard rule:
 - This API must not modify existing candidates.
 - This API must not modify RAG chunks.
 - This API must not rebuild or re-index RAG.
+
+## 10B. Implemented APIs: Legacy RAG Migration (P1-M10)
+
+P1-M10 imports a legacy RAG export shape into DataHub's existing candidate layer.
+
+Storage:
+
+- Import metadata is saved under `backend/storage/legacy_rag_imports/`.
+- Generated candidates are saved under `backend/storage/knowledge_candidates/`.
+- Both directories are ignored by Git through `backend/storage/`.
+
+Hard rules:
+
+- P1-M10 does not read the CustomerOpsAgent repository.
+- P1-M10 does not modify the CustomerOpsAgent repository.
+- P1-M10 does not switch CustomerOpsAgent to DataHub-only retrieval.
+- P1-M10 does not introduce a vector database, embedding model, database, ORM, or real LLM.
+- Repeated import of the same `source_name + legacy_id` does not create duplicate candidates.
+
+### 10B.1 Import Legacy RAG Export
+
+`POST /api/legacy-rag/import`
+
+Request:
+
+```json
+{
+  "source_name": "customerops_legacy_rag_sample",
+  "source_type": "legacy_rag",
+  "trusted_import": true,
+  "exported_at": "2026-07-03T10:00:00+00:00",
+  "items": [
+    {
+      "legacy_id": "legacy_shipping_001",
+      "question": "How long does shipping take to Germany?",
+      "answer": "Shipping to Germany usually takes 7-12 business days after dispatch.",
+      "intent": "shipping",
+      "tags": ["shipping", "delivery"],
+      "risk_level": "low",
+      "quality_score": 0.85,
+      "knowledge_type": "faq",
+      "source_note": "Migrated from CustomerOpsAgent legacy RAG."
+    }
+  ]
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "import_id": "legacy_import_abc123",
+    "source_name": "customerops_legacy_rag_sample",
+    "source_type": "legacy_rag",
+    "trusted_import": true,
+    "migration_mode": "trusted_import",
+    "item_count": 1,
+    "created_candidate_count": 1,
+    "updated_count": 0,
+    "approved_count": 1,
+    "pending_review_count": 0,
+    "skipped_count": 0,
+    "skipped_reasons": {},
+    "created_at": "2026-07-03T10:00:00+00:00",
+    "candidate_ids": ["kc_legacy_abc123"]
+  },
+  "requestId": "req_abc123"
+}
+```
+
+Generated candidate fields:
+
+- `candidate_id`: stable `kc_legacy_*` id derived from `source_name + legacy_id`.
+- `source_type: legacy_rag`.
+- `source_legacy_id`.
+- `source_import_id`.
+- `source_batch_id: null`.
+- `source_conversation_id: null`.
+- `source_message_ids: []`.
+- `review_status: approved` when `trusted_import=true`.
+- `review_status: pending_review` when `trusted_import=false`.
+- `extraction_method: legacy_rag_migration`.
+- `migration_mode: trusted_import | review_required`.
+- `source_note`.
+
+Idempotency strategy:
+
+- The same `source_name + legacy_id` maps to the same candidate id.
+- If the candidate does not exist, DataHub creates it.
+- If the candidate exists and content is unchanged, DataHub skips it and increments `skipped_count`.
+- If the candidate exists and content changed, DataHub updates the same candidate and increments `updated_count`.
+- DataHub never creates duplicate candidates for the same legacy item.
+
+### 10B.2 List Legacy RAG Imports
+
+`GET /api/legacy-rag/imports`
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "imports": [
+      {
+        "import_id": "legacy_import_abc123",
+        "source_name": "customerops_legacy_rag_sample",
+        "source_type": "legacy_rag",
+        "trusted_import": true,
+        "item_count": 3,
+        "candidate_ids": ["kc_legacy_abc123"]
+      }
+    ]
+  },
+  "requestId": "req_abc123"
+}
+```
+
+### 10B.3 Get Legacy RAG Import Detail
+
+`GET /api/legacy-rag/imports/{import_id}`
+
+Possible errors:
+
+- `LEGACY_RAG_IMPORT_NOT_FOUND`
+
+### 10B.4 RAG Build And Retrieval Verification
+
+P1-M10 does not add new RAG APIs.
+
+Use existing APIs:
+
+```text
+POST /api/rag/build
+POST /api/customer-ops-agent/retrieve
+```
+
+Expected behavior:
+
+- Approved legacy candidates can become local RAG chunks.
+- Review-required legacy candidates remain `pending_review` and cannot become RAG chunks.
+- Retrieval results can include `source_type: legacy_rag`, `source_legacy_id`, `source_import_id`, `candidate_id`, and `chunk_id`.
 
 ## 11. Future Roadmap APIs: Phase 2-4 (Not Implemented)
 

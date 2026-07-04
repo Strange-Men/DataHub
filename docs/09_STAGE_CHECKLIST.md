@@ -613,3 +613,37 @@ P1-M9.5 is complete when:
 - No database, ORM, vector database, embedding model, real LLM, multimodal, MCP, sales export, fine-tuning export, or P2/P3/P4 implementation is introduced.
 - New tag uses the phase-prefixed name `p1-m9.5-public-dataset-eval`.
 - Historical tags are not moved, deleted, or renamed.
+
+## 21. P1-M10 Legacy RAG Migration Check
+
+P1-M10 is complete when:
+
+- `POST /api/legacy-rag/import` exists.
+- `GET /api/legacy-rag/imports` exists.
+- `GET /api/legacy-rag/imports/{import_id}` exists.
+- `/health` reports `phase: P1-M10`.
+- `samples/legacy_rag_export_sample.json` exists and uses fake data only.
+- Legacy RAG import metadata is saved under ignored local storage.
+- Legacy items are converted into normal DataHub knowledge candidates.
+- `trusted_import=true` creates `approved` candidates.
+- `trusted_import=false` creates `pending_review` candidates.
+- Candidates include:
+  - `source_type: legacy_rag`
+  - `source_legacy_id`
+  - `source_import_id`
+  - `migration_mode`
+  - `extraction_method: legacy_rag_migration`
+- Candidate ids are stable for the same `source_name + legacy_id`.
+- Repeated import does not create duplicate candidates.
+- Approved trusted legacy candidates can enter local RAG chunks.
+- Review-required legacy candidates cannot enter local RAG chunks.
+- CustomerOpsAgent retrieval can return approved legacy chunks.
+- Retrieval results include legacy source trace.
+- `backend/tests/test_legacy_rag_migration.py` passes.
+- Existing P1 tests still pass.
+- CustomerOpsAgent repository is not read or modified.
+- P1-M11 unified RAG release is not implemented.
+- No private CustomerOpsAgent RAG data or real business knowledge is committed.
+- No database, ORM, vector database, embedding model, real LLM, multimodal, MCP, sales export, fine-tuning export, or P2/P3/P4 implementation is introduced.
+- New tag uses the phase-prefixed name `p1-m10-legacy-rag-migration`.
+- Historical tags are not moved, deleted, or renamed.
