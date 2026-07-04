@@ -133,6 +133,22 @@ Before P1-M13 work is accepted, confirm:
 - Extraction uses manual cleaning decisions.
 - README files do not claim roadmap modules are already implemented.
 
+## 7D. P1-M14 Knowledge Review Stage Check
+
+Before P1-M14 work is accepted, confirm:
+
+- The frontend workflow file was read:
+  `C:\Users\16432\Desktop\AI_workflow\前端工作流.md`
+- The Chinese admin console includes a knowledge review workbench.
+- Review UI can load and filter knowledge candidates.
+- Review UI displays source trace, quality score, cleaning issues, and risk flags.
+- Candidate editing uses existing `PATCH /api/knowledge/candidates/{candidate_id}`.
+- Review actions use existing approve, reject, and needs-revision APIs.
+- Review records stay under ignored `backend/storage/review_records/`.
+- Only approved candidates can enter RAG.
+- Pending, needs-revision, and rejected candidates remain outside RAG.
+- P2/P3/P4 remain Roadmap / not connected.
+
 ## 8. M1 Completion Check
 
 M1 is complete when:

@@ -448,3 +448,37 @@ Implemented behavior:
   - `needs_review`
 
 Manual cleaning remains a Phase 1 text-data capability. It does not implement Phase 2 multimodal, Phase 3 dataset export, or Phase 4 MCP.
+
+## 10. P1-M14 Product Update: Knowledge Review Quality Console
+
+P1-M14 adds a Chinese knowledge review workbench for pending-review knowledge candidates.
+
+Implemented behavior:
+
+- Reviewers can load knowledge candidates.
+- Reviewers can filter candidates locally by:
+  - `review_status`
+  - `source_type`
+  - quality level derived from `quality_score`
+  - `intent`
+  - keyword
+- Reviewers can inspect:
+  - source trace
+  - `quality_score`
+  - `risk_level`
+  - `cleaning_issues`
+  - `risk_flags`
+- Reviewers can edit:
+  - `question`
+  - `answer`
+  - `intent`
+  - `tags`
+  - `risk_level`
+  - `quality_score`
+- Reviewers can approve, reject, or mark candidates as `needs_revision`.
+
+Hard rule:
+
+- Only `approved` candidates can enter local RAG chunks.
+- `pending_review`, `needs_revision`, and `rejected` candidates cannot enter RAG.
+- P1-M14 does not implement Phase 2, Phase 3, Phase 4, real vector search, embeddings, database, ORM, real LLM, or MCP.

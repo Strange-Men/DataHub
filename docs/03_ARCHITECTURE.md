@@ -489,3 +489,27 @@ Extraction behavior:
 - `manual_action=keep`: use current sanitized content.
 
 This stage does not change RAG storage, vector search, database, ORM, CustomerOpsAgent code, or roadmap modules.
+
+## 11. P1-M14 Knowledge Review Console Architecture
+
+P1-M14 adds a Chinese knowledge review workbench to the React admin console.
+
+Frontend:
+
+- Loads candidates through `GET /api/knowledge/candidates`.
+- Performs local filtering by review status, source type, quality level, intent, and keyword.
+- Uses `PATCH /api/knowledge/candidates/{candidate_id}` for candidate editing.
+- Uses existing review decision APIs:
+  - `POST /api/review/{candidate_id}/approve`
+  - `POST /api/review/{candidate_id}/reject`
+  - `POST /api/review/{candidate_id}/needs-revision`
+- Shows source trace, quality score, cleaning issues, and risk flags.
+
+Backend:
+
+- No new review queue API is required in P1-M14.
+- Existing candidate and review APIs remain the source of truth.
+- Review records continue to be saved under `backend/storage/review_records/`.
+- RAG build continues to accept only `review_status: approved`.
+
+This stage does not introduce database, ORM, vector database, embedding, real LLM, MCP, CustomerOpsAgent repository changes, or P2/P3/P4 features.

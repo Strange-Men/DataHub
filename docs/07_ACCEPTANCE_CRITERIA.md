@@ -574,3 +574,22 @@ P1-M13 is accepted when:
 - Extraction uses `manual_cleaned_content` for `keep_edited`.
 - P1 existing tests continue to pass.
 - README files are product-oriented and do not claim roadmap modules are already implemented.
+
+## P1-M14 Acceptance Criteria
+
+P1-M14 is accepted when:
+
+- The Chinese admin console includes a knowledge review workbench.
+- Reviewers can load candidates from existing candidate APIs.
+- Reviewers can filter candidates by review status, source type, quality level, intent, and keyword.
+- The UI shows candidate id, source type, knowledge type, question, answer, intent, tags, risk level, quality score, review status, cleaning issues, risk flags, source trace, and timestamps.
+- Reviewers can edit `question`, `answer`, `intent`, `tags`, `risk_level`, and `quality_score`.
+- Reviewers can save edits.
+- Reviewers can approve, reject, or mark candidates as `needs_revision`.
+- Reviewer and review note are saved on review decisions.
+- Review records are saved under ignored local storage.
+- Approved candidates can enter local RAG chunks.
+- Pending, needs-revision, and rejected candidates cannot enter RAG chunks.
+- `docs/20_KNOWLEDGE_REVIEW_GUIDE.md` exists and is written for reviewers.
+- P2/P3/P4 remain Roadmap / not connected.
+- Existing P1 tests continue to pass.

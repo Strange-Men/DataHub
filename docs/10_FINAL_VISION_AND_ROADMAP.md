@@ -280,3 +280,17 @@ The final vision remains unchanged:
 - P2/P3/P4 are formal roadmap capabilities and must not be implemented until explicitly started.
 
 P1-M13 strengthens the path from machine-cleaned data to human-verified data by letting cleaners edit sanitized content and save cleaning decisions before knowledge extraction.
+
+## 7. P1-M14 Update
+
+P1-M14 adds the Chinese knowledge review quality console.
+
+This strengthens the final approval gate before RAG:
+
+- Reviewers can inspect pending-review candidates.
+- Reviewers can edit question, answer, intent, tags, risk level, and quality score.
+- Reviewers can approve, reject, or mark candidates as needs revision.
+- Reviewers can see source trace, cleaning issues, and risk flags.
+- Only approved candidates can enter RAG.
+
+P1-M14 remains Phase 1 text knowledge governance. It does not implement Phase 2, Phase 3, or Phase 4.

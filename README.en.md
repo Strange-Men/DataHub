@@ -12,7 +12,7 @@
 
 DataHub is a data asset center for AI agent systems. It turns customer chat logs, legacy knowledge assets, public evaluation samples, Bad Case corrections, and future multimodal materials into governed, traceable knowledge that can be consumed by agents through restricted APIs.
 
-The current implementation focuses on the text customer-service knowledge loop. It includes local JSON storage, local keyword retrieval, machine cleaning, manual cleaning, human review, Bad Case feedback, and legacy RAG migration. Multimodal assets, sales-training exports, fine-tuning datasets, and MCP tools are architectural extensions, not production-connected features in this repository.
+The current implementation focuses on the text customer-service knowledge loop. It includes local JSON storage, local keyword retrieval, machine cleaning, manual cleaning, Chinese knowledge review, Bad Case feedback, and legacy RAG migration. Multimodal assets, sales-training exports, fine-tuning datasets, and MCP tools are architectural extensions, not production-connected features in this repository.
 
 ## Contents
 
@@ -74,7 +74,7 @@ flowchart LR
   B --> C["Machine Cleaning and Sanitization"]
   C --> D["Manual Cleaning Workbench"]
   D --> E["Knowledge Candidate Extraction"]
-  E --> F["Human Review"]
+  E --> F["Chinese Knowledge Review Console"]
   F --> G["Unified RAG Chunks"]
   G --> H["CustomerOpsAgent Retrieval API"]
   H --> I["Bad Case Feedback"]
@@ -221,6 +221,7 @@ Database, ORM, production vector store, embedding model, real LLM, production au
 python -m py_compile backend\app\main.py backend\app\schemas.py backend\app\storage.py
 python backend\tests\test_advanced_cleaning.py
 python backend\tests\test_manual_cleaning.py
+python backend\tests\test_review_quality_console.py
 python backend\tests\test_customerops_retrieval.py
 python backend\tests\test_rag_quality.py
 python backend\tests\test_bad_case_feedback.py

@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-P1-M13
+Implemented APIs: M2-P1-M14
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -31,10 +31,10 @@ Implemented APIs: M2-P1-M13
 - P1-M11 unified DataHub RAG release; no new public API surface.
 - P1-M12 advanced machine cleaning; no new public API surface, but cleaning responses and sanitized messages include additional quality and governance fields.
 - P1-M13 manual cleaning API for sanitized messages.
+- P1-M14 Chinese knowledge review console using existing candidate and review APIs.
 
-Planned Phase 1 APIs: After P1-M13
+Planned Phase 1 APIs: After P1-M14
 
-- P1-M14 knowledge review quality console refinements if the current review APIs are not enough.
 - P1-M15 final high-quality DataHub release verification; no new API surface is required by default.
 - Approval and RAG rebuild for Bad Case-generated drafts through existing review/RAG steps.
 - Future production retrieval hardening beyond local JSON plus mock retrieval.
@@ -150,6 +150,50 @@ Updated sanitized message fields:
 - `cleaner`
 - `cleaning_note`
 - `manual_cleaned_at`
+
+## P1-M14 Knowledge Review Console API Usage
+
+Status: implemented through existing APIs.
+
+P1-M14 does not add a new review queue API. The Chinese review console reuses:
+
+- `GET /api/knowledge/candidates`
+- `GET /api/review/pending`
+- `PATCH /api/knowledge/candidates/{candidate_id}`
+- `POST /api/review/{candidate_id}/approve`
+- `POST /api/review/{candidate_id}/reject`
+- `POST /api/review/{candidate_id}/needs-revision`
+
+Candidate editable fields:
+
+- `question`
+- `answer`
+- `intent`
+- `tags`
+- `risk_level`
+- `quality_score`
+
+Review payload:
+
+```json
+{
+  "reviewer": "local_reviewer",
+  "review_note": "Approved: answer is accurate and safe."
+}
+```
+
+Review states:
+
+- `pending_review`
+- `needs_revision`
+- `approved`
+- `rejected`
+
+Hard RAG rule:
+
+- `approved` candidates can enter `POST /api/rag/build`.
+- `pending_review`, `needs_revision`, and `rejected` candidates cannot enter RAG.
+- Review records continue to be saved under `backend/storage/review_records/`.
 
 Important M8.5 boundary:
 

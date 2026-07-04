@@ -9,7 +9,7 @@ Current code remains Phase 1.
 Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be implemented early.
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
-P1-M12 Advanced Data Cleaning completed. Current checkpoint: P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
+P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. Current checkpoint: P1-M14 Knowledge Review Quality Console.
 P1-M15 is now the planned final Phase 1 high-quality data platform release.
 
 ## Completed Through M1
@@ -808,3 +808,28 @@ Still forbidden:
 Next recommended stage:
 
 - P1-M14 Knowledge Review Quality Console.
+
+## P1-M14 Knowledge Review Quality Console
+
+Completed in this checkpoint:
+
+- Chinese knowledge review workbench in the DataHub admin console.
+- Local frontend filtering for knowledge candidates by status, source type, quality level, intent, and keyword.
+- Candidate editing through existing candidate APIs.
+- Review actions through existing review APIs:
+  - approve
+  - reject
+  - needs_revision
+- Reviewer and review note support.
+- Source trace, quality score, cleaning issues, and risk flags displayed in the UI.
+- Reviewer-facing guide added at `docs/20_KNOWLEDGE_REVIEW_GUIDE.md`.
+
+Still forbidden:
+
+- Do not implement P1-M15 final high-quality release before explicitly started.
+- Do not implement Phase 2, Phase 3, or Phase 4 early.
+- Do not connect real vector databases, embeddings, ORM, database, real LLM, MCP, or multimodal pipelines.
+
+Next recommended stage:
+
+- P1-M15 High-quality DataHub Final Release.

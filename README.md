@@ -12,7 +12,7 @@ English version: [README.en.md](./README.en.md)
 
 DataHub 是一个面向 AI Agent 集群的数据资产中心，用来把客服聊天记录、历史知识库、公开评测样本、Bad Case 修正和后续多模态素材统一纳入治理流程，经过清洗、脱敏、人工修正、知识抽取、审核和 RAG 构建后，提供给 CustomerOpsAgent 等 Agent 以受限 API 调用。
 
-当前实现聚焦文本客服知识闭环，并已经具备本地 JSON 存储、本地关键词检索、人工清洗、人工审核、Bad Case 回流和 Legacy RAG 迁移能力。多模态素材中心、销售培训数据导出、微调数据集导出和 MCP Tools 属于架构预留能力，尚未作为生产功能接入。
+当前实现聚焦文本客服知识闭环，并已经具备本地 JSON 存储、本地关键词检索、人工清洗、中文知识审核、Bad Case 回流和 Legacy RAG 迁移能力。多模态素材中心、销售培训数据导出、微调数据集导出和 MCP Tools 属于架构预留能力，尚未作为生产功能接入。
 
 ## 目录
 
@@ -74,7 +74,7 @@ flowchart LR
   B --> C["机器清洗与脱敏"]
   C --> D["人工清洗工作台"]
   D --> E["知识候选抽取"]
-  E --> F["人工审核"]
+  E --> F["中文知识审核工作台"]
   F --> G["统一 RAG Chunks"]
   G --> H["CustomerOpsAgent 检索 API"]
   H --> I["Bad Case 回流"]
@@ -221,6 +221,7 @@ Invoke-RestMethod `
 python -m py_compile backend\app\main.py backend\app\schemas.py backend\app\storage.py
 python backend\tests\test_advanced_cleaning.py
 python backend\tests\test_manual_cleaning.py
+python backend\tests\test_review_quality_console.py
 python backend\tests\test_customerops_retrieval.py
 python backend\tests\test_rag_quality.py
 python backend\tests\test_bad_case_feedback.py

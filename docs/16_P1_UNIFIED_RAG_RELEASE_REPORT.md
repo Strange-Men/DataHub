@@ -250,3 +250,22 @@ Added capabilities:
   - `keep` uses existing sanitized content.
 
 This addendum does not change the P1-M11 unified RAG tag. It documents the continued Phase 1 high-quality data platform hardening route toward P1-M15.
+
+## 14. P1-M14 Addendum
+
+P1-M14 adds the Chinese knowledge review quality console.
+
+Added capabilities:
+
+- Candidate list and local filters in the admin console.
+- Candidate editing for question, answer, intent, tags, risk level, and quality score.
+- Review actions for approved, rejected, and needs_revision decisions.
+- Reviewer and review note capture.
+- Source trace, quality score, cleaning issues, and risk flags shown to reviewers.
+- Reviewer-facing guide at `docs/20_KNOWLEDGE_REVIEW_GUIDE.md`.
+
+P1-M14 preserves the P1 RAG boundary:
+
+- Only approved candidates can become local RAG chunks.
+- Pending, needs-revision, and rejected candidates cannot become chunks.
+- No production vector database, embedding model, database, ORM, real LLM, MCP, or P2/P3/P4 feature is introduced.
