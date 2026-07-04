@@ -203,6 +203,53 @@ h3 {
   line-height: 1.5;
 }
 
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.connection-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(16, 24, 39, 0.88);
+}
+
+.connection-card h2,
+.connection-card p {
+  margin-bottom: 6px;
+}
+
+.connection-card code {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 10px;
+  border: 1px solid rgba(45, 212, 255, 0.22);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: rgba(8, 18, 33, 0.88);
+  color: #dbeafe;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.connection-connected {
+  border-color: rgba(52, 211, 153, 0.28);
+}
+
+.connection-disconnected {
+  border-color: rgba(250, 204, 21, 0.28);
+}
+
 .message {
   margin: 12px 0 0;
   border-radius: 8px;
@@ -226,7 +273,25 @@ h3 {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 14px;
+}
+
+.advanced-info {
+  margin-top: 16px;
+  border: 1px solid rgba(37, 49, 74, 0.82);
+  border-radius: 8px;
+  background: rgba(8, 18, 33, 0.58);
+}
+
+.advanced-info summary {
+  cursor: pointer;
+  padding: 14px 16px;
+  color: var(--text);
+  font-weight: 800;
+}
+
+.advanced-info .governance-grid {
+  padding: 0 16px 16px;
 }
 
 .governance-card,
@@ -274,13 +339,13 @@ h3 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
-  margin-top: 24px;
+  margin-top: 16px;
 }
 
 .phase-card {
   display: grid;
   gap: 14px;
-  min-height: 260px;
+  min-height: 210px;
   padding: 18px;
 }
 
@@ -350,7 +415,35 @@ h3 {
   display: grid;
   grid-template-columns: minmax(320px, 0.48fr) minmax(0, 0.52fr);
   gap: 18px;
-  margin-top: 24px;
+  margin-top: 20px;
+}
+
+.workflow-guide {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.workflow-step {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 174px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  background: rgba(16, 24, 39, 0.92);
+}
+
+.workflow-step h2 {
+  font-size: 1rem;
+}
+
+.workflow-step p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
 }
 
 .panel {
@@ -605,6 +698,10 @@ h3 {
 }
 
 @media (max-width: 1280px) {
+  .workflow-guide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .governance-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -625,7 +722,8 @@ h3 {
   }
 
   .panel-heading,
-  .candidate-header {
+  .candidate-header,
+  .connection-card {
     align-items: stretch;
     flex-direction: column;
   }
@@ -638,6 +736,7 @@ h3 {
 
   .governance-grid,
   .phase-grid,
+  .workflow-guide,
   .manual-grid,
   .review-edit-grid,
   .review-action-grid,

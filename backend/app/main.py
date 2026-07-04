@@ -127,6 +127,11 @@ def health() -> dict[str, str]:
     }
 
 
+@app.get("/api/health")
+def api_health() -> dict[str, str]:
+    return health()
+
+
 @app.post("/api/legacy-rag/import", response_model=ApiResponse)
 def import_legacy_rag_export(payload: LegacyRagImportRequest) -> ApiResponse:
     metadata = import_legacy_rag(payload)

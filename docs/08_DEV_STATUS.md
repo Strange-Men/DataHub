@@ -10,6 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review.
 
 ## Completed Through M1
 
@@ -744,6 +745,7 @@ P1:
 - `p1-m13-chinese-admin-console`
 - `p1-m14-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
+- `p1-m15.5-frontend-ux-cleanup-boundary-review`
 
 P2:
 
@@ -863,5 +865,20 @@ P1 is complete as a high-quality text customer service data governance platform 
 Recommended next move:
 
 - Pause feature development.
-- Prepare P1-P4 project review and architecture explanation materials.
+- Manually browse the simplified Chinese dark frontend and capture screenshots if needed.
+- Use `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md` as the project capability and boundary source of truth.
 - Start P2-M1 only after a separate scope confirmation.
+
+## Completed In P1-M15.5
+
+- Simplified the Chinese dark admin console from a dense debugging-style page into a step-based workflow.
+- Added frontend backend-connection status:
+  - checking
+  - connected
+  - disconnected
+- Added `/api/health` as a frontend-friendly health-check alias through the existing `/api` proxy path.
+- Replaced the misleading P1 "enter module" behavior with a real scroll to the main workflow.
+- Kept P2/P3/P4 buttons disabled and labeled as not connected Roadmap entries.
+- Moved internal technical cards into a lower-priority advanced information section.
+- Added project review and boundary documentation at `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md`.
+- Confirmed no interview packaging, resume packaging, P2/P3/P4 implementation, vector database, embedding, database, ORM, real LLM, MCP, or CustomerOpsAgent repository change is included.

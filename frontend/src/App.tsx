@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type SourceBatch = {
   batch_id: string;
@@ -7,6 +7,13 @@ type SourceBatch = {
   conversation_count: number;
   created_at: string;
   status: "raw_imported";
+};
+
+type BackendStatus = {
+  state: "checking" | "connected" | "disconnected";
+  service?: string;
+  phase?: string;
+  detail?: string;
 };
 
 type CleaningJob = {
@@ -160,6 +167,14 @@ const defaultImportJson = `{
   ]
 }`;
 
+const API_BASE = "";
+const BACKEND_START_COMMAND =
+  "python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000";
+
+function apiPath(path: string) {
+  return `${API_BASE}${path}`;
+}
+
 const phaseCards = [
   {
     title: "P1 客服文本知识中台",
@@ -233,6 +248,65 @@ const governanceCards = [
     value: "draft loop",
     description: "坏例绑定 retrieval_id，人工转为待审核草稿。",
     status: "已接入"
+  }
+];
+
+const compactPhaseCards = [
+  {
+    title: "P1 客服文本知识中台",
+    status: "已接入",
+    description: "导入、清洗、人工修正、知识审核、RAG、Agent 检索与 Bad Case 回流。",
+    items: ["数据导入", "机器清洗", "人工清洗", "知识审核", "RAG / Agent"],
+    disabled: false
+  },
+  {
+    title: "P2 AI 素材中心",
+    status: "Roadmap",
+    description: "图片、视频、海报素材治理，当前仅保留产品入口。",
+    items: ["素材导入", "OCR / Caption", "标签 / SKU", "多模态审核"],
+    disabled: true
+  },
+  {
+    title: "P3 数据资产复用",
+    status: "Roadmap",
+    description: "销售培训、FAQ 手册、SOP 与微调数据导出，当前未接入。",
+    items: ["培训资料", "SOP", "FAQ 手册", "数据集导出"],
+    disabled: true
+  },
+  {
+    title: "P4 MCP + Agent 集群",
+    status: "Roadmap",
+    description: "MCP Tools 与多 Agent 统一调用，当前未接入。",
+    items: ["MCP Tools", "SalesAgent", "OpsAgent", "MaterialAgent"],
+    disabled: true
+  }
+];
+
+const workflowSteps = [
+  {
+    title: "Step 1：导入客服数据",
+    description: "粘贴或提交客服聊天 JSON，然后刷新批次列表。",
+    actions: ["导入 JSON", "刷新批次"]
+  },
+  {
+    title: "Step 2：机器清洗",
+    description: "选择 batch，执行机器清洗，读取 sanitized 数据。",
+    actions: ["选择 batch", "执行清洗", "读取 sanitized"]
+  },
+  {
+    title: "Step 3：人工清洗",
+    description: "查看机器建议，修改、保留、丢弃或标记复核。",
+    actions: ["查看质量标签", "保存人工清洗"]
+  },
+  {
+    title: "Step 4：知识审核",
+    description: "刷新候选知识，编辑内容，审核通过或打回。",
+    actions: ["刷新候选", "编辑 candidate", "审核决策"]
+  },
+  {
+    title: "Step 5：构建 RAG 并供给 Agent",
+    description: "只把 approved candidate 构建为 RAG，供 CustomerOpsAgent 受限检索。",
+    actions: ["Build RAG", "Agent 检索", "Bad Case 回流"]
   }
 ];
 
@@ -329,6 +403,8 @@ function toCandidateEdit(candidate: KnowledgeCandidate): CandidateEditState {
 }
 
 export function App() {
+  const workflowRef = useRef<HTMLElement | null>(null);
+  const advancedInfoRef = useRef<HTMLDetailsElement | null>(null);
   const [sourceName, setSourceName] = useState("sample_customer_chat");
   const [jsonText, setJsonText] = useState(defaultImportJson);
   const [sources, setSources] = useState<SourceBatch[]>([]);
@@ -349,11 +425,54 @@ export function App() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<BackendStatus>({
+    state: "checking",
+    detail: "正在检测 FastAPI 后端连接。"
+  });
 
   useEffect(() => {
-    void loadSources();
-    void loadCandidates();
+    void checkBackendConnection(true);
   }, []);
+
+  async function checkBackendConnection(loadInitialData = false) {
+    setBackendStatus({
+      state: "checking",
+      detail: "正在检测 FastAPI 后端连接。"
+    });
+    try {
+      const response = await fetch(apiPath("/api/health"));
+      const body = await response.json();
+      if (!response.ok || body.status !== "ok") {
+        setBackendStatus({
+          state: "disconnected",
+          detail: "后端已响应，但健康检查未返回 ok。"
+        });
+        return;
+      }
+      setBackendStatus({
+        state: "connected",
+        service: body.service,
+        phase: body.phase,
+        detail: "已连接 FastAPI 后端。"
+      });
+      if (loadInitialData) {
+        await Promise.all([loadSources(false), loadCandidates(false)]);
+      }
+    } catch {
+      setBackendStatus({
+        state: "disconnected",
+        detail: "未连接 FastAPI 后端。请先启动后端服务。"
+      });
+    }
+  }
+
+  function scrollToWorkflow() {
+    workflowRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function scrollToAdvancedInfo() {
+    advancedInfoRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   const currentBatchOptions = useMemo(
     () => sources.map((source) => ({ id: source.batch_id, label: `${source.source_name} / ${source.batch_id}` })),
@@ -384,9 +503,9 @@ export function App() {
     });
   }, [candidates, reviewFilters]);
 
-  async function loadSources() {
+  async function loadSources(showError = true) {
     try {
-      const response = await fetch("/api/sources");
+      const response = await fetch(apiPath("/api/sources"));
       const body = await response.json();
       if (response.ok && body.success) {
         setSources(body.data.sources);
@@ -395,17 +514,23 @@ export function App() {
         }
       }
     } catch {
-      setError("无法加载批次列表，请确认 FastAPI 后端正在运行。");
+      setBackendStatus({
+        state: "disconnected",
+        detail: "无法加载批次列表，通常是 FastAPI 后端未启动或 Vite 代理没有连上。"
+      });
+      if (showError) {
+        setError("批次列表暂时不可用。请先确认后端连接状态。");
+      }
     }
   }
 
-  async function loadCandidates() {
-    setError("");
+  async function loadCandidates(showError = true) {
+    if (showError) setError("");
     try {
-      const response = await fetch("/api/knowledge/candidates");
+      const response = await fetch(apiPath("/api/knowledge/candidates"));
       const body = await response.json();
       if (!response.ok || !body.success) {
-        setError("无法读取知识候选列表。");
+        if (showError) setError("无法读取知识候选列表。");
         return;
       }
       const loaded: KnowledgeCandidate[] = body.data.candidates;
@@ -422,7 +547,13 @@ export function App() {
       setCandidateEdits(edits);
       setReviewDecisions(decisions);
     } catch {
-      setError("读取知识候选失败，请确认后端服务可用。");
+      setBackendStatus({
+        state: "disconnected",
+        detail: "读取知识候选失败，请确认 FastAPI 后端正在运行。"
+      });
+      if (showError) {
+        setError("读取知识候选失败，请确认后端服务可用。");
+      }
     }
   }
 
@@ -448,7 +579,7 @@ export function App() {
 
     setIsBusy(true);
     try {
-      const response = await fetch("/api/sources/import-json", {
+      const response = await fetch(apiPath("/api/sources/import-json"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -477,7 +608,7 @@ export function App() {
     setMessage("");
     setIsBusy(true);
     try {
-      const response = await fetch(`/api/cleaning/run/${batchId}`, { method: "POST" });
+      const response = await fetch(apiPath(`/api/cleaning/run/${batchId}`), { method: "POST" });
       const body = await response.json();
       if (!response.ok || !body.success) {
         setError("机器清洗失败，请确认 raw batch 存在。");
@@ -501,7 +632,7 @@ export function App() {
     setError("");
     setIsBusy(true);
     try {
-      const response = await fetch(`/api/sanitized/${batchId}`);
+      const response = await fetch(apiPath(`/api/sanitized/${batchId}`));
       const body = await response.json();
       if (!response.ok || !body.success) {
         setError("未找到 sanitized batch，请先执行机器清洗。");
@@ -547,7 +678,7 @@ export function App() {
     setIsBusy(true);
     try {
       const response = await fetch(
-        `/api/sanitized/${sanitizedBatch.batch_id}/messages/${item.message_id}/manual-clean`,
+        apiPath(`/api/sanitized/${sanitizedBatch.batch_id}/messages/${item.message_id}/manual-clean`),
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -577,7 +708,7 @@ export function App() {
     setMessage("");
     setIsBusy(true);
     try {
-      const response = await fetch(`/api/extraction/run/${sanitizedBatch.batch_id}`, {
+      const response = await fetch(apiPath(`/api/extraction/run/${sanitizedBatch.batch_id}`), {
         method: "POST"
       });
       const body = await response.json();
@@ -630,7 +761,7 @@ export function App() {
     setMessage("");
     setIsBusy(true);
     try {
-      const response = await fetch(`/api/knowledge/candidates/${candidate.candidate_id}`, {
+      const response = await fetch(apiPath(`/api/knowledge/candidates/${candidate.candidate_id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -672,7 +803,7 @@ export function App() {
     setMessage("");
     setIsBusy(true);
     try {
-      const response = await fetch(`/api/review/${candidate.candidate_id}/${action}`, {
+      const response = await fetch(apiPath(`/api/review/${candidate.candidate_id}/${action}`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -701,7 +832,7 @@ export function App() {
     setMessage("");
     setIsBusy(true);
     try {
-      const response = await fetch("/api/rag/build", { method: "POST" });
+      const response = await fetch(apiPath("/api/rag/build"), { method: "POST" });
       const body = await response.json();
       if (!response.ok || !body.success) {
         setError("RAG build 失败。");
@@ -724,20 +855,53 @@ export function App() {
           <p className="eyebrow">DataHub 管理台</p>
           <h1>DataHub 数据治理与 RAG 知识中台</h1>
           <p className="summary">
-            面向 Agent 集群的多源数据治理、知识生产与统一检索平台。当前聚焦 P1
-            文本客服知识中台补强，P2/P3/P4 为 Roadmap，尚未接入后端。
+            将客服文本数据经过机器清洗、人工清洗、知识审核后沉淀为可供客服 Agent 使用的高质量 RAG 知识库。
           </p>
+          <div className="hero-actions">
+            <button type="button" onClick={scrollToWorkflow}>
+              开始 P1 主流程
+            </button>
+            <button type="button" className="secondary" onClick={scrollToAdvancedInfo}>
+              查看高级信息
+            </button>
+          </div>
         </div>
         <div className="hero-status">
           <span>当前状态</span>
-          <strong>P1 文本客服知识中台补强中</strong>
-          <p>P2/P3/P4 入口仅用于产品结构预留。</p>
+          <strong>P1 客服文本知识中台已完成高质量数据治理闭环</strong>
+          <p>当前主流程：导入 → 机器清洗 → 人工清洗 → 知识审核 → RAG / Agent。</p>
         </div>
+      </section>
+
+      <section className={`connection-card connection-${backendStatus.state}`}>
+        <div>
+          <p className="eyebrow compact">后端连接状态</p>
+          <h2>
+            {backendStatus.state === "checking"
+              ? "检查中"
+              : backendStatus.state === "connected"
+                ? "已连接 FastAPI"
+                : "未连接 FastAPI"}
+          </h2>
+          <p>
+            {backendStatus.state === "connected"
+              ? `${backendStatus.service || "datahub-api"} / ${backendStatus.phase || "unknown phase"}`
+              : backendStatus.detail}
+          </p>
+          {backendStatus.state === "disconnected" ? (
+            <code>{BACKEND_START_COMMAND}</code>
+          ) : null}
+        </div>
+        <button type="button" className="secondary" onClick={() => checkBackendConnection(true)}>
+          重新检测后端
+        </button>
       </section>
 
       {error ? <div className="message error">{error}</div> : null}
       {message ? <div className="message success">{message}</div> : null}
 
+      <details className="advanced-info" ref={advancedInfoRef}>
+        <summary>高级信息 / 技术状态</summary>
       <section className="governance-grid" aria-label="DataHub governance overview">
         {governanceCards.map((card) => (
           <article className="governance-card" key={card.title}>
@@ -750,9 +914,10 @@ export function App() {
           </article>
         ))}
       </section>
+      </details>
 
       <section className="phase-grid" aria-label="DataHub phase modules">
-        {phaseCards.map((card) => (
+        {compactPhaseCards.map((card) => (
           <article className={`phase-card ${card.disabled ? "muted-card" : ""}`} key={card.title}>
             <div className="card-title-row">
               <h2>{card.title}</h2>
@@ -764,21 +929,40 @@ export function App() {
                 <span key={item}>{item}</span>
               ))}
             </div>
-            <button type="button" disabled={card.disabled}>
-              {card.disabled ? "未接入" : "进入模块"}
+            <button
+              type="button"
+              className={card.disabled ? "muted-button" : undefined}
+              onClick={card.disabled ? undefined : scrollToWorkflow}
+              disabled={card.disabled}
+            >
+              {card.disabled ? "暂未接入" : "进入 P1 主流程"}
             </button>
           </article>
         ))}
       </section>
 
-      <section className="workbench-grid">
+      <section className="workflow-guide" aria-label="DataHub main workflow">
+        {workflowSteps.map((step) => (
+          <article className="workflow-step" key={step.title}>
+            <h2>{step.title}</h2>
+            <p>{step.description}</p>
+            <div className="module-list">
+              {step.actions.map((action) => (
+                <span key={action}>{action}</span>
+              ))}
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section className="workbench-grid" ref={workflowRef}>
         <article className="panel">
           <div className="panel-heading">
             <div>
               <p className="eyebrow compact">数据导入</p>
               <h2>导入客服聊天 JSON</h2>
             </div>
-            <button type="button" className="secondary" onClick={loadSources}>
+            <button type="button" className="secondary" onClick={() => loadSources()}>
               刷新批次
             </button>
           </div>
@@ -951,7 +1135,7 @@ export function App() {
             <h2>处理 pending_review knowledge candidates</h2>
           </div>
           <div className="button-row">
-            <button type="button" className="secondary" onClick={loadCandidates} disabled={isBusy}>
+            <button type="button" className="secondary" onClick={() => loadCandidates()} disabled={isBusy}>
               刷新候选知识
             </button>
             <button type="button" className="secondary" onClick={buildRag} disabled={isBusy}>

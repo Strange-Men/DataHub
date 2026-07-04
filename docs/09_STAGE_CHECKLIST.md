@@ -99,6 +99,7 @@ P1:
 - `p1-m13-chinese-admin-console`
 - `p1-m14-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
+- `p1-m15.5-frontend-ux-cleanup-boundary-review`
 
 P2:
 
@@ -796,3 +797,20 @@ P1-M15 is complete when:
 - No P2/P3/P4, vector database, embedding, database, ORM, real LLM, MCP, or CustomerOpsAgent repository change is introduced.
 - `backend/storage/`, `frontend/node_modules/`, and `frontend/dist/` are not committed.
 - New tag uses `p1-m15-high-quality-datahub-release`.
+
+## 28. P1-M15.5 Frontend UX Cleanup And Boundary Review Check
+
+P1-M15.5 is complete when:
+
+- The frontend workflow file has been read.
+- The dark design reference has been read.
+- The first screen shows a simple product overview and backend connection status.
+- The main P1 workflow is organized as Step 1 to Step 5.
+- P1 "enter module" scrolls to the main workflow.
+- P2/P3/P4 buttons are disabled and marked Roadmap / not connected.
+- Backend disconnected state explains how to start FastAPI:
+  `python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000`
+- Internal technical details are moved below the primary workflow or into an advanced information area.
+- `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md` exists.
+- No interview packaging, resume packaging, P2/P3/P4 backend implementation, vector database, embedding, database, ORM, real LLM, MCP, CustomerOpsAgent repository change, or historical tag rewrite is introduced.
+- New tag uses `p1-m15.5-frontend-ux-cleanup-boundary-review`.

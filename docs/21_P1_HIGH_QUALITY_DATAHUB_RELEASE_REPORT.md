@@ -247,3 +247,26 @@ p1-m15-high-quality-datahub-release
 ```
 
 Historical tags are kept as-is and are not moved, deleted, or renamed.
+
+## 17. P1-M15.5 UX Cleanup Addendum
+
+P1-M15.5 keeps the P1 high-quality release intact and improves operator usability.
+
+Frontend cleanup:
+
+- The first screen focuses on the product purpose and backend connection status.
+- The P1 workflow is presented as Step 1 to Step 5:
+  - import
+  - machine cleaning
+  - manual cleaning
+  - knowledge review
+  - RAG / Agent
+- P1 entry buttons scroll to the real operational workflow.
+- P2, P3, and P4 are shown only as Roadmap / not connected.
+- Internal technical details are moved into a lower-priority advanced information area.
+
+Boundary review:
+
+- `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md` records current capabilities, demo-friendly flows, technical limits, and capabilities that should not be claimed.
+- This addendum does not change the P1 final release tag.
+- This addendum does not implement P2/P3/P4, real vector databases, embeddings, database, ORM, real LLM, MCP, or CustomerOpsAgent repository changes.

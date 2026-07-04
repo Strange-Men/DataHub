@@ -315,3 +315,18 @@ machine cleaning
 The Chinese admin console now uses a unified dark AgentOps / data governance product style. P1 remains the only implemented product phase. P2, P3, and P4 remain formal roadmap phases and are not implemented in P1-M15.
 
 After this checkpoint, the recommended next activity is project review and architecture explanation material preparation before deciding whether to start Phase 2.
+
+## 9. P1-M15.5 Update
+
+P1-M15.5 is a frontend UX cleanup and project boundary review checkpoint.
+
+It does not add new product backend features. It improves how the completed P1 capabilities are presented and operated:
+
+- The Chinese dark admin console is simplified into a clear Step 1 to Step 5 workflow.
+- The frontend shows backend connection status before users start operational work.
+- P1 module entry scrolls to the operational workflow.
+- P2, P3, and P4 remain Roadmap / not connected entries.
+- Internal technical details are moved below the primary workflow.
+- Project boundaries are documented in `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md`.
+
+This checkpoint does not implement Phase 2, Phase 3, Phase 4, real vector retrieval, embeddings, database, ORM, real LLM, MCP, or CustomerOpsAgent repository changes.
