@@ -12,6 +12,7 @@ from app.schemas import (
     CustomerOpsRetrievalRequest,
     ImportJsonRequest,
     LegacyRagImportRequest,
+    ManualCleanRequest,
     RagSearchRequest,
     ReviewDecisionRequest,
 )
@@ -36,6 +37,7 @@ from app.storage import (
     list_pending_review_candidates,
     list_rag_chunks,
     list_raw_batches,
+    manual_clean_sanitized_message,
     run_cleaning,
     run_customerops_retrieval,
     run_extraction,
@@ -121,7 +123,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "P1-M12",
+        "phase": "P1-M13",
     }
 
 
@@ -251,6 +253,28 @@ def get_sanitized_source(batch_id: str) -> ApiResponse:
     return ApiResponse(
         success=True,
         data=sanitized.model_dump(),
+        requestId=_request_id(),
+    )
+
+
+@app.patch("/api/sanitized/{batch_id}/messages/{message_id}/manual-clean", response_model=ApiResponse)
+def manual_clean_message(
+    batch_id: str,
+    message_id: str,
+    payload: ManualCleanRequest,
+) -> ApiResponse:
+    record = manual_clean_sanitized_message(batch_id, message_id, payload)
+    if record is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "SANITIZED_MESSAGE_NOT_FOUND",
+                "message": "Sanitized batch or message was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=record.model_dump(),
         requestId=_request_id(),
     )
 

@@ -267,3 +267,16 @@ Important wording rules:
 - Bad Case feedback is implemented from M8 onward.
 - Bad Case to pending-review draft creation is implemented from M8.5 onward.
 - Phase 2, Phase 3, and Phase 4 should be described as architecture reservations or roadmap extensions unless they are actually implemented later.
+
+## 6. P1-M13 Update
+
+P1-M13 adds the Chinese admin console and manual cleaning workbench needed for high-quality text data governance.
+
+The final vision remains unchanged:
+
+- DataHub is not just a customer service RAG demo.
+- DataHub is the multi-source data governance and RAG knowledge platform for an Agent cluster.
+- Current code continues to stay in Phase 1.
+- P2/P3/P4 are formal roadmap capabilities and must not be implemented until explicitly started.
+
+P1-M13 strengthens the path from machine-cleaned data to human-verified data by letting cleaners edit sanitized content and save cleaning decisions before knowledge extraction.

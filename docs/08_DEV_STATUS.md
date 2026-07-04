@@ -9,6 +9,7 @@ Current code remains Phase 1.
 Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be implemented early.
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
+P1-M12 Advanced Data Cleaning completed. Current checkpoint: P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
 P1-M15 is now the planned final Phase 1 high-quality data platform release.
 
 ## Completed Through M1
@@ -740,7 +741,7 @@ P1:
 - `p1-m10-legacy-rag-migration`
 - `p1-m11-unified-rag-release`
 - `p1-m12-advanced-data-cleaning`
-- `p1-m13-chinese-admin-manual-cleaning`
+- `p1-m13-chinese-admin-console`
 - `p1-m14-knowledge-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
 
@@ -779,3 +780,31 @@ Before P2 starts:
 P1-M11 does not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4.
 
 Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.
+
+## P1-M13 Chinese Admin Console And Manual Cleaning Workbench
+
+Completed in this checkpoint:
+
+- Chinese DataHub admin console.
+- P1/P2/P3/P4 capability cards.
+- P2/P3/P4 cards marked as Roadmap / not connected.
+- Manual cleaning workbench for sanitized messages.
+- Manual cleaning API:
+  - `PATCH /api/sanitized/{batch_id}/messages/{message_id}/manual-clean`
+- Manual cleaning records under `backend/storage/manual_cleaning_records/`.
+- Extraction uses manual cleaning actions:
+  - `drop` and `needs_review` are skipped.
+  - `keep_edited` uses manually cleaned content.
+  - `keep` uses current sanitized content.
+- Cleaner-facing guide added at `docs/19_MANUAL_CLEANING_GUIDE.md`.
+
+Still forbidden:
+
+- Do not implement P1-M14 full knowledge review quality console before it is explicitly started.
+- Do not implement P1-M15 final acceptance before it is explicitly started.
+- Do not implement Phase 2, Phase 3, or Phase 4 early.
+- Do not connect real vector databases, embeddings, ORM, real LLM, MCP, or multimodal pipelines in this checkpoint.
+
+Next recommended stage:
+
+- P1-M14 Knowledge Review Quality Console.

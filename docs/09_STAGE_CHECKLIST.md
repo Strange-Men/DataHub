@@ -96,7 +96,7 @@ P1:
 - `p1-m10-legacy-rag-migration`
 - `p1-m11-unified-rag-release`
 - `p1-m12-advanced-data-cleaning`
-- `p1-m13-chinese-admin-manual-cleaning`
+- `p1-m13-chinese-admin-console`
 - `p1-m14-knowledge-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
 
@@ -116,6 +116,22 @@ P4:
 
 - `p4-m1-mcp-tool-layer`
 - `p4-m2-agent-cluster-integration`
+
+## 7C. P1-M13 Manual Cleaning Stage Check
+
+Before P1-M13 work is accepted, confirm:
+
+- The frontend workflow file was read:
+  `C:\Users\16432\Desktop\AI_workflow\前端工作流.md`
+- The React admin console is Chinese-facing.
+- P1/P2/P3/P4 capability cards are present.
+- P2/P3/P4 cards clearly show Roadmap / not connected status.
+- Manual cleaning can load sanitized messages by `batch_id`.
+- Manual cleaning can save `manual_action`, `cleaner`, and `cleaning_note`.
+- Raw batch files remain read-only.
+- Manual cleaning records remain under ignored `backend/storage/`.
+- Extraction uses manual cleaning decisions.
+- README files do not claim roadmap modules are already implemented.
 
 ## 8. M1 Completion Check
 

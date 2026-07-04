@@ -24,6 +24,8 @@ from app.schemas import (
     LegacyRagImportMetadata,
     LegacyRagImportRequest,
     LegacyRagItem,
+    ManualCleanRequest,
+    ManualCleaningRecord,
     RagBuildResult,
     RagChunk,
     RagSearchResult,
@@ -47,6 +49,7 @@ RAG_CHUNK_DIR = STORAGE_DIR / "rag_chunks"
 RETRIEVAL_LOG_DIR = STORAGE_DIR / "retrieval_logs"
 BAD_CASE_DIR = STORAGE_DIR / "bad_cases"
 LEGACY_RAG_IMPORT_DIR = STORAGE_DIR / "legacy_rag_imports"
+MANUAL_CLEANING_RECORD_DIR = STORAGE_DIR / "manual_cleaning_records"
 INDEX_FILE = RAW_BATCH_DIR / "index.json"
 SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
 CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
@@ -57,6 +60,7 @@ RAG_CHUNK_INDEX_FILE = RAG_CHUNK_DIR / "index.json"
 RETRIEVAL_LOG_INDEX_FILE = RETRIEVAL_LOG_DIR / "index.json"
 BAD_CASE_INDEX_FILE = BAD_CASE_DIR / "index.json"
 LEGACY_RAG_IMPORT_INDEX_FILE = LEGACY_RAG_IMPORT_DIR / "index.json"
+MANUAL_CLEANING_RECORD_INDEX_FILE = MANUAL_CLEANING_RECORD_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -127,6 +131,7 @@ def _ensure_storage() -> None:
     RETRIEVAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
     BAD_CASE_DIR.mkdir(parents=True, exist_ok=True)
     LEGACY_RAG_IMPORT_DIR.mkdir(parents=True, exist_ok=True)
+    MANUAL_CLEANING_RECORD_DIR.mkdir(parents=True, exist_ok=True)
     if not INDEX_FILE.exists():
         INDEX_FILE.write_text("[]", encoding="utf-8")
     if not SANITIZED_INDEX_FILE.exists():
@@ -147,6 +152,8 @@ def _ensure_storage() -> None:
         BAD_CASE_INDEX_FILE.write_text("[]", encoding="utf-8")
     if not LEGACY_RAG_IMPORT_INDEX_FILE.exists():
         LEGACY_RAG_IMPORT_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not MANUAL_CLEANING_RECORD_INDEX_FILE.exists():
+        MANUAL_CLEANING_RECORD_INDEX_FILE.write_text("[]", encoding="utf-8")
 
 
 def _read_json_list(path: Path) -> list[dict[str, object]]:
@@ -586,6 +593,68 @@ def get_sanitized_batch(batch_id: str) -> SanitizedBatch | None:
     return SanitizedBatch(**data)
 
 
+def manual_clean_sanitized_message(
+    batch_id: str,
+    message_id: str,
+    payload: ManualCleanRequest,
+) -> ManualCleaningRecord | None:
+    sanitized = get_sanitized_batch(batch_id)
+    if sanitized is None:
+        return None
+
+    target_index: int | None = None
+    for index, message in enumerate(sanitized.messages):
+        if message.message_id == message_id or message.source_message_id == message_id:
+            target_index = index
+            break
+    if target_index is None:
+        return None
+
+    message = sanitized.messages[target_index]
+    now = datetime.now(UTC).isoformat()
+    original_content = message.content
+    cleaned_content = payload.content.strip()
+    updated_message = message.model_copy(
+        update={
+            "manual_cleaning_status": "cleaned",
+            "manual_cleaned_content": cleaned_content,
+            "manual_action": payload.manual_action,
+            "cleaner": payload.cleaner.strip(),
+            "cleaning_note": payload.cleaning_note.strip(),
+            "manual_cleaned_at": now,
+        }
+    )
+    sanitized.messages[target_index] = updated_message
+
+    record = ManualCleaningRecord(
+        record_id=f"manual_clean_{uuid4().hex[:12]}",
+        batch_id=batch_id,
+        message_id=updated_message.message_id,
+        source_message_id=updated_message.source_message_id,
+        conversation_id=updated_message.conversation_id,
+        original_sanitized_content=original_content,
+        manual_cleaned_content=cleaned_content,
+        manual_action=payload.manual_action,
+        cleaner=payload.cleaner.strip(),
+        cleaning_note=payload.cleaning_note.strip(),
+        created_at=now,
+    )
+
+    _ensure_storage()
+    (SANITIZED_BATCH_DIR / f"{batch_id}.json").write_text(
+        json.dumps(sanitized.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (MANUAL_CLEANING_RECORD_DIR / f"{record.record_id}.json").write_text(
+        json.dumps(record.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    records = _read_json_list(MANUAL_CLEANING_RECORD_INDEX_FILE)
+    records.append(record.model_dump())
+    _write_json_list(MANUAL_CLEANING_RECORD_INDEX_FILE, records)
+    return record
+
+
 def _infer_intent(question: str, answer: str) -> tuple[str, list[str]]:
     text = f"{question} {answer}".lower()
     if any(term in text for term in ["shipping", "delivery", "dispatch"]):
@@ -645,6 +714,24 @@ def _source_type_for_batch(batch_id: str) -> str:
     return "chat_logs"
 
 
+def _message_allowed_for_extraction(message: SanitizedMessage) -> bool:
+    if message.manual_action in {"drop", "needs_review"}:
+        return False
+    if message.manual_action in {"keep", "keep_edited"}:
+        return True
+    if message.suggested_action == "drop":
+        return False
+    if message.quality_level == "low":
+        return False
+    return True
+
+
+def _message_extraction_content(message: SanitizedMessage) -> str:
+    if message.manual_action == "keep_edited" and message.manual_cleaned_content:
+        return message.manual_cleaned_content.strip()
+    return message.content.strip()
+
+
 def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
     sanitized = get_sanitized_batch(batch_id)
     if sanitized is None:
@@ -657,7 +744,7 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
     messages_by_conversation: dict[str, list[SanitizedMessage]] = {}
 
     for message in sanitized.messages:
-        if message.suggested_action == "drop":
+        if not _message_allowed_for_extraction(message):
             continue
         messages_by_conversation.setdefault(message.conversation_id, []).append(message)
 
@@ -671,11 +758,9 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
             )
             if answer_message is None:
                 continue
-            question = message.content.strip()
-            answer = answer_message.content.strip()
+            question = _message_extraction_content(message)
+            answer = _message_extraction_content(answer_message)
             if not question or not answer:
-                continue
-            if message.quality_level == "low" or answer_message.quality_level == "low":
                 continue
             intent, tags = _infer_intent(question, answer)
             candidate_id = f"kc_{uuid4().hex[:12]}"
@@ -709,6 +794,17 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
                     extraction_method="rule_based_mock",
                     cleaning_issues=candidate_cleaning_issues,
                     risk_flags=candidate_risk_flags,
+                    manual_cleaning_status=(
+                        "cleaned"
+                        if message.manual_cleaning_status == "cleaned"
+                        or answer_message.manual_cleaning_status == "cleaned"
+                        else None
+                    ),
+                    manual_action=", ".join(
+                        action
+                        for action in [message.manual_action, answer_message.manual_action]
+                        if action
+                    ) or None,
                     created_at=created_at,
                 )
             )

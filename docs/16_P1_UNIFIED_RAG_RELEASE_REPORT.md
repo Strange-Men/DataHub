@@ -233,3 +233,20 @@ Updated Phase 1 high-quality route:
 - P1-M15: High-quality DataHub P1 final release.
 
 P2 must not start unless explicitly requested after P1-M15.
+
+## 13. P1-M13 Addendum
+
+P1-M13 extends the post-unified-RAG Phase 1 quality work with a Chinese admin console and manual cleaning workbench.
+
+Added capabilities:
+
+- Chinese DataHub dashboard with P1/P2/P3/P4 capability cards.
+- P2/P3/P4 shown as Roadmap / not connected, not implemented.
+- Manual cleaning API for sanitized messages.
+- Manual cleaning records under ignored local storage.
+- Extraction respects manual cleaning decisions:
+  - `drop` and `needs_review` are skipped.
+  - `keep_edited` uses manually corrected content.
+  - `keep` uses existing sanitized content.
+
+This addendum does not change the P1-M11 unified RAG tag. It documents the continued Phase 1 high-quality data platform hardening route toward P1-M15.

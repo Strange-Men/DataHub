@@ -64,6 +64,33 @@ class SanitizedMessage(BaseModel):
     quality_score: float = 1.0
     quality_level: Literal["high", "medium", "low"] = "high"
     suggested_action: Literal["keep", "review", "drop"] = "keep"
+    manual_cleaning_status: Literal["not_cleaned", "cleaned"] = "not_cleaned"
+    manual_cleaned_content: str | None = None
+    manual_action: Literal["keep", "keep_edited", "drop", "needs_review"] | None = None
+    cleaner: str | None = None
+    cleaning_note: str | None = None
+    manual_cleaned_at: str | None = None
+
+
+class ManualCleanRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=10000)
+    manual_action: Literal["keep", "keep_edited", "drop", "needs_review"]
+    cleaner: str = Field(min_length=1, max_length=120)
+    cleaning_note: str = Field(default="", max_length=2000)
+
+
+class ManualCleaningRecord(BaseModel):
+    record_id: str
+    batch_id: str
+    message_id: str
+    source_message_id: str
+    conversation_id: str
+    original_sanitized_content: str
+    manual_cleaned_content: str
+    manual_action: Literal["keep", "keep_edited", "drop", "needs_review"]
+    cleaner: str
+    cleaning_note: str
+    created_at: str
 
 
 class SanitizedBatch(BaseModel):
@@ -135,6 +162,8 @@ class KnowledgeCandidate(BaseModel):
     source_note: str | None = None
     cleaning_issues: list[str] = Field(default_factory=list)
     risk_flags: list[str] = Field(default_factory=list)
+    manual_cleaning_status: str | None = None
+    manual_action: str | None = None
     created_at: str
     reviewer: str | None = None
     review_note: str | None = None

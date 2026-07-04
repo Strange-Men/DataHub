@@ -198,3 +198,32 @@ P1-M13 frontend work must read and follow:
 ```text
 C:\Users\16432\Desktop\AI_workflow\前端工作流.md
 ```
+## P1-M13 Manual Cleaning Handoff
+
+Correct frontend workflow file path:
+
+```text
+C:\Users\16432\Desktop\AI_workflow\前端工作流.md
+```
+
+P1-M13 implements the manual cleaning workbench described above.
+
+Manual cleaning output fields:
+
+- `manual_cleaning_status`
+- `manual_cleaned_content`
+- `manual_action`
+- `cleaner`
+- `cleaning_note`
+- `manual_cleaned_at`
+
+Extraction behavior:
+
+- `manual_action=drop`: skip the message.
+- `manual_action=needs_review`: skip the message by default.
+- `manual_action=keep_edited`: use `manual_cleaned_content`.
+- `manual_action=keep`: use current sanitized content.
+
+Manual cleaning records are saved under `backend/storage/manual_cleaning_records/`, which remains ignored by Git.
+
+The detailed cleaner-facing guide is `docs/19_MANUAL_CLEANING_GUIDE.md`.

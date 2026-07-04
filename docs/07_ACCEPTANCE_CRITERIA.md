@@ -557,3 +557,20 @@ Acceptance outline:
   machine cleaning -> manual cleaning -> extraction -> human review -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case feedback.
 - Final P1 high-quality DataHub acceptance report is produced.
 - P2 multimodal material ingestion remains a prepared next phase, not implemented inside P1-M15 unless separately requested.
+
+## P1-M13 Acceptance Criteria
+
+P1-M13 is accepted when:
+
+- The React frontend is presented as a Chinese DataHub admin console.
+- P1/P2/P3/P4 capability cards are visible.
+- P2/P3/P4 cards clearly show Roadmap / not connected state.
+- The manual cleaning workbench can load sanitized messages by `batch_id`.
+- The workbench displays PII, cleaning issues, risk flags, quality score, quality level, and suggested action.
+- A cleaner can edit sanitized content and save `manual_action`, `cleaner`, and `cleaning_note`.
+- Manual cleaning records are saved under ignored local storage.
+- Raw batch files remain read-only.
+- Extraction skips `drop` and `needs_review` manual actions.
+- Extraction uses `manual_cleaned_content` for `keep_edited`.
+- P1 existing tests continue to pass.
+- README files are product-oriented and do not claim roadmap modules are already implemented.

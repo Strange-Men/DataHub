@@ -461,3 +461,31 @@ Phase one only supports CustomerOpsAgent.
 - Do not allow CustomerOpsAgent to access the database directly.
 - Do not implement future extension modules before phase-one acceptance.
 - Do not introduce big data infrastructure in phase one.
+
+## 10. P1-M13 Manual Cleaning Architecture
+
+P1-M13 adds a Chinese React admin console and a manual cleaning workbench.
+
+Frontend:
+
+- React + TypeScript Chinese admin console.
+- Dashboard cards for P1, P2, P3, and P4 product areas.
+- P2/P3/P4 cards are Roadmap / not connected states only.
+- Manual cleaning workbench loads sanitized messages through `GET /api/sanitized/{batch_id}`.
+- Each message displays machine cleaning results and accepts cleaner edits.
+
+Backend:
+
+- `PATCH /api/sanitized/{batch_id}/messages/{message_id}/manual-clean`.
+- Updates sanitized batch message fields only.
+- Writes manual cleaning records under `backend/storage/manual_cleaning_records/`.
+- Raw batch files remain read-only.
+
+Extraction behavior:
+
+- `manual_action=drop`: skip message.
+- `manual_action=needs_review`: skip message by default.
+- `manual_action=keep_edited`: use `manual_cleaned_content`.
+- `manual_action=keep`: use current sanitized content.
+
+This stage does not change RAG storage, vector search, database, ORM, CustomerOpsAgent code, or roadmap modules.

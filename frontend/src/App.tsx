@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
-type ImportResult = {
+type SourceBatch = {
   batch_id: string;
   source_name: string;
   message_count: number;
@@ -11,16 +11,22 @@ type ImportResult = {
 
 type CleaningJob = {
   job_id: string;
-  source_batch_id: string | null;
   sanitized_batch_id: string;
   raw_message_count: number;
   sanitized_message_count: number;
   dropped_message_count: number;
   pii_detected_count: number;
+  exact_duplicate_count?: number;
+  near_duplicate_count?: number;
+  low_quality_count?: number;
+  noise_count?: number;
+  review_recommended_count?: number;
+  drop_recommended_count?: number;
+  average_quality_score?: number;
   status: "completed";
-  created_at: string;
-  completed_at: string;
 };
+
+type ManualAction = "keep" | "keep_edited" | "drop" | "needs_review";
 
 type SanitizedMessage = {
   conversation_id: string;
@@ -31,6 +37,17 @@ type SanitizedMessage = {
   pii_detected: boolean;
   pii_types: string[];
   cleaning_notes: string[];
+  cleaning_issues: string[];
+  risk_flags: string[];
+  quality_score: number;
+  quality_level: "high" | "medium" | "low";
+  suggested_action: "keep" | "review" | "drop";
+  manual_cleaning_status?: "not_cleaned" | "cleaned";
+  manual_cleaned_content?: string | null;
+  manual_action?: ManualAction | null;
+  cleaner?: string | null;
+  cleaning_note?: string | null;
+  manual_cleaned_at?: string | null;
 };
 
 type SanitizedBatch = {
@@ -41,136 +58,67 @@ type SanitizedBatch = {
   sanitized_message_count: number;
   dropped_message_count: number;
   pii_detected_count: number;
-  created_at: string;
+  exact_duplicate_count?: number;
+  near_duplicate_count?: number;
+  low_quality_count?: number;
+  noise_count?: number;
+  review_recommended_count?: number;
+  drop_recommended_count?: number;
+  average_quality_score?: number;
   messages: SanitizedMessage[];
 };
 
-type ExtractionJob = {
-  job_id: string;
-  source_batch_id: string;
-  candidate_count: number;
-  status: "completed";
-  extraction_method: "rule_based_mock";
-  created_at: string;
-  completed_at: string;
+type ManualEditState = {
+  content: string;
+  manual_action: ManualAction;
+  cleaner: string;
+  cleaning_note: string;
 };
 
-type KnowledgeCandidate = {
-  candidate_id: string;
-  source_batch_id: string;
-  source_conversation_id: string;
-  source_message_ids: string[];
-  source_type?: "sanitized_batch" | "bad_case";
-  source_bad_case_id?: string | null;
-  source_retrieval_id?: string | null;
-  source_chunk_ids?: string[];
-  linked_candidate_id?: string | null;
-  knowledge_type:
-    | "faq"
-    | "standard_answer"
-    | "business_rule"
-    | "human_handoff_rule"
-    | "forbidden_answer_rule";
-  question: string;
-  answer: string;
-  intent:
-    | "shipping"
-    | "refund"
-    | "order_status"
-    | "product_info"
-    | "handoff"
-    | "prohibited_answer"
-    | "general";
-  tags: string[];
-  risk_level: "low" | "medium" | "high";
-  review_status: "pending_review" | "needs_revision" | "approved" | "rejected";
-  quality_score: number;
-  extraction_method: "rule_based_mock" | "bad_case_resolution";
-  created_at: string;
-  reviewer?: string | null;
-  review_note?: string | null;
-  reviewed_at?: string | null;
-  updated_at?: string | null;
+type PhaseCard = {
+  title: string;
+  status: "已接入" | "开发中" | "Roadmap" | "未接入";
+  description: string;
+  items: string[];
 };
 
-type CandidateEditState = {
-  question: string;
-  answer: string;
-  intent: KnowledgeCandidate["intent"];
-  tags: string;
-  risk_level: KnowledgeCandidate["risk_level"];
-  quality_score: string;
-};
+const phaseCards: PhaseCard[] = [
+  {
+    title: "P1 客服文本知识中台",
+    status: "开发中",
+    description: "围绕客服聊天记录完成导入、清洗、审核、RAG、检索和 Bad Case 回流。",
+    items: [
+      "数据导入",
+      "机器清洗",
+      "人工清洗",
+      "知识抽取",
+      "人工审核",
+      "RAG 知识库",
+      "CustomerOpsAgent 检索",
+      "Bad Case 回流"
+    ]
+  },
+  {
+    title: "P2 AI 素材中心接入",
+    status: "Roadmap",
+    description: "面向图片、视频、海报等素材治理，当前仅预留产品入口。",
+    items: ["素材导入", "OCR / Caption", "标签 / SKU 绑定", "多模态审核", "多模态知识库"]
+  },
+  {
+    title: "P3 高质量数据资产复用",
+    status: "Roadmap",
+    description: "将已审核知识复用为销售培训、SOP、FAQ 和模型改进数据。",
+    items: ["销售培训资料", "SOP / 话术手册", "FAQ 手册", "微调数据集导出"]
+  },
+  {
+    title: "P4 MCP + Agent 集群",
+    status: "Roadmap",
+    description: "封装统一工具层，面向 CustomerOpsAgent、SalesAgent、OpsAgent 等 Agent 集群。",
+    items: ["MCP Tools", "CustomerOpsAgent", "SalesAgent", "OpsAgent", "MaterialAgent"]
+  }
+];
 
-type RagChunk = {
-  chunk_id: string;
-  candidate_id: string;
-  source_batch_id: string;
-  source_conversation_id: string;
-  source_message_ids: string[];
-  knowledge_type: KnowledgeCandidate["knowledge_type"];
-  intent: KnowledgeCandidate["intent"];
-  tags: string[];
-  risk_level: KnowledgeCandidate["risk_level"];
-  quality_score: number;
-  review_status: "approved";
-  chunk_text: string;
-  created_at: string;
-  build_method: "local_json_mock_retrieval";
-};
-
-type RagBuildResult = {
-  built_count: number;
-  updated_count: number;
-  skipped_count: number;
-  skipped_reasons: Record<string, number>;
-  chunk_count: number;
-  status: "completed";
-  build_method: "local_json_mock_retrieval";
-  created_at: string;
-};
-
-type RagSearchResult = RagChunk & {
-  score: number;
-  matched_terms: string[];
-};
-
-type CustomerOpsRetrievalResult = RagSearchResult & {
-  answer: string;
-};
-
-type CustomerOpsRetrieval = {
-  retrieval_id: string;
-  query: string;
-  top_k: number;
-  retrieval_mode: "customerops_local_mock_retrieval";
-  results: CustomerOpsRetrievalResult[];
-  created_at: string;
-};
-
-type BadCase = {
-  bad_case_id: string;
-  retrieval_id: string;
-  user_query: string;
-  agent_answer: string;
-  issue_type: string;
-  expected_answer?: string | null;
-  severity: "low" | "medium" | "high";
-  status: "open" | "triaged" | "resolved" | "ignored";
-  review_note: string;
-  resolution_type?: string | null;
-  linked_candidate_id?: string | null;
-  linked_chunk_ids: string[];
-  retrieval_result_count: number;
-  conversation_id?: string | null;
-  agent_session_id?: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-export function App() {
-  const [sourceName, setSourceName] = useState("sample_customer_chat");
-  const [jsonText, setJsonText] = useState(`{
+const defaultImportJson = `{
   "source_name": "sample_customer_chat",
   "conversations": [
     {
@@ -187,1669 +135,486 @@ export function App() {
           "role": "agent",
           "content": "Shipping to Germany usually takes 7-12 business days after dispatch.",
           "timestamp": "2026-07-03T10:01:00"
-        },
-        {
-          "message_id": "msg_003",
-          "role": "customer",
-          "content": "Please contact me at alex.customer@example.test or +1 202 555 0175. My order number is ORDER-AX91-4455.",
-          "timestamp": "2026-07-03T10:02:00"
-        },
-        {
-          "message_id": "msg_004",
-          "role": "agent",
-          "content": "We can help. The tracking number TRK-9988776655 shows dispatch is pending.",
-          "timestamp": "2026-07-03T10:03:00"
-        }
-      ]
-    },
-    {
-      "conversation_id": "conv_002",
-      "messages": [
-        {
-          "message_id": "msg_005",
-          "role": "customer",
-          "content": "Ship it to 123 Example Street, Testville.",
-          "timestamp": "2026-07-03T11:10:00"
-        },
-        {
-          "message_id": "msg_006",
-          "role": "agent",
-          "content": " ",
-          "timestamp": "2026-07-03T11:11:00"
         }
       ]
     }
   ]
-}`);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingSources, setIsLoadingSources] = useState(false);
-  const [runningBatchId, setRunningBatchId] = useState<string | null>(null);
-  const [result, setResult] = useState<ImportResult | null>(null);
-  const [sources, setSources] = useState<ImportResult[]>([]);
-  const [cleaningResult, setCleaningResult] = useState<CleaningJob | null>(null);
+}`;
+
+function statusLabel(status: PhaseCard["status"]) {
+  return `状态：${status}`;
+}
+
+function qualityLabel(level: SanitizedMessage["quality_level"]) {
+  if (level === "high") return "高质量";
+  if (level === "medium") return "需复核";
+  return "建议丢弃";
+}
+
+function actionLabel(action: SanitizedMessage["suggested_action"] | ManualAction) {
+  const map: Record<string, string> = {
+    keep: "建议保留",
+    review: "建议复核",
+    drop: "建议丢弃",
+    keep_edited: "修改后保留",
+    needs_review: "需要复核"
+  };
+  return map[action] || action;
+}
+
+export function App() {
+  const [sourceName, setSourceName] = useState("sample_customer_chat");
+  const [jsonText, setJsonText] = useState(defaultImportJson);
+  const [sources, setSources] = useState<SourceBatch[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState("");
+  const [cleaningJob, setCleaningJob] = useState<CleaningJob | null>(null);
   const [sanitizedBatch, setSanitizedBatch] = useState<SanitizedBatch | null>(null);
-  const [sanitizedBatches, setSanitizedBatches] = useState<SanitizedBatch[]>([]);
-  const [runningExtractionBatchId, setRunningExtractionBatchId] = useState<string | null>(null);
-  const [extractionResult, setExtractionResult] = useState<ExtractionJob | null>(null);
-  const [candidates, setCandidates] = useState<KnowledgeCandidate[]>([]);
-  const [reviewQueue, setReviewQueue] = useState<KnowledgeCandidate[]>([]);
-  const [selectedCandidate, setSelectedCandidate] = useState<KnowledgeCandidate | null>(null);
-  const [candidateEdit, setCandidateEdit] = useState<CandidateEditState | null>(null);
-  const [reviewer, setReviewer] = useState("local_reviewer");
-  const [reviewNote, setReviewNote] = useState("");
-  const [ragBuildResult, setRagBuildResult] = useState<RagBuildResult | null>(null);
-  const [ragChunks, setRagChunks] = useState<RagChunk[]>([]);
-  const [ragQuery, setRagQuery] = useState("shipping Germany");
-  const [ragTopK, setRagTopK] = useState("5");
-  const [ragSearchResults, setRagSearchResults] = useState<RagSearchResult[]>([]);
-  const [customerOpsQuery, setCustomerOpsQuery] = useState("shipping Germany");
-  const [customerOpsTopK, setCustomerOpsTopK] = useState("5");
-  const [customerOpsRetrieval, setCustomerOpsRetrieval] =
-    useState<CustomerOpsRetrieval | null>(null);
-  const [badCaseRetrievalId, setBadCaseRetrievalId] = useState("");
-  const [badCaseUserQuery, setBadCaseUserQuery] = useState("Where is my order?");
-  const [badCaseAgentAnswer, setBadCaseAgentAnswer] = useState("Your package should arrive soon.");
-  const [badCaseExpectedAnswer, setBadCaseExpectedAnswer] = useState(
-    "The answer should mention tracking status or escalation."
-  );
-  const [badCaseIssueType, setBadCaseIssueType] = useState("wrong_answer");
-  const [badCaseSeverity, setBadCaseSeverity] = useState("medium");
-  const [badCases, setBadCases] = useState<BadCase[]>([]);
-  const [selectedBadCase, setSelectedBadCase] = useState<BadCase | null>(null);
-  const [badCaseReviewStatus, setBadCaseReviewStatus] = useState("triaged");
-  const [badCaseReviewNote, setBadCaseReviewNote] = useState("");
-  const [badCaseResolutionType, setBadCaseResolutionType] = useState("retrieval_tuning");
-  const [draftQuestion, setDraftQuestion] = useState("Where is my order?");
-  const [draftAnswer, setDraftAnswer] = useState(
-    "Please provide your order number or tracking number. If tracking is unavailable, we will escalate this to a human agent."
-  );
-  const [draftIntent, setDraftIntent] = useState("order_status");
-  const [draftTags, setDraftTags] = useState("order, tracking, handoff");
-  const [draftRiskLevel, setDraftRiskLevel] = useState("medium");
-  const [draftQualityScore, setDraftQualityScore] = useState("0.7");
-  const [draftKnowledgeType, setDraftKnowledgeType] = useState("faq");
-  const [createdDraftCandidate, setCreatedDraftCandidate] =
-    useState<KnowledgeCandidate | null>(null);
-  const [isSubmittingBadCase, setIsSubmittingBadCase] = useState(false);
-  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
-  const [isBuildingRag, setIsBuildingRag] = useState(false);
-  const [isSearchingRag, setIsSearchingRag] = useState(false);
-  const [isSearchingCustomerOps, setIsSearchingCustomerOps] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [manualEdits, setManualEdits] = useState<Record<string, ManualEditState>>({});
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isBusy, setIsBusy] = useState(false);
 
   useEffect(() => {
     void loadSources();
-    void loadReviewQueue();
-    void loadCandidates();
-    void loadRagChunks();
-    void loadBadCases();
   }, []);
 
+  const currentBatchOptions = useMemo(
+    () => sources.map((source) => ({ id: source.batch_id, label: `${source.source_name} / ${source.batch_id}` })),
+    [sources]
+  );
+
   async function loadSources() {
-    setIsLoadingSources(true);
     try {
       const response = await fetch("/api/sources");
       const body = await response.json();
       if (response.ok && body.success) {
-        const sourceList = body.data.sources;
-        setSources(sourceList);
-        await loadSanitizedBatchList(sourceList);
+        setSources(body.data.sources);
+        if (!selectedBatchId && body.data.sources.length > 0) {
+          setSelectedBatchId(body.data.sources[0].batch_id);
+        }
       }
     } catch {
-      setError("Could not load raw batch list. Confirm the backend is running.");
-    } finally {
-      setIsLoadingSources(false);
+      setError("无法加载批次列表，请确认 FastAPI 后端正在运行。");
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function importJson(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setResult(null);
-    setCleaningResult(null);
-    setSanitizedBatch(null);
-    setExtractionResult(null);
-    setCandidates([]);
-    setError(null);
-
+    setError("");
+    setMessage("");
     let parsed: unknown;
     try {
       parsed = JSON.parse(jsonText);
     } catch {
-      setError("JSON is not valid. Please check the pasted content.");
+      setError("JSON 格式不正确，请检查后再导入。");
       return;
     }
-
     if (!sourceName.trim()) {
-      setError("Source name is required.");
+      setError("请输入 source name。");
       return;
     }
-
     const payload =
       parsed && typeof parsed === "object"
         ? { ...parsed, source_name: sourceName.trim() }
         : parsed;
 
-    setIsSubmitting(true);
+    setIsBusy(true);
     try {
       const response = await fetch("/api/sources/import-json", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        setError("Import failed. Confirm the JSON follows the sample format.");
+        setError("导入失败，请确认 JSON 字段符合 DataHub 格式。");
         return;
       }
-      setResult(body.data);
+      setSelectedBatchId(body.data.batch_id);
+      setMessage(`导入成功：${body.data.batch_id}`);
       await loadSources();
     } catch {
-      setError("Import request failed. Confirm the FastAPI backend is running.");
+      setError("导入请求失败，请确认后端服务可用。");
     } finally {
-      setIsSubmitting(false);
+      setIsBusy(false);
     }
   }
 
-  async function runCleaning(batchId: string) {
-    setError(null);
-    setCleaningResult(null);
-    setSanitizedBatch(null);
-    setRunningBatchId(batchId);
+  async function runCleaning(batchId = selectedBatchId) {
+    if (!batchId.trim()) {
+      setError("请先选择或输入 batch_id。");
+      return;
+    }
+    setError("");
+    setMessage("");
+    setIsBusy(true);
     try {
-      const response = await fetch(`/api/cleaning/run/${batchId}`, {
-        method: "POST"
-      });
+      const response = await fetch(`/api/cleaning/run/${batchId}`, { method: "POST" });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        setError("Cleaning failed. Confirm the raw batch still exists.");
+        setError("机器清洗失败，请确认 raw batch 存在。");
         return;
       }
-      setCleaningResult(body.data);
+      setCleaningJob(body.data);
+      setMessage("机器清洗完成，已生成 sanitized batch。");
       await loadSanitized(batchId);
-      await loadSources();
     } catch {
-      setError("Cleaning request failed. Confirm the FastAPI backend is running.");
+      setError("机器清洗请求失败。");
     } finally {
-      setRunningBatchId(null);
+      setIsBusy(false);
     }
   }
 
-  async function loadSanitized(batchId: string, options?: { silent?: boolean }) {
-    if (!options?.silent) {
-      setError(null);
+  async function loadSanitized(batchId = selectedBatchId) {
+    if (!batchId.trim()) {
+      setError("请先选择或输入 batch_id。");
+      return;
     }
+    setError("");
+    setIsBusy(true);
     try {
       const response = await fetch(`/api/sanitized/${batchId}`);
       const body = await response.json();
       if (!response.ok || !body.success) {
-        if (!options?.silent) {
-          setError("No sanitized batch found for this raw batch yet.");
-        }
-        return null;
+        setError("未找到 sanitized batch，请先执行机器清洗。");
+        return;
       }
       setSanitizedBatch(body.data);
-      return body.data as SanitizedBatch;
-    } catch {
-      if (!options?.silent) {
-        setError("Could not load sanitized batch.");
-      }
-      return null;
-    }
-  }
-
-  async function loadSanitizedBatchList(sourceList: ImportResult[]) {
-    const loaded = await Promise.all(
-      sourceList.map((source) => loadSanitized(source.batch_id, { silent: true }))
-    );
-    setSanitizedBatches(
-      loaded.filter((batch): batch is SanitizedBatch => batch !== null)
-    );
-  }
-
-  async function runExtraction(batchId: string) {
-    setError(null);
-    setExtractionResult(null);
-    setCandidates([]);
-    setRunningExtractionBatchId(batchId);
-    try {
-      const response = await fetch(`/api/extraction/run/${batchId}`, {
-        method: "POST"
+      const editState: Record<string, ManualEditState> = {};
+      body.data.messages.forEach((item: SanitizedMessage) => {
+        editState[item.message_id] = {
+          content: item.manual_cleaned_content || item.content,
+          manual_action: item.manual_action || "keep",
+          cleaner: item.cleaner || "local_cleaner",
+          cleaning_note: item.cleaning_note || ""
+        };
       });
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("Extraction failed. Confirm the sanitized batch exists.");
-        return;
-      }
-      setExtractionResult(body.data);
-      await loadCandidates();
+      setManualEdits(editState);
     } catch {
-      setError("Extraction request failed. Confirm the FastAPI backend is running.");
+      setError("读取 sanitized batch 失败。");
     } finally {
-      setRunningExtractionBatchId(null);
+      setIsBusy(false);
     }
   }
 
-  async function loadCandidates() {
-    setError(null);
-    try {
-      const response = await fetch("/api/knowledge/candidates");
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("Could not load knowledge candidates.");
-        return;
+  function updateManualEdit(messageId: string, patch: Partial<ManualEditState>) {
+    setManualEdits((current) => ({
+      ...current,
+      [messageId]: {
+        ...current[messageId],
+        ...patch
       }
-      setCandidates(body.data.candidates);
-      await loadReviewQueue();
-    } catch {
-      setError("Could not load knowledge candidates.");
-    }
+    }));
   }
 
-  async function loadReviewQueue() {
-    setError(null);
-    try {
-      const response = await fetch("/api/review/pending");
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("Could not load review queue.");
-        return;
-      }
-      setReviewQueue(body.data.candidates);
-    } catch {
-      setError("Could not load review queue.");
-    }
-  }
-
-  function selectCandidate(candidate: KnowledgeCandidate) {
-    setSelectedCandidate(candidate);
-    setCandidateEdit({
-      question: candidate.question,
-      answer: candidate.answer,
-      intent: candidate.intent,
-      tags: candidate.tags.join(", "),
-      risk_level: candidate.risk_level,
-      quality_score: String(candidate.quality_score)
-    });
-    setReviewNote(candidate.review_note || "");
-  }
-
-  async function saveCandidateEdits() {
-    if (!selectedCandidate || !candidateEdit) {
+  async function saveManualClean(item: SanitizedMessage) {
+    if (!sanitizedBatch) return;
+    const edit = manualEdits[item.message_id];
+    if (!edit?.content.trim()) {
+      setError("人工清洗内容不能为空。");
       return;
     }
-    setError(null);
+    setError("");
+    setMessage("");
+    setIsBusy(true);
     try {
       const response = await fetch(
-        `/api/knowledge/candidates/${selectedCandidate.candidate_id}`,
+        `/api/sanitized/${sanitizedBatch.batch_id}/messages/${item.message_id}/manual-clean`,
         {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            question: candidateEdit.question,
-            answer: candidateEdit.answer,
-            intent: candidateEdit.intent,
-            tags: candidateEdit.tags
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
-            risk_level: candidateEdit.risk_level,
-            quality_score: Number(candidateEdit.quality_score)
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(edit)
         }
       );
       const body = await response.json();
       if (!response.ok || !body.success) {
-        setError("Could not save candidate edits.");
+        setError("保存人工清洗结果失败。");
         return;
       }
-      setSelectedCandidate(body.data);
-      selectCandidate(body.data);
-      await loadCandidates();
+      setMessage(`人工清洗已保存：${body.data.record_id}`);
+      await loadSanitized(sanitizedBatch.batch_id);
     } catch {
-      setError("Could not save candidate edits.");
+      setError("保存人工清洗请求失败。");
+    } finally {
+      setIsBusy(false);
     }
   }
 
-  async function reviewCandidate(action: "approve" | "reject" | "needs-revision") {
-    if (!selectedCandidate) {
+  async function runExtraction() {
+    if (!sanitizedBatch) {
+      setError("请先读取 sanitized batch。");
       return;
     }
-    if (!reviewer.trim()) {
-      setError("Reviewer is required.");
-      return;
-    }
-    setError(null);
+    setError("");
+    setMessage("");
+    setIsBusy(true);
     try {
-      const response = await fetch(
-        `/api/review/${selectedCandidate.candidate_id}/${action}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            reviewer: reviewer.trim(),
-            review_note: reviewNote
-          })
-        }
-      );
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("Review action failed.");
-        return;
-      }
-      setSelectedCandidate(body.data);
-      selectCandidate(body.data);
-      await loadCandidates();
-      await loadReviewQueue();
-      await loadRagChunks();
-    } catch {
-      setError("Review action failed.");
-    }
-  }
-
-  async function loadRagChunks() {
-    setError(null);
-    try {
-      const response = await fetch("/api/rag/chunks");
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("Could not load RAG chunks.");
-        return;
-      }
-      setRagChunks(body.data.chunks);
-    } catch {
-      setError("Could not load RAG chunks.");
-    }
-  }
-
-  async function buildRagChunks() {
-    setError(null);
-    setIsBuildingRag(true);
-    setRagBuildResult(null);
-    setRagSearchResults([]);
-    try {
-      const response = await fetch("/api/rag/build", {
+      const response = await fetch(`/api/extraction/run/${sanitizedBatch.batch_id}`, {
         method: "POST"
       });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        setError("RAG build failed.");
+        setError("知识抽取失败。");
         return;
       }
-      setRagBuildResult(body.data);
-      await loadRagChunks();
+      setMessage(`知识抽取完成，生成候选知识 ${body.data.candidate_count} 条。`);
     } catch {
-      setError("RAG build request failed.");
+      setError("知识抽取请求失败。");
     } finally {
-      setIsBuildingRag(false);
+      setIsBusy(false);
     }
   }
-
-  async function searchRag() {
-    if (!ragQuery.trim()) {
-      setError("RAG search query is required.");
-      return;
-    }
-    setError(null);
-    setIsSearchingRag(true);
-    setRagSearchResults([]);
-    try {
-      const response = await fetch("/api/rag/search", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-DataHub-Client": "CustomerOpsAgent"
-        },
-        body: JSON.stringify({
-          query: ragQuery.trim(),
-          top_k: Number(ragTopK)
-        })
-      });
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("RAG search failed.");
-        return;
-      }
-      setRagSearchResults(body.data.results);
-    } catch {
-      setError("RAG search request failed.");
-    } finally {
-      setIsSearchingRag(false);
-    }
-  }
-
-  async function testCustomerOpsRetrieval() {
-    if (!customerOpsQuery.trim()) {
-      setError("CustomerOps retrieval query is required.");
-      return;
-    }
-    setError(null);
-    setIsSearchingCustomerOps(true);
-    setCustomerOpsRetrieval(null);
-    try {
-      const response = await fetch("/api/customer-ops-agent/retrieve", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          query: customerOpsQuery.trim(),
-          top_k: Number(customerOpsTopK)
-        })
-      });
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("CustomerOps retrieval failed.");
-        return;
-      }
-      setCustomerOpsRetrieval(body.data);
-      setBadCaseRetrievalId(body.data.retrieval_id);
-    } catch {
-      setError("CustomerOps retrieval request failed.");
-    } finally {
-      setIsSearchingCustomerOps(false);
-    }
-  }
-
-  async function loadBadCases() {
-    setError(null);
-    try {
-      const response = await fetch("/api/bad-cases");
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("Could not load Bad Case queue.");
-        return;
-      }
-      setBadCases(body.data.bad_cases);
-    } catch {
-      setError("Could not load Bad Case queue.");
-    }
-  }
-
-  async function submitBadCase() {
-    if (!badCaseRetrievalId.trim()) {
-      setError("retrieval_id is required for Bad Case submission.");
-      return;
-    }
-    if (!badCaseUserQuery.trim()) {
-      setError("Bad Case user_query is required.");
-      return;
-    }
-    if (!badCaseAgentAnswer.trim()) {
-      setError("Bad Case agent_answer is required.");
-      return;
-    }
-    setError(null);
-    setIsSubmittingBadCase(true);
-    try {
-      const response = await fetch("/api/customer-ops-agent/bad-cases", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-DataHub-Client": "CustomerOpsAgent"
-        },
-        body: JSON.stringify({
-          retrieval_id: badCaseRetrievalId.trim(),
-          user_query: badCaseUserQuery.trim(),
-          agent_answer: badCaseAgentAnswer.trim(),
-          issue_type: badCaseIssueType,
-          expected_answer: badCaseExpectedAnswer.trim() || null,
-          severity: badCaseSeverity
-        })
-      });
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError(body.error?.message || "Bad Case submission failed.");
-        return;
-      }
-      setSelectedBadCase(body.data);
-      setBadCaseReviewStatus(body.data.status);
-      setBadCaseReviewNote(body.data.review_note || "");
-      setBadCaseResolutionType(body.data.resolution_type || "retrieval_tuning");
-      await loadBadCases();
-    } catch {
-      setError("Bad Case submission request failed.");
-    } finally {
-      setIsSubmittingBadCase(false);
-    }
-  }
-
-  function selectBadCase(badCase: BadCase) {
-    setSelectedBadCase(badCase);
-    setBadCaseReviewStatus(badCase.status);
-    setBadCaseReviewNote(badCase.review_note || "");
-    setBadCaseResolutionType(badCase.resolution_type || "retrieval_tuning");
-    setDraftQuestion(badCase.user_query);
-    setDraftAnswer(
-      badCase.expected_answer || "Please provide a corrected answer for this Bad Case."
-    );
-    setCreatedDraftCandidate(null);
-  }
-
-  async function updateBadCase() {
-    if (!selectedBadCase) {
-      return;
-    }
-    setError(null);
-    try {
-      const response = await fetch(`/api/bad-cases/${selectedBadCase.bad_case_id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          status: badCaseReviewStatus,
-          review_note: badCaseReviewNote,
-          resolution_type: badCaseResolutionType
-        })
-      });
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError("Could not update Bad Case.");
-        return;
-      }
-      setSelectedBadCase(body.data);
-      await loadBadCases();
-    } catch {
-      setError("Bad Case update request failed.");
-    }
-  }
-
-  async function createDraftFromBadCase() {
-    if (!selectedBadCase) {
-      return;
-    }
-    if (!draftQuestion.trim()) {
-      setError("Draft question is required.");
-      return;
-    }
-    if (!draftAnswer.trim()) {
-      setError("Draft answer is required.");
-      return;
-    }
-    setError(null);
-    setIsCreatingDraft(true);
-    setCreatedDraftCandidate(null);
-    try {
-      const response = await fetch(
-        `/api/bad-cases/${selectedBadCase.bad_case_id}/create-draft`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            question: draftQuestion.trim(),
-            answer: draftAnswer.trim(),
-            intent: draftIntent,
-            tags: draftTags
-              .split(",")
-              .map((tag) => tag.trim())
-              .filter(Boolean),
-            risk_level: draftRiskLevel,
-            quality_score: Number(draftQualityScore),
-            knowledge_type: draftKnowledgeType,
-            reviewer: "local_reviewer",
-            review_note: "Created from Bad Case after human correction."
-          })
-        }
-      );
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setError(body.detail?.message || "Could not create pending-review draft.");
-        return;
-      }
-      setCreatedDraftCandidate(body.data);
-      await loadCandidates();
-      await loadReviewQueue();
-      await loadBadCases();
-      const refreshed = await fetch(`/api/bad-cases/${selectedBadCase.bad_case_id}`);
-      const refreshedBody = await refreshed.json();
-      if (refreshed.ok && refreshedBody.success) {
-        setSelectedBadCase(refreshedBody.data);
-        setBadCaseReviewStatus(refreshedBody.data.status);
-        setBadCaseReviewNote(refreshedBody.data.review_note || "");
-        setBadCaseResolutionType(refreshedBody.data.resolution_type || "retrieval_tuning");
-      }
-    } catch {
-      setError("Create draft request failed.");
-    } finally {
-      setIsCreatingDraft(false);
-    }
-  }
-
-  const approvedCandidateCount = candidates.filter(
-    (candidate) => candidate.review_status === "approved"
-  ).length;
 
   return (
     <main className="app-shell">
-      <section className="workspace">
-        <p className="eyebrow">DataHub</p>
-        <h1>CustomerOps feedback loop</h1>
-        <p className="summary">
-          M8 adds a Bad Case queue on top of the restricted CustomerOpsAgent
-          retrieval API. Bad Cases bind to retrieval_id records, but do not
-          modify candidates, RAG chunks, or trigger re-indexing.
-        </p>
-
-        <form className="import-form" onSubmit={handleSubmit}>
-          <label>
-            <span>Source name</span>
-            <input
-              value={sourceName}
-              onChange={(event) => setSourceName(event.target.value)}
-              placeholder="sample_customer_chat"
-            />
-          </label>
-
-          <label>
-            <span>Customer chat JSON</span>
-            <textarea
-              value={jsonText}
-              onChange={(event) => setJsonText(event.target.value)}
-              spellCheck={false}
-            />
-          </label>
-
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Importing..." : "Import raw JSON"}
-          </button>
-        </form>
-
-        {error ? <p className="message error">{error}</p> : null}
-
-        {result ? (
-          <div className="result-panel" aria-live="polite">
-            <h2>Import complete</h2>
-            <dl>
-              <div>
-                <dt>batch_id</dt>
-                <dd>{result.batch_id}</dd>
-              </div>
-              <div>
-                <dt>message_count</dt>
-                <dd>{result.message_count}</dd>
-              </div>
-              <div>
-                <dt>conversation_count</dt>
-                <dd>{result.conversation_count}</dd>
-              </div>
-              <div>
-                <dt>status</dt>
-                <dd>{result.status}</dd>
-              </div>
-            </dl>
-          </div>
-        ) : null}
-
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow compact">Raw batches</p>
-              <h2>Run cleaning</h2>
-            </div>
-            <button type="button" className="secondary" onClick={loadSources}>
-              {isLoadingSources ? "Loading..." : "Refresh"}
-            </button>
-          </div>
-
-          {sources.length === 0 ? (
-            <p className="empty-state">No raw batches imported yet.</p>
-          ) : (
-            <div className="batch-list">
-              {sources.map((source) => (
-                <article className="batch-row" key={source.batch_id}>
-                  <div>
-                    <strong>{source.source_name}</strong>
-                    <span>{source.batch_id}</span>
-                    <span>
-                      {source.message_count} messages across{" "}
-                      {source.conversation_count} conversations
-                    </span>
-                  </div>
-                  <div className="row-actions">
-                    <button
-                      type="button"
-                      onClick={() => runCleaning(source.batch_id)}
-                      disabled={runningBatchId === source.batch_id}
-                    >
-                      {runningBatchId === source.batch_id
-                        ? "Cleaning..."
-                        : "Run cleaning"}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => void loadSanitized(source.batch_id)}
-                    >
-                      View sanitized
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {cleaningResult ? (
-          <div className="result-panel" aria-live="polite">
-            <h2>Cleaning complete</h2>
-            <dl>
-              <div>
-                <dt>job_id</dt>
-                <dd>{cleaningResult.job_id}</dd>
-              </div>
-              <div>
-                <dt>raw_message_count</dt>
-                <dd>{cleaningResult.raw_message_count}</dd>
-              </div>
-              <div>
-                <dt>sanitized_message_count</dt>
-                <dd>{cleaningResult.sanitized_message_count}</dd>
-              </div>
-              <div>
-                <dt>dropped_message_count</dt>
-                <dd>{cleaningResult.dropped_message_count}</dd>
-              </div>
-              <div>
-                <dt>pii_detected_count</dt>
-                <dd>{cleaningResult.pii_detected_count}</dd>
-              </div>
-              <div>
-                <dt>status</dt>
-                <dd>{cleaningResult.status}</dd>
-              </div>
-            </dl>
-          </div>
-        ) : null}
-
-        {sanitizedBatch ? (
-          <section className="panel">
-            <p className="eyebrow compact">Sanitized batch</p>
-            <h2>{sanitizedBatch.batch_id}</h2>
-            <p className="summary compact-summary">
-              {sanitizedBatch.sanitized_message_count} sanitized messages,{" "}
-              {sanitizedBatch.dropped_message_count} dropped,{" "}
-              {sanitizedBatch.pii_detected_count} with PII masked.
-            </p>
-            <div className="message-list">
-              {sanitizedBatch.messages.map((message) => (
-                <article
-                  className="sanitized-message"
-                  key={`${message.conversation_id}-${message.message_id}`}
-                >
-                  <div className="message-meta">
-                    <span>{message.role}</span>
-                    <span>{message.conversation_id}</span>
-                    <span>{message.message_id}</span>
-                  </div>
-                  <p>{message.content}</p>
-                  <div className="pill-row">
-                    {message.pii_detected ? (
-                      message.pii_types.map((type) => (
-                        <span className="pill" key={type}>
-                          {type}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="pill muted">no pii</span>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
-
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow compact">Sanitized batches</p>
-              <h2>Run extraction</h2>
-            </div>
-            <button type="button" className="secondary" onClick={loadSources}>
-              Refresh
-            </button>
-          </div>
-
-          {sanitizedBatches.length === 0 ? (
-            <p className="empty-state">
-              No sanitized batches found. Import raw JSON and run cleaning first.
-            </p>
-          ) : (
-            <div className="batch-list">
-              {sanitizedBatches.map((batch) => (
-                <article className="batch-row" key={batch.batch_id}>
-                  <div>
-                    <strong>{batch.batch_id}</strong>
-                    <span>{batch.status}</span>
-                    <span>
-                      {batch.sanitized_message_count} sanitized messages,{" "}
-                      {batch.pii_detected_count} with PII masked
-                    </span>
-                  </div>
-                  <div className="row-actions">
-                    <button
-                      type="button"
-                      onClick={() => runExtraction(batch.batch_id)}
-                      disabled={runningExtractionBatchId === batch.batch_id}
-                    >
-                      {runningExtractionBatchId === batch.batch_id
-                        ? "Extracting..."
-                        : "Run extraction"}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {extractionResult ? (
-          <div className="result-panel" aria-live="polite">
-            <h2>Extraction complete</h2>
-            <dl>
-              <div>
-                <dt>job_id</dt>
-                <dd>{extractionResult.job_id}</dd>
-              </div>
-              <div>
-                <dt>source_batch_id</dt>
-                <dd>{extractionResult.source_batch_id}</dd>
-              </div>
-              <div>
-                <dt>candidate_count</dt>
-                <dd>{extractionResult.candidate_count}</dd>
-              </div>
-              <div>
-                <dt>status</dt>
-                <dd>{extractionResult.status}</dd>
-              </div>
-              <div>
-                <dt>method</dt>
-                <dd>{extractionResult.extraction_method}</dd>
-              </div>
-            </dl>
-          </div>
-        ) : null}
-
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow compact">Knowledge candidates</p>
-              <h2>Pending review only</h2>
-            </div>
-            <button type="button" className="secondary" onClick={loadCandidates}>
-              Refresh
-            </button>
-          </div>
-          <p className="warning-note">
-            Candidates are not approved knowledge and cannot enter RAG.
+      <section className="hero-band">
+        <div>
+          <p className="eyebrow">DataHub 管理台</p>
+          <h1>DataHub 数据治理与 RAG 知识中台</h1>
+          <p className="summary">
+            面向 Agent 集群的多源数据治理、知识生产与统一检索平台。当前聚焦 P1
+            文本客服知识中台补强，P2/P3/P4 为 Roadmap，尚未接入后端。
           </p>
-          {candidates.length === 0 ? (
-            <p className="empty-state">No knowledge candidates extracted yet.</p>
-          ) : (
-            <div className="message-list">
-              {candidates.map((candidate) => (
-                <article className="candidate-card" key={candidate.candidate_id}>
-                  <div className="message-meta">
-                    <span>{candidate.review_status}</span>
-                    <span>{candidate.knowledge_type}</span>
-                    <span>{candidate.intent}</span>
-                    <span>quality {candidate.quality_score}</span>
-                  </div>
-                  <h3>{candidate.question}</h3>
-                  <p>{candidate.answer}</p>
-                  <div className="pill-row">
-                    {candidate.tags.map((tag) => (
-                      <span className="pill" key={tag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow compact">Human review</p>
-              <h2>Review candidates</h2>
-            </div>
-            <button type="button" className="secondary" onClick={loadReviewQueue}>
-              Refresh queue
-            </button>
-          </div>
-          <p className="warning-note">
-            Approved here means human-reviewed only. It is not indexed, embedded,
-            or available to CustomerOpsAgent.
-          </p>
-
-          {reviewQueue.length === 0 ? (
-            <p className="empty-state">No pending or needs-revision candidates.</p>
-          ) : (
-            <div className="batch-list">
-              {reviewQueue.map((candidate) => (
-                <article className="batch-row" key={candidate.candidate_id}>
-                  <div>
-                    <strong>{candidate.question}</strong>
-                    <span>{candidate.candidate_id}</span>
-                    <span>
-                      {candidate.review_status} - {candidate.intent} - quality{" "}
-                      {candidate.quality_score}
-                    </span>
-                  </div>
-                  <div className="row-actions">
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => selectCandidate(candidate)}
-                    >
-                      Review
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {selectedCandidate && candidateEdit ? (
-          <section className="panel">
-            <p className="eyebrow compact">Candidate detail</p>
-            <h2>{selectedCandidate.candidate_id}</h2>
-            <div className="review-grid">
-              <label>
-                <span>Question</span>
-                <textarea
-                  className="compact-textarea"
-                  value={candidateEdit.question}
-                  onChange={(event) =>
-                    setCandidateEdit({ ...candidateEdit, question: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                <span>Answer</span>
-                <textarea
-                  className="compact-textarea"
-                  value={candidateEdit.answer}
-                  onChange={(event) =>
-                    setCandidateEdit({ ...candidateEdit, answer: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                <span>Intent</span>
-                <select
-                  value={candidateEdit.intent}
-                  onChange={(event) =>
-                    setCandidateEdit({
-                      ...candidateEdit,
-                      intent: event.target.value as KnowledgeCandidate["intent"]
-                    })
-                  }
-                >
-                  <option value="shipping">shipping</option>
-                  <option value="refund">refund</option>
-                  <option value="order_status">order_status</option>
-                  <option value="product_info">product_info</option>
-                  <option value="handoff">handoff</option>
-                  <option value="prohibited_answer">prohibited_answer</option>
-                  <option value="general">general</option>
-                </select>
-              </label>
-              <label>
-                <span>Tags</span>
-                <input
-                  value={candidateEdit.tags}
-                  onChange={(event) =>
-                    setCandidateEdit({ ...candidateEdit, tags: event.target.value })
-                  }
-                />
-              </label>
-              <label>
-                <span>Risk level</span>
-                <select
-                  value={candidateEdit.risk_level}
-                  onChange={(event) =>
-                    setCandidateEdit({
-                      ...candidateEdit,
-                      risk_level: event.target.value as KnowledgeCandidate["risk_level"]
-                    })
-                  }
-                >
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                </select>
-              </label>
-              <label>
-                <span>Quality score</span>
-                <input
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={candidateEdit.quality_score}
-                  onChange={(event) =>
-                    setCandidateEdit({
-                      ...candidateEdit,
-                      quality_score: event.target.value
-                    })
-                  }
-                />
-              </label>
-              <label>
-                <span>Reviewer</span>
-                <input
-                  value={reviewer}
-                  onChange={(event) => setReviewer(event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Review note</span>
-                <textarea
-                  className="compact-textarea"
-                  value={reviewNote}
-                  onChange={(event) => setReviewNote(event.target.value)}
-                />
-              </label>
-            </div>
-            <div className="review-actions">
-              <button type="button" className="secondary" onClick={saveCandidateEdits}>
-                Save edits
-              </button>
-              <button type="button" onClick={() => reviewCandidate("approve")}>
-                Approve
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => reviewCandidate("needs-revision")}
-              >
-                Needs revision
-              </button>
-              <button
-                type="button"
-                className="danger"
-                onClick={() => reviewCandidate("reject")}
-              >
-                Reject
-              </button>
-            </div>
-            <dl className="review-meta">
-              <div>
-                <dt>review_status</dt>
-                <dd>{selectedCandidate.review_status}</dd>
-              </div>
-              <div>
-                <dt>source_batch_id</dt>
-                <dd>{selectedCandidate.source_batch_id}</dd>
-              </div>
-              <div>
-                <dt>source_conversation_id</dt>
-                <dd>{selectedCandidate.source_conversation_id}</dd>
-              </div>
-              <div>
-                <dt>source_message_ids</dt>
-                <dd>{selectedCandidate.source_message_ids.join(", ")}</dd>
-              </div>
-            </dl>
-          </section>
-        ) : null}
-
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow compact">Local RAG test</p>
-              <h2>Build chunks from approved candidates</h2>
-            </div>
-            <button type="button" className="secondary" onClick={loadRagChunks}>
-              Refresh chunks
-            </button>
-          </div>
-          <p className="warning-note">
-            Only approved candidates can enter this local RAG test. It is not
-            connected to CustomerOpsAgent, embeddings, or a real vector store.
-          </p>
-          <div className="rag-toolbar">
-            <div>
-              <span className="label">Approved candidates</span>
-              <strong>{approvedCandidateCount}</strong>
-            </div>
-            <div>
-              <span className="label">RAG chunks</span>
-              <strong>{ragChunks.length}</strong>
-            </div>
-            <button type="button" onClick={buildRagChunks} disabled={isBuildingRag}>
-              {isBuildingRag ? "Building..." : "Build RAG chunks"}
-            </button>
-          </div>
-
-          {ragBuildResult ? (
-            <div className="result-panel compact-panel" aria-live="polite">
-              <h2>RAG build complete</h2>
-              <dl>
-              <div>
-                <dt>built_count</dt>
-                <dd>{ragBuildResult.built_count}</dd>
-              </div>
-              <div>
-                <dt>updated_count</dt>
-                <dd>{ragBuildResult.updated_count}</dd>
-              </div>
-              <div>
-                <dt>skipped_count</dt>
-                <dd>{ragBuildResult.skipped_count}</dd>
-                </div>
-                <div>
-                  <dt>chunk_count</dt>
-                  <dd>{ragBuildResult.chunk_count}</dd>
-                </div>
-                <div>
-                  <dt>status</dt>
-                  <dd>{ragBuildResult.status}</dd>
-                </div>
-                <div>
-                  <dt>skipped_reasons</dt>
-                  <dd>{JSON.stringify(ragBuildResult.skipped_reasons)}</dd>
-                </div>
-              </dl>
-            </div>
-          ) : null}
-
-          {ragChunks.length === 0 ? (
-            <p className="empty-state">
-              No RAG chunks built yet. Approve at least one candidate first.
-            </p>
-          ) : (
-            <div className="message-list">
-              {ragChunks.map((chunk) => (
-                <article className="candidate-card" key={chunk.chunk_id}>
-                  <div className="message-meta">
-                    <span>{chunk.review_status}</span>
-                    <span>{chunk.intent}</span>
-                    <span>quality {chunk.quality_score}</span>
-                  </div>
-                  <h3>{chunk.chunk_id}</h3>
-                  <p>{chunk.chunk_text}</p>
-                  <dl className="review-meta">
-                    <div>
-                      <dt>candidate_id</dt>
-                      <dd>{chunk.candidate_id}</dd>
-                    </div>
-                    <div>
-                      <dt>source_conversation_id</dt>
-                      <dd>{chunk.source_conversation_id}</dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="panel">
-          <p className="eyebrow compact">RAG search</p>
-          <h2>Internal retrieval test</h2>
-          <div className="search-row">
-            <label>
-              <span>Query</span>
-              <input
-                value={ragQuery}
-                onChange={(event) => setRagQuery(event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Top K</span>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={ragTopK}
-                onChange={(event) => setRagTopK(event.target.value)}
-              />
-            </label>
-            <button type="button" onClick={searchRag} disabled={isSearchingRag}>
-              {isSearchingRag ? "Searching..." : "Search RAG"}
-            </button>
-          </div>
-
-          {ragSearchResults.length === 0 ? (
-            <p className="empty-state">No search results shown yet.</p>
-          ) : (
-            <div className="message-list">
-              {ragSearchResults.map((result) => (
-                <article className="candidate-card" key={result.chunk_id}>
-                  <div className="message-meta">
-                    <span>score {result.score}</span>
-                    <span>{result.chunk_id}</span>
-                    <span>{result.candidate_id}</span>
-                    <span>{result.source_conversation_id}</span>
-                  </div>
-                  <p>{result.chunk_text}</p>
-                  <div className="pill-row">
-                    {result.matched_terms.map((term) => (
-                      <span className="pill muted" key={`match-${term}`}>
-                        match {term}
-                      </span>
-                    ))}
-                    {result.tags.map((tag) => (
-                      <span className="pill" key={tag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="panel">
-          <p className="eyebrow compact">CustomerOpsAgent Retrieval Test</p>
-          <h2>Restricted approved-chunk retrieval</h2>
-          <p className="warning-note">
-            This is DataHub's restricted API for approved rag_chunked results.
-            The CustomerOpsAgent repository has not been modified, and retrieval
-            still uses local keyword/mock scoring.
-            The test sends the local X-DataHub-Client header placeholder.
-          </p>
-          <div className="search-row">
-            <label>
-              <span>Query</span>
-              <input
-                value={customerOpsQuery}
-                onChange={(event) => setCustomerOpsQuery(event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Top K</span>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={customerOpsTopK}
-                onChange={(event) => setCustomerOpsTopK(event.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={testCustomerOpsRetrieval}
-              disabled={isSearchingCustomerOps}
-            >
-              {isSearchingCustomerOps
-                ? "Retrieving..."
-                : "Test CustomerOps Retrieval"}
-            </button>
-          </div>
-
-          {customerOpsRetrieval ? (
-            <div className="result-panel compact-panel" aria-live="polite">
-              <h2>Retrieval complete</h2>
-              <dl>
-                <div>
-                  <dt>retrieval_id</dt>
-                  <dd>{customerOpsRetrieval.retrieval_id}</dd>
-                </div>
-                <div>
-                  <dt>mode</dt>
-                  <dd>{customerOpsRetrieval.retrieval_mode}</dd>
-                </div>
-                <div>
-                  <dt>result_count</dt>
-                  <dd>{customerOpsRetrieval.results.length}</dd>
-                </div>
-              </dl>
-            </div>
-          ) : null}
-
-          {customerOpsRetrieval && customerOpsRetrieval.results.length === 0 ? (
-            <p className="empty-state">No approved chunks matched this query.</p>
-          ) : null}
-
-          {customerOpsRetrieval && customerOpsRetrieval.results.length > 0 ? (
-            <div className="message-list">
-              {customerOpsRetrieval.results.map((result) => (
-                <article className="candidate-card" key={result.chunk_id}>
-                  <div className="message-meta">
-                    <span>score {result.score}</span>
-                    <span>{result.chunk_id}</span>
-                    <span>{result.candidate_id}</span>
-                    <span>{result.source_conversation_id}</span>
-                  </div>
-                  <h3>{result.answer || result.intent}</h3>
-                  <p>{result.chunk_text}</p>
-                  <div className="pill-row">
-                    {result.matched_terms.map((term) => (
-                      <span className="pill muted" key={`customerops-match-${term}`}>
-                        match {term}
-                      </span>
-                    ))}
-                    {result.tags.map((tag) => (
-                      <span className="pill" key={`customerops-tag-${tag}`}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : null}
-        </section>
-
-        <section className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow compact">Bad Case Feedback</p>
-              <h2>Submit and triage Bad Cases</h2>
-            </div>
-            <button type="button" className="secondary" onClick={loadBadCases}>
-              Refresh queue
-            </button>
-          </div>
-          <p className="warning-note">
-            M8 only saves Bad Cases and manual handling notes. It does not
-            generate knowledge, modify candidates, modify RAG chunks, or
-            re-index.
-          </p>
-          <div className="review-grid">
-            <label>
-              <span>retrieval_id</span>
-              <input
-                value={badCaseRetrievalId}
-                onChange={(event) => setBadCaseRetrievalId(event.target.value)}
-              />
-            </label>
-            <label>
-              <span>issue_type</span>
-              <select
-                value={badCaseIssueType}
-                onChange={(event) => setBadCaseIssueType(event.target.value)}
-              >
-                <option value="wrong_answer">wrong_answer</option>
-                <option value="missing_knowledge">missing_knowledge</option>
-                <option value="unsafe_answer">unsafe_answer</option>
-                <option value="bad_tone">bad_tone</option>
-                <option value="retrieval_miss">retrieval_miss</option>
-                <option value="other">other</option>
-              </select>
-            </label>
-            <label>
-              <span>severity</span>
-              <select
-                value={badCaseSeverity}
-                onChange={(event) => setBadCaseSeverity(event.target.value)}
-              >
-                <option value="low">low</option>
-                <option value="medium">medium</option>
-                <option value="high">high</option>
-              </select>
-            </label>
-          </div>
-          <label>
-            <span>user_query</span>
-            <textarea
-              className="compact-textarea"
-              value={badCaseUserQuery}
-              onChange={(event) => setBadCaseUserQuery(event.target.value)}
-            />
-          </label>
-          <label>
-            <span>agent_answer</span>
-            <textarea
-              className="compact-textarea"
-              value={badCaseAgentAnswer}
-              onChange={(event) => setBadCaseAgentAnswer(event.target.value)}
-            />
-          </label>
-          <label>
-            <span>expected_answer</span>
-            <textarea
-              className="compact-textarea"
-              value={badCaseExpectedAnswer}
-              onChange={(event) => setBadCaseExpectedAnswer(event.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            onClick={submitBadCase}
-            disabled={isSubmittingBadCase}
-          >
-            {isSubmittingBadCase ? "Submitting..." : "Submit Bad Case"}
-          </button>
-
-          {selectedBadCase ? (
-            <div className="result-panel compact-panel" aria-live="polite">
-              <h2>Selected Bad Case</h2>
-              <dl>
-                <div>
-                  <dt>bad_case_id</dt>
-                  <dd>{selectedBadCase.bad_case_id}</dd>
-                </div>
-                <div>
-                  <dt>retrieval_id</dt>
-                  <dd>{selectedBadCase.retrieval_id}</dd>
-                </div>
-                <div>
-                  <dt>linked_chunk_ids</dt>
-                  <dd>{selectedBadCase.linked_chunk_ids.join(", ") || "none"}</dd>
-                </div>
-                <div>
-                  <dt>status</dt>
-                  <dd>{selectedBadCase.status}</dd>
-                </div>
-              </dl>
-              <div className="review-grid">
-                <label>
-                  <span>status</span>
-                  <select
-                    value={badCaseReviewStatus}
-                    onChange={(event) => setBadCaseReviewStatus(event.target.value)}
-                  >
-                    <option value="open">open</option>
-                    <option value="triaged">triaged</option>
-                    <option value="resolved">resolved</option>
-                    <option value="ignored">ignored</option>
-                  </select>
-                </label>
-                <label>
-                  <span>resolution_type</span>
-                  <select
-                    value={badCaseResolutionType}
-                    onChange={(event) => setBadCaseResolutionType(event.target.value)}
-                  >
-                    <option value="create_new_knowledge">create_new_knowledge</option>
-                    <option value="update_existing_knowledge">update_existing_knowledge</option>
-                    <option value="retrieval_tuning">retrieval_tuning</option>
-                    <option value="ignore">ignore</option>
-                    <option value="other">other</option>
-                  </select>
-                </label>
-              </div>
-              <label>
-                <span>review_note</span>
-                <textarea
-                  className="compact-textarea"
-                  value={badCaseReviewNote}
-                  onChange={(event) => setBadCaseReviewNote(event.target.value)}
-                />
-              </label>
-              <button type="button" onClick={updateBadCase}>
-                Update Bad Case
-              </button>
-              <div className="divider" />
-              <h2>Create pending-review draft</h2>
-              <p className="warning-note">
-                This creates a new pending_review candidate only. It does not
-                approve, enter RAG, modify existing candidates, modify chunks,
-                rebuild, or re-index.
-              </p>
-              <label>
-                <span>draft question</span>
-                <textarea
-                  className="compact-textarea"
-                  value={draftQuestion}
-                  onChange={(event) => setDraftQuestion(event.target.value)}
-                />
-              </label>
-              <label>
-                <span>draft answer</span>
-                <textarea
-                  className="compact-textarea"
-                  value={draftAnswer}
-                  onChange={(event) => setDraftAnswer(event.target.value)}
-                />
-              </label>
-              <div className="review-grid">
-                <label>
-                  <span>intent</span>
-                  <select
-                    value={draftIntent}
-                    onChange={(event) => setDraftIntent(event.target.value)}
-                  >
-                    <option value="shipping">shipping</option>
-                    <option value="refund">refund</option>
-                    <option value="order_status">order_status</option>
-                    <option value="product_info">product_info</option>
-                    <option value="handoff">handoff</option>
-                    <option value="prohibited_answer">prohibited_answer</option>
-                    <option value="general">general</option>
-                  </select>
-                </label>
-                <label>
-                  <span>risk_level</span>
-                  <select
-                    value={draftRiskLevel}
-                    onChange={(event) => setDraftRiskLevel(event.target.value)}
-                  >
-                    <option value="low">low</option>
-                    <option value="medium">medium</option>
-                    <option value="high">high</option>
-                  </select>
-                </label>
-                <label>
-                  <span>knowledge_type</span>
-                  <select
-                    value={draftKnowledgeType}
-                    onChange={(event) => setDraftKnowledgeType(event.target.value)}
-                  >
-                    <option value="faq">faq</option>
-                    <option value="standard_answer">standard_answer</option>
-                    <option value="business_rule">business_rule</option>
-                    <option value="human_handoff_rule">human_handoff_rule</option>
-                    <option value="forbidden_answer_rule">forbidden_answer_rule</option>
-                  </select>
-                </label>
-                <label>
-                  <span>quality_score</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    value={draftQualityScore}
-                    onChange={(event) => setDraftQualityScore(event.target.value)}
-                  />
-                </label>
-              </div>
-              <label>
-                <span>tags</span>
-                <input
-                  value={draftTags}
-                  onChange={(event) => setDraftTags(event.target.value)}
-                />
-              </label>
-              <button
-                type="button"
-                onClick={createDraftFromBadCase}
-                disabled={isCreatingDraft || selectedBadCase.status === "ignored"}
-              >
-                {isCreatingDraft ? "Creating..." : "Create pending-review draft"}
-              </button>
-              {createdDraftCandidate ? (
-                <div className="result-panel compact-panel" aria-live="polite">
-                  <h2>Draft created</h2>
-                  <dl>
-                    <div>
-                      <dt>candidate_id</dt>
-                      <dd>{createdDraftCandidate.candidate_id}</dd>
-                    </div>
-                    <div>
-                      <dt>review_status</dt>
-                      <dd>{createdDraftCandidate.review_status}</dd>
-                    </div>
-                    <div>
-                      <dt>source_bad_case_id</dt>
-                      <dd>{createdDraftCandidate.source_bad_case_id}</dd>
-                    </div>
-                  </dl>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {badCases.length === 0 ? (
-            <p className="empty-state">No Bad Cases submitted yet.</p>
-          ) : (
-            <div className="message-list">
-              {badCases.map((badCase) => (
-                <article className="candidate-card" key={badCase.bad_case_id}>
-                  <div className="message-meta">
-                    <span>{badCase.status}</span>
-                    <span>{badCase.issue_type}</span>
-                    <span>{badCase.severity}</span>
-                  </div>
-                  <h3>{badCase.user_query}</h3>
-                  <p>{badCase.agent_answer}</p>
-                  <dl className="review-meta">
-                    <div>
-                      <dt>bad_case_id</dt>
-                      <dd>{badCase.bad_case_id}</dd>
-                    </div>
-                    <div>
-                      <dt>retrieval_id</dt>
-                      <dd>{badCase.retrieval_id}</dd>
-                    </div>
-                  </dl>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => selectBadCase(badCase)}
-                  >
-                    View details
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <div className="status-grid" aria-label="Project status">
-          <div>
-            <span className="label">Frontend</span>
-            <strong>React + TypeScript</strong>
-          </div>
-          <div>
-            <span className="label">Backend</span>
-            <strong>FastAPI + Python</strong>
-          </div>
-          <div>
-            <span className="label">Current milestone</span>
-            <strong>M8 Bad Case feedback</strong>
-          </div>
+        </div>
+        <div className="hero-status">
+          <span>当前状态</span>
+          <strong>P1 文本客服知识中台补强中</strong>
+          <p>P2/P3/P4 入口仅用于产品结构预留。</p>
         </div>
       </section>
+
+      {error ? <div className="message error">{error}</div> : null}
+      {message ? <div className="message success">{message}</div> : null}
+
+      <section className="phase-grid" aria-label="DataHub phase modules">
+        {phaseCards.map((card) => (
+          <article className={`phase-card ${card.status === "Roadmap" ? "muted-card" : ""}`} key={card.title}>
+            <div className="card-title-row">
+              <h2>{card.title}</h2>
+              <span className={`status-badge status-${card.status}`}>{statusLabel(card.status)}</span>
+            </div>
+            <p>{card.description}</p>
+            <div className="module-list">
+              {card.items.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+            <button type="button" disabled={card.status === "Roadmap" || card.status === "未接入"}>
+              {card.status === "Roadmap" ? "未接入" : "进入模块"}
+            </button>
+          </article>
+        ))}
+      </section>
+
+      <section className="workbench-grid">
+        <article className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow compact">数据导入</p>
+              <h2>导入客服聊天 JSON</h2>
+            </div>
+            <button type="button" className="secondary" onClick={loadSources}>
+              刷新批次
+            </button>
+          </div>
+          <form className="stacked-form" onSubmit={importJson}>
+            <label>
+              <span>source name</span>
+              <input value={sourceName} onChange={(event) => setSourceName(event.target.value)} />
+            </label>
+            <label>
+              <span>JSON 内容</span>
+              <textarea value={jsonText} onChange={(event) => setJsonText(event.target.value)} />
+            </label>
+            <button type="submit" disabled={isBusy}>
+              导入 raw batch
+            </button>
+          </form>
+        </article>
+
+        <article className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow compact">机器清洗</p>
+              <h2>选择批次并生成 sanitized 数据</h2>
+            </div>
+          </div>
+          <label>
+            <span>选择 batch_id</span>
+            <select
+              value={selectedBatchId}
+              onChange={(event) => setSelectedBatchId(event.target.value)}
+            >
+              <option value="">手动输入或选择批次</option>
+              {currentBatchOptions.map((option) => (
+                <option value={option.id} key={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>batch_id</span>
+            <input value={selectedBatchId} onChange={(event) => setSelectedBatchId(event.target.value)} />
+          </label>
+          <div className="button-row">
+            <button type="button" onClick={() => runCleaning()} disabled={isBusy}>
+              执行机器清洗
+            </button>
+            <button type="button" className="secondary" onClick={() => loadSanitized()} disabled={isBusy}>
+              读取 sanitized batch
+            </button>
+            <button type="button" className="secondary" onClick={runExtraction} disabled={isBusy || !sanitizedBatch}>
+              执行知识抽取
+            </button>
+          </div>
+          {cleaningJob ? (
+            <div className="metric-grid">
+              <Metric label="raw" value={cleaningJob.raw_message_count} />
+              <Metric label="sanitized" value={cleaningJob.sanitized_message_count} />
+              <Metric label="PII" value={cleaningJob.pii_detected_count} />
+              <Metric label="重复" value={cleaningJob.exact_duplicate_count || 0} />
+              <Metric label="近重复" value={cleaningJob.near_duplicate_count || 0} />
+              <Metric label="建议丢弃" value={cleaningJob.drop_recommended_count || 0} />
+            </div>
+          ) : null}
+        </article>
+      </section>
+
+      <section className="panel manual-workbench">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow compact">人工清洗工作台</p>
+            <h2>校验、修正并记录 sanitized message</h2>
+          </div>
+          <span className="status-badge status-开发中">开发中</span>
+        </div>
+        <div className="rule-box">
+          <strong>清洗规则提示</strong>
+          <ul>
+            <li>隐私必须脱敏，不能恢复真实个人信息。</li>
+            <li>无意义内容、广告、噪声建议丢弃。</li>
+            <li>有业务价值的客服问答优先保留。</li>
+            <li>不确定内容标记为需要复核。</li>
+            <li>不要改写原始业务含义，只修正清洗文本。</li>
+          </ul>
+        </div>
+        {!sanitizedBatch ? (
+          <p className="empty-state">请选择 batch 并读取 sanitized 数据。</p>
+        ) : (
+          <>
+            <div className="metric-grid">
+              <Metric label="消息数" value={sanitizedBatch.sanitized_message_count} />
+              <Metric label="低质量" value={sanitizedBatch.low_quality_count || 0} />
+              <Metric label="噪声" value={sanitizedBatch.noise_count || 0} />
+              <Metric label="平均分" value={sanitizedBatch.average_quality_score ?? 0} />
+            </div>
+            <div className="message-list">
+              {sanitizedBatch.messages.map((item) => (
+                <article className="message-card" key={item.message_id}>
+                  <div className="message-meta">
+                    <span>{item.conversation_id}</span>
+                    <span>{item.message_id}</span>
+                    <span>{item.role}</span>
+                    <span className={`quality quality-${item.quality_level}`}>
+                      {qualityLabel(item.quality_level)} / {item.quality_score}
+                    </span>
+                    <span>{actionLabel(item.suggested_action)}</span>
+                  </div>
+                  <p className="content-preview">{item.content}</p>
+                  <div className="pill-row">
+                    {item.pii_detected ? <span className="pill danger">PII</span> : null}
+                    {item.pii_types.map((type) => (
+                      <span className="pill" key={`${item.message_id}-pii-${type}`}>
+                        {type}
+                      </span>
+                    ))}
+                    {item.cleaning_issues.map((issue) => (
+                      <span className="pill muted" key={`${item.message_id}-issue-${issue}`}>
+                        {issue}
+                      </span>
+                    ))}
+                    {item.risk_flags.map((flag) => (
+                      <span className="pill warning" key={`${item.message_id}-risk-${flag}`}>
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
+                  {item.manual_cleaning_status === "cleaned" ? (
+                    <div className="manual-status">
+                      已人工清洗：{item.manual_action ? actionLabel(item.manual_action) : "已处理"} /{" "}
+                      {item.cleaner || "未记录清洗员"}
+                    </div>
+                  ) : null}
+                  <div className="manual-grid">
+                    <label>
+                      <span>人工修正后的清洗文本</span>
+                      <textarea
+                        className="compact-textarea"
+                        value={manualEdits[item.message_id]?.content || item.content}
+                        onChange={(event) =>
+                          updateManualEdit(item.message_id, { content: event.target.value })
+                        }
+                      />
+                    </label>
+                    <div className="manual-controls">
+                      <label>
+                        <span>人工处理动作</span>
+                        <select
+                          value={manualEdits[item.message_id]?.manual_action || "keep"}
+                          onChange={(event) =>
+                            updateManualEdit(item.message_id, {
+                              manual_action: event.target.value as ManualAction
+                            })
+                          }
+                        >
+                          <option value="keep">保留</option>
+                          <option value="keep_edited">修改后保留</option>
+                          <option value="drop">丢弃</option>
+                          <option value="needs_review">需要复核</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>清洗员</span>
+                        <input
+                          value={manualEdits[item.message_id]?.cleaner || "local_cleaner"}
+                          onChange={(event) =>
+                            updateManualEdit(item.message_id, { cleaner: event.target.value })
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>人工清洗备注</span>
+                        <textarea
+                          className="note-textarea"
+                          value={manualEdits[item.message_id]?.cleaning_note || ""}
+                          onChange={(event) =>
+                            updateManualEdit(item.message_id, {
+                              cleaning_note: event.target.value
+                            })
+                          }
+                        />
+                      </label>
+                      <button type="button" onClick={() => saveManualClean(item)} disabled={isBusy}>
+                        保存人工清洗结果
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
     </main>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }

@@ -423,3 +423,28 @@ Phase one is acceptable when:
 - Bad Cases can be corrected and re-enter the knowledge workflow.
 - Every approved knowledge item has traceable source records.
 - Un-desensitized and unreviewed data cannot be retrieved or exported.
+
+## 9. P1-M13 Product Update: Chinese Admin Console And Manual Cleaning
+
+P1-M13 adds a Chinese DataHub admin console and a manual cleaning workbench.
+
+Implemented behavior:
+
+- The frontend is organized as a Chinese management console.
+- P1 text customer service modules are visible as operational capabilities.
+- P2 multimodal, P3 dataset reuse, and P4 MCP / Agent cluster modules are visible only as Roadmap / not connected entries.
+- Cleaners can load a sanitized batch and inspect machine cleaning fields:
+  - `pii_detected`
+  - `pii_types`
+  - `cleaning_issues`
+  - `risk_flags`
+  - `quality_score`
+  - `quality_level`
+  - `suggested_action`
+- Cleaners can save manual cleaning decisions:
+  - `keep`
+  - `keep_edited`
+  - `drop`
+  - `needs_review`
+
+Manual cleaning remains a Phase 1 text-data capability. It does not implement Phase 2 multimodal, Phase 3 dataset export, or Phase 4 MCP.

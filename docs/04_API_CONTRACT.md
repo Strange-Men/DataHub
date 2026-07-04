@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-P1-M12
+Implemented APIs: M2-P1-M13
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -30,10 +30,10 @@ Implemented APIs: M2-P1-M12
 - P1-M10 legacy RAG migration import APIs.
 - P1-M11 unified DataHub RAG release; no new public API surface.
 - P1-M12 advanced machine cleaning; no new public API surface, but cleaning responses and sanitized messages include additional quality and governance fields.
+- P1-M13 manual cleaning API for sanitized messages.
 
-Planned Phase 1 APIs: After P1-M12
+Planned Phase 1 APIs: After P1-M13
 
-- P1-M13 manual cleaning workbench APIs if the current sanitized batch APIs are not enough.
 - P1-M14 knowledge review quality console refinements if the current review APIs are not enough.
 - P1-M15 final high-quality DataHub release verification; no new API surface is required by default.
 - Approval and RAG rebuild for Bad Case-generated drafts through existing review/RAG steps.
@@ -77,6 +77,79 @@ Important M8 boundary:
 - M8 only creates and manages Bad Case records.
 - M8 does not create knowledge candidates, modify existing candidates, modify RAG chunks, rebuild RAG, or re-index.
 - M8 does not modify the CustomerOpsAgent repository.
+
+Important P1-M13 boundary:
+
+- `PATCH /api/sanitized/{batch_id}/messages/{message_id}/manual-clean` is implemented for manual cleaning.
+- The API updates sanitized batch messages only.
+- The API never overwrites raw batch files.
+- Manual cleaning records are saved under `backend/storage/manual_cleaning_records/`.
+- `manual_action=drop` and `manual_action=needs_review` are excluded from extraction by default.
+- `manual_action=keep_edited` makes extraction use `manual_cleaned_content`.
+- Manual cleaning does not approve candidates and does not write RAG chunks.
+
+## P1-M13 Manual Cleaning API
+
+### PATCH `/api/sanitized/{batch_id}/messages/{message_id}/manual-clean`
+
+Status: implemented.
+
+Purpose:
+
+Save a manual cleaning decision for one sanitized message.
+
+Request:
+
+```json
+{
+  "content": "Manually corrected sanitized content.",
+  "manual_action": "keep_edited",
+  "cleaner": "local_cleaner",
+  "cleaning_note": "PII checked and business meaning preserved."
+}
+```
+
+Fields:
+
+- `content`: required, sanitized content after manual review.
+- `manual_action`: required, one of `keep`, `keep_edited`, `drop`, `needs_review`.
+- `cleaner`: required local cleaner identifier.
+- `cleaning_note`: optional cleaning note.
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "record_id": "manual_clean_xxx",
+    "batch_id": "batch_xxx",
+    "message_id": "msg_xxx",
+    "source_message_id": "source_msg_xxx",
+    "conversation_id": "conv_xxx",
+    "manual_cleaned_content": "Manually corrected sanitized content.",
+    "manual_action": "keep_edited",
+    "cleaner": "local_cleaner",
+    "cleaning_note": "PII checked and business meaning preserved.",
+    "created_at": "2026-07-03T10:00:00+00:00"
+  },
+  "requestId": "req_xxx"
+}
+```
+
+Errors:
+
+- `SANITIZED_MESSAGE_NOT_FOUND`: sanitized batch or message does not exist.
+- validation error: missing content, invalid `manual_action`, or invalid cleaner field.
+
+Updated sanitized message fields:
+
+- `manual_cleaning_status`
+- `manual_cleaned_content`
+- `manual_action`
+- `cleaner`
+- `cleaning_note`
+- `manual_cleaned_at`
 
 Important M8.5 boundary:
 

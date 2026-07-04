@@ -1,30 +1,150 @@
-﻿# DataHub｜面向 Agent 集群的多源数据治理与 RAG 知识中台
+# DataHub｜面向 Agent 集群的多源数据治理与 RAG 知识中台
 
 English version: [README.en.md](./README.en.md)
 
-![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue)
+![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-API-009688)
-![React](https://img.shields.io/badge/React-Frontend-61DAFB)
-![TypeScript](https://img.shields.io/badge/TypeScript-UI-3178C6)
-![RAG](https://img.shields.io/badge/RAG-local%20mock-orange)
-![pytest](https://img.shields.io/badge/pytest-optional-lightgrey)
-![Data Governance](https://img.shields.io/badge/Data%20Governance-P1--M12-blue)
-![Agent-ready](https://img.shields.io/badge/Agent--ready-CustomerOpsAgent-brightgreen)
+![React](https://img.shields.io/badge/React-Admin%20Console-61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-Frontend-3178C6)
+![RAG](https://img.shields.io/badge/RAG-Local%20Retrieval-5B6EE1)
+![Data Governance](https://img.shields.io/badge/Data-Governance-216B5B)
+![Agent Ready](https://img.shields.io/badge/Agent-ready-344054)
 
-DataHub 是一个面向 AI Agent 集群的数据资产中心。它把客服聊天记录、公开客服数据小样本、Bad Case 修正草稿、CustomerOpsAgent legacy RAG 迁移数据统一治理成 knowledge candidates，经人工审核后构建为本地 RAG chunks，并通过受限检索 API 提供给 CustomerOpsAgent。
+DataHub 是一个面向 AI Agent 集群的数据资产中心，用来把客服聊天记录、历史知识库、公开评测样本、Bad Case 修正和后续多模态素材统一纳入治理流程，经过清洗、脱敏、人工修正、知识抽取、审核和 RAG 构建后，提供给 CustomerOpsAgent 等 Agent 以受限 API 调用。
 
-当前仓库已完成 **P1-M12 Advanced Data Cleaning**。P1-M11 是 Unified DataHub RAG Release；根据高质量数据中台目标，P1 最终收版调整为 P1-M15。当前仍然是本地 JSON + keyword/mock retrieval，不是生产级向量数据库方案。
+当前实现聚焦文本客服知识闭环，并已经具备本地 JSON 存储、本地关键词检索、人工清洗、人工审核、Bad Case 回流和 Legacy RAG 迁移能力。多模态素材中心、销售培训数据导出、微调数据集导出和 MCP Tools 属于架构预留能力，尚未作为生产功能接入。
 
-## 快速上手
+## 目录
+
+- [为什么做](#为什么做)
+- [DataHub 做什么](#datahub-做什么)
+- [核心工作流](#核心工作流)
+- [机器清洗与人工清洗](#机器清洗与人工清洗)
+- [统一 RAG 与 Agent 调用](#统一-rag-与-agent-调用)
+- [质量验证结果](#质量验证结果)
+- [快速开始](#快速开始)
+- [API 示例](#api-示例)
+- [技术栈](#技术栈)
+- [安全边界](#安全边界)
+- [测试命令](#测试命令)
+- [架构预留能力](#架构预留能力)
+- [项目目录](#项目目录)
+
+## 为什么做
+
+AI 客服和 Agent 项目最难持续优化的部分不是单次回答，而是知识资产本身：原始聊天记录质量参差不齐，隐私字段不能直接进入 RAG，历史知识库来源不统一，Bad Case 难以回流，人工修正后的高质量数据也缺少统一沉淀位置。
+
+DataHub 的目标是把这些分散数据收拢成可追溯、可审核、可复用的知识资产，让 Agent 不直接维护知识库，而是通过 DataHub 统一检索。
+
+## DataHub 做什么
+
+DataHub 提供一条从数据治理到 Agent 调用的闭环：
+
+```text
+多源数据
+-> 机器清洗 / 脱敏 / 质量评分
+-> 人工清洗 / 人工审核
+-> knowledge candidates
+-> approved candidates
+-> local RAG chunks
+-> CustomerOpsAgent restricted retrieval
+-> Bad Case feedback
+-> pending-review draft
+```
+
+已接入的文本来源包括：
+
+- 客服聊天 JSON 导入。
+- 公开客服/电商样本评测数据。
+- CustomerOpsAgent legacy RAG export。
+- Bad Case 人工修正草稿。
+
+架构预留来源包括：
+
+- AI 素材中心图片、视频、海报。
+- OCR / Caption / SKU 绑定后的多模态知识。
+- 销售培训资料与微调数据集。
+- MCP Tools 形式的 Agent 集群统一调用。
+
+## 核心工作流
+
+```mermaid
+flowchart LR
+  A["客服聊天 / Legacy RAG / Bad Case"] --> B["DataHub Ingestion"]
+  B --> C["机器清洗与脱敏"]
+  C --> D["人工清洗工作台"]
+  D --> E["知识候选抽取"]
+  E --> F["人工审核"]
+  F --> G["统一 RAG Chunks"]
+  G --> H["CustomerOpsAgent 检索 API"]
+  H --> I["Bad Case 回流"]
+  I --> E
+```
+
+## 机器清洗与人工清洗
+
+机器清洗负责在进入知识抽取前给每条消息打上治理标签：
+
+- PII 脱敏：邮箱、电话、订单号、物流单号、地址、姓名、邮编、支付敏感串。
+- 重复检测：完全重复、近似重复。
+- 低质量识别：过短、过长、重复字符、符号噪声、疑似乱码。
+- 噪声标记：广告、无关闲聊、偏离客服场景文本。
+- 质量评分：`quality_score`、`quality_level`、`suggested_action`。
+
+人工清洗工作台提供中文管理界面，清洗人员可以查看机器清洗结果、编辑 sanitized content、选择保留/修改后保留/丢弃/需要复核，并记录清洗备注。人工清洗不会覆盖 raw batch，只会写入 sanitized batch 和 manual cleaning record。
+
+## 统一 RAG 与 Agent 调用
+
+CustomerOpsAgent 后续推荐只通过 DataHub 调用知识：
+
+```text
+POST /api/customer-ops-agent/retrieve
+GET  /api/customer-ops-agent/retrievals/{retrieval_id}
+```
+
+调用需要本地开发阶段的客户端头：
+
+```text
+X-DataHub-Client: CustomerOpsAgent
+```
+
+DataHub 只返回 approved 且已构建为 retrieval-ready chunk 的知识，不暴露 raw data、sanitized data 或未审核候选知识。返回结果包含 `retrieval_id`、`score`、`matched_terms`、`chunk_id`、`candidate_id` 和 source trace，便于后续 Bad Case 绑定和质量追踪。
+
+## 质量验证结果
+
+已验证指标只记录仓库内测试和评测报告中实际完成的结果：
+
+| 项目 | 结果 |
+| --- | --- |
+| 公开数据小样本 | 50 conversations / 100 messages |
+| candidate_count | 50 |
+| approved_count | 10 |
+| rag_chunk_count | 10 |
+| retrieval_hit_count | 5 |
+| bad_case_to_draft_count | 1 |
+| P1 flow / public dataset / legacy migration / unified RAG tests | passed |
+| advanced cleaning tests | passed |
+
+这些结果证明 DataHub 的治理链路可跑通，但当前检索仍是 local keyword/mock retrieval，不代表生产级向量检索质量。
+
+## 快速开始
 
 后端：
 
 ```powershell
-cd backend
+cd D:\Claude_workfile\DataHub
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+uvicorn backend.app.main:app --reload
+```
+
+前端：
+
+```powershell
+cd D:\Claude_workfile\DataHub\frontend
+npm install
+npm run dev
 ```
 
 健康检查：
@@ -33,323 +153,38 @@ uvicorn app.main:app --reload --port 8000
 Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-期望：
+## API 示例
 
-```json
-{
-  "status": "ok",
-  "service": "datahub-api",
-  "phase": "P1-M12"
-}
-```
-
-前端：
+导入客服聊天 JSON：
 
 ```powershell
-cd frontend
-npm install
-npm run dev
+$payload = Get-Content .\samples\customer_chat_sample.json -Raw
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/sources/import-json `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body $payload
 ```
 
-默认地址：
+执行清洗：
 
-```text
-http://localhost:5173
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/cleaning/run/{batch_id} `
+  -Method Post
 ```
 
-## P1-M12 高质量数据中台补强
+保存人工清洗结果：
 
-P1-M11 是 Unified DataHub RAG Release，不再作为 P1 高质量数据中台最终收版。
-P1 最终高质量数据中台收版调整为 **P1-M15 High-quality DataHub P1 Final Release**。
-
-新增 P1 后续路线：
-
-- **P1-M12 Advanced Machine Cleaning & Data Quality Scoring**：高级机器清洗、重复/近重复检测、低质量与噪声标记、PII 增强脱敏、质量评分、建议动作。
-- **P1-M13 Chinese Admin Console & Manual Cleaning Workbench**：全中文管理台、P1/P2/P3/P4 模块入口、人工清洗工作台、清洗员操作指南。
-- **P1-M14 Knowledge Review Quality Console**：中文知识审核台、审核规则、source trace、quality_score、risk_flags。
-- **P1-M15 High-quality DataHub P1 Final Release**：验证机器清洗 -> 人工清洗 -> 知识抽取 -> 人工审核 -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case 回流。
-
-当前 P1-M12 已增强机器清洗能力，DataHub 不只跑通 RAG，也能输出带 `cleaning_issues`、`risk_flags`、`quality_score`、`quality_level` 和 `suggested_action` 的治理后数据。P1-M13、P1-M14、P1-M15 仍是 roadmap，尚未实现。
-
-## STAR 项目拆解
-
-### Situation
-
-AI 客服和 Agent 项目经常面临知识资产分散、客服数据噪声高、隐私风险难控、RAG 知识难持续更新的问题。CustomerOpsAgent 需要稳定、可追溯、可回流的知识来源，而不是直接维护一套孤立知识库。
-
-### Task
-
-构建一个面向 Agent 集群的数据治理与统一 RAG 知识中台：
-
-- 将原始客服聊天记录转成可审核的知识候选。
-- 保证未脱敏、未审核数据不能进入检索。
-- 为 CustomerOpsAgent 提供只读、受限、可追溯的检索接口。
-- 支持 Bad Case 回流并重新进入候选知识流程。
-- 将 CustomerOpsAgent legacy RAG 知识迁移进 DataHub，形成统一 RAG 入口。
-
-### Action
-
-P1 已完成：
-
-- JSON 客服聊天记录导入。
-- 清洗、基础脱敏、空内容过滤、角色标准化。
-- rule-based mock 知识候选抽取。
-- 人工审核、编辑、approve / reject / needs_revision。
-- approved candidates 构建本地 RAG chunks。
-- 本地 RAG build 幂等保护。
-- CustomerOpsAgent restricted retrieval API。
-- retrieval_id 和 retrieval trace。
-- Bad Case 提交、队列、人工处理状态。
-- Bad Case 转 `pending_review` candidate。
-- 公开客服数据集小样本评测。
-- CustomerOpsAgent legacy RAG export 导入。
-- 统一 DataHub RAG release 测试。
-
-### Result
-
-已验证指标：
-
-- Public dataset sample：50 conversations / 100 messages。
-- Public dataset evaluation：`candidate_count: 50`。
-- Controlled approval：`approved_count: 10`。
-- Local RAG build：`rag_chunk_count: 10`。
-- Retrieval evaluation：`retrieval_hit_count: 5`。
-- Bad Case loop：`bad_case_to_draft_count: 1`。
-- P1 core flow test passed。
-- Public dataset eval test passed。
-- Legacy RAG migration test passed。
-- Unified RAG release test passed。
-
-这些结果证明 P1 数据治理与回流链路可跑通；它们不代表生产级语义检索质量。
-
-## 为什么它不是普通 RAG Demo
-
-DataHub 的重点不是“把文本丢进向量库搜索”，而是治理闭环：
-
-```text
-raw data
--> sanitized data
--> knowledge candidates
--> human review
--> approved candidates
--> local RAG chunks
--> CustomerOpsAgent retrieval
--> Bad Case feedback
--> pending_review draft
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/sanitized/{batch_id}/messages/{message_id}/manual-clean `
+  -Method Patch `
+  -ContentType 'application/json' `
+  -Body '{"content":"已人工确认的脱敏文本","manual_action":"keep_edited","cleaner":"local_cleaner","cleaning_note":"已确认业务含义不变。"}'
 ```
 
-硬边界：
-
-- raw data 不进入 extraction / RAG / CustomerOpsAgent retrieval。
-- sanitized data 不能直接进入 RAG。
-- `pending_review` / `needs_revision` / `rejected` 不能进入 RAG。
-- Bad Case 不能直接修改 candidate 或 RAG chunk。
-- CustomerOpsAgent 只能通过 DataHub API 检索，不能直接改知识库。
-
-## 技术架构与工作流
-
-```text
-React + TypeScript Admin UI
-    |
-    v
-FastAPI + Python API
-    |
-    +--> JSON Import
-    +--> Cleaning & Sanitization
-    +--> Knowledge Extraction
-    +--> Human Review
-    +--> Local RAG Builder
-    +--> CustomerOpsAgent Retrieval
-    +--> Bad Case Feedback
-    +--> Legacy RAG Migration
-    |
-    v
-Local JSON Storage under backend/storage/  (Git ignored)
-```
-
-P1-M11 统一 RAG 来源：
-
-```text
-chat_logs
-public_dataset
-bad_case
-legacy_rag
-manual (reserved)
-```
-
-当前真实实现覆盖：
-
-- `chat_logs`：客服聊天记录主链路。
-- `public_dataset`：P1-M9.5 公开客服数据小样本评测。
-- `bad_case`：M8.5 Bad Case 转 pending-review draft，审核后可入 RAG。
-- `legacy_rag`：P1-M10 legacy RAG migration。
-
-## 技术栈
-
-已确定：
-
-- Frontend：React + TypeScript。
-- Backend：FastAPI + Python。
-- Test style：Python `unittest` scripts + FastAPI `TestClient`。
-- Current storage：local JSON files under `backend/storage/`。
-- Current retrieval：local keyword/mock retrieval。
-
-仍保持候选，不在 P1 拍死：
-
-- Database：SQLite / PostgreSQL。
-- Vector store：pgvector / Qdrant。
-- ORM：SQLAlchemy / SQLModel。
-- RAG orchestration：lightweight service / LangChain / LlamaIndex。
-- Background tasks：FastAPI BackgroundTasks / Celery / RQ。
-- Deployment：local Docker Compose / later cloud deployment。
-
-## P1 核心能力
-
-### M2 JSON Import
-
-```text
-POST /api/sources/import-json
-GET  /api/sources
-GET  /api/sources/{batch_id}
-```
-
-### M3 Cleaning / Sanitization
-
-```text
-POST /api/cleaning/run/{batch_id}
-GET  /api/cleaning/jobs/{job_id}
-GET  /api/sanitized/{batch_id}
-```
-
-支持 masking：
-
-- Email -> `[EMAIL]`
-- Phone -> `[PHONE]`
-- Order id -> `[ORDER_ID]`
-- Tracking id -> `[TRACKING_ID]`
-- Address-like text -> `[ADDRESS]`
-
-### M4 Knowledge Candidate Extraction
-
-```text
-POST /api/extraction/run/{batch_id}
-GET  /api/extraction/jobs/{job_id}
-GET  /api/knowledge/candidates
-GET  /api/knowledge/candidates/{candidate_id}
-```
-
-当前方法：
-
-```text
-rule_based_mock
-```
-
-### M5 Human Review
-
-```text
-GET   /api/review/pending
-PATCH /api/knowledge/candidates/{candidate_id}
-POST  /api/review/{candidate_id}/approve
-POST  /api/review/{candidate_id}/reject
-POST  /api/review/{candidate_id}/needs-revision
-```
-
-### M6 / M6.5 Local RAG
-
-```text
-POST /api/rag/build
-GET  /api/rag/chunks
-GET  /api/rag/chunks/{chunk_id}
-POST /api/rag/search
-```
-
-说明：
-
-- 只读取 approved candidates。
-- 重复 build 不重复生成 chunks。
-- `chunk_id` 稳定派生自 `candidate_id`。
-- search 返回 `score`、`matched_terms` 和 source trace。
-
-### M7 / M7.5 CustomerOpsAgent Retrieval
-
-```text
-POST /api/customer-ops-agent/retrieve
-GET  /api/customer-ops-agent/retrievals/{retrieval_id}
-```
-
-必须带 header：
-
-```text
-X-DataHub-Client: CustomerOpsAgent
-```
-
-该 header 是本地开发阶段鉴权占位，不是生产 token。
-
-### M8 Bad Case Feedback
-
-```text
-POST  /api/customer-ops-agent/bad-cases
-GET   /api/bad-cases
-GET   /api/bad-cases/{bad_case_id}
-PATCH /api/bad-cases/{bad_case_id}
-```
-
-### M8.5 Bad Case To Draft
-
-```text
-POST /api/bad-cases/{bad_case_id}/create-draft
-```
-
-生成 candidate 必须是：
-
-```text
-review_status: pending_review
-source_type: bad_case
-extraction_method: bad_case_resolution
-```
-
-### P1-M10 Legacy RAG Migration
-
-```text
-POST /api/legacy-rag/import
-GET  /api/legacy-rag/imports
-GET  /api/legacy-rag/imports/{import_id}
-```
-
-`trusted_import=true`：
-
-```text
-legacy item -> approved candidate
-```
-
-`trusted_import=false`：
-
-```text
-legacy item -> pending_review candidate
-```
-
-## 统一 RAG 与 CustomerOpsAgent 接入
-
-P1-M11 后，CustomerOpsAgent 后续推荐只调用 DataHub：
-
-```text
-CustomerOpsAgent receives user query
--> POST /api/customer-ops-agent/retrieve
--> use returned answer / chunks / source trace
--> generate final customer-facing response
--> if answer is bad, submit Bad Case with retrieval_id
-```
-
-CustomerOpsAgent 不需要知道知识来自：
-
-- chat logs
-- public dataset sample
-- bad case draft
-- legacy RAG import
-
-DataHub 在结果里保留 source trace，用于排查、审核和 Bad Case 回流。
-
-调用示例：
+CustomerOpsAgent 检索：
 
 ```powershell
 Invoke-RestMethod `
@@ -360,41 +195,32 @@ Invoke-RestMethod `
   -Body '{"query":"shipping Germany","top_k":5}'
 ```
 
-提交 Bad Case：
+## 技术栈
 
-```powershell
-Invoke-RestMethod `
-  -Uri http://127.0.0.1:8000/api/customer-ops-agent/bad-cases `
-  -Method Post `
-  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"} `
-  -ContentType 'application/json' `
-  -Body '{
-    "retrieval_id":"retrieval_xxx",
-    "user_query":"Where is my order?",
-    "agent_answer":"Your package should arrive soon.",
-    "issue_type":"wrong_answer",
-    "expected_answer":"The answer should mention tracking status or escalation.",
-    "severity":"medium"
-  }'
-```
+- 前端：React + TypeScript + Vite。
+- 后端：FastAPI + Python。
+- 当前存储：本地 JSON 文件。
+- 当前检索：本地关键词 / mock retrieval。
+- 当前测试：Python unittest + FastAPI TestClient。
 
-DataHub-only 集成说明：
+数据库、ORM、真实向量库、embedding、真实 LLM、生产鉴权和云部署仍保留为后续技术决策，不在当前实现中强行绑定。
 
-```text
-docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md
-```
+## 安全边界
 
-## 测试与评估
+- raw batch 只读，不被人工清洗覆盖。
+- 未脱敏、未审核数据不能进入 RAG。
+- pending_review / needs_revision / rejected 不能进入 retrieval。
+- CustomerOpsAgent 不能直接读取 raw、sanitized 或 knowledge_candidates。
+- Bad Case 不会自动修改 candidate 或 RAG chunk。
+- `backend/storage/`、`.env`、`.venv/`、`node_modules/` 不提交 Git。
+- 仓库内样例必须使用假数据，不提交真实客服隐私、API Key、token 或密码。
 
-语法检查：
+## 测试命令
 
 ```powershell
 python -m py_compile backend\app\main.py backend\app\schemas.py backend\app\storage.py
-```
-
-P1 测试：
-
-```powershell
+python backend\tests\test_advanced_cleaning.py
+python backend\tests\test_manual_cleaning.py
 python backend\tests\test_customerops_retrieval.py
 python backend\tests\test_rag_quality.py
 python backend\tests\test_bad_case_feedback.py
@@ -404,196 +230,27 @@ python backend\tests\test_legacy_rag_migration.py
 python backend\tests\test_unified_rag_release.py
 ```
 
-测试覆盖：
+## 架构预留能力
 
-- approved-only RAG chunking。
-- RAG build idempotency。
-- CustomerOpsAgent retrieval contract。
-- Bad Case queue and draft creation。
-- P1 full flow。
-- Public dataset sample evaluation。
-- Legacy RAG migration。
-- Unified RAG release from multiple source types。
+DataHub 的完整产品形态面向 Agent 集群：
 
-## 公开数据集实测
+- AI 素材中心：图片、视频、海报素材导入、OCR、Caption、标签、SKU 绑定与多模态审核。
+- 高质量数据复用：FAQ、SOP、话术手册、典型案例、测验题。
+- 微调数据导出：SFT / Preference 数据集，服务品牌语气、客服风格和拒答规范优化。
+- MCP Tools：`search_customer_knowledge`、`submit_bad_case`、`export_training_dataset` 等工具接口。
+- Agent 集群调用：CustomerOpsAgent、SalesAgent、OpsAgent、MaterialAgent 通过统一入口调用 DataHub。
 
-Dataset：
-
-```text
-Bitext customer support dataset
-```
-
-Source：
-
-```text
-https://github.com/bitext/customer-support-llm-chatbot-training-dataset
-```
-
-Committed sample：
-
-```text
-samples/public_dataset_eval_sample.json
-```
-
-结果摘要：
-
-- 50 conversations。
-- 100 messages。
-- 50 candidates。
-- 10 controlled approvals。
-- 10 local RAG chunks。
-- 5 retrieval hits for the evaluation query。
-- 1 Bad Case to pending-review draft。
-
-报告：
-
-```text
-docs/14_PUBLIC_DATASET_EVAL_REPORT.md
-```
-
-## Legacy RAG 迁移
-
-示例：
-
-```text
-samples/legacy_rag_export_sample.json
-```
-
-导入：
-
-```powershell
-$payload = Get-Content .\samples\legacy_rag_export_sample.json -Raw
-
-Invoke-RestMethod `
-  -Uri http://127.0.0.1:8000/api/legacy-rag/import `
-  -Method Post `
-  -ContentType 'application/json' `
-  -Body $payload
-```
-
-迁移规则：
-
-- `source_type: legacy_rag`
-- `extraction_method: legacy_rag_migration`
-- `migration_mode: trusted_import | review_required`
-- stable id from `source_name + legacy_id`
-- duplicate imports do not create duplicate candidates
-
-报告：
-
-```text
-docs/15_LEGACY_RAG_MIGRATION_REPORT.md
-```
-
-## 安全边界
-
-- `backend/storage/` 被 Git ignored。
-- 不提交真实客服聊天记录。
-- 不提交 CustomerOpsAgent 私有 RAG 数据。
-- 不提交 API Key、token、密码。
-- 不提交 `.env`、`.venv`、`node_modules`。
-- CustomerOpsAgent 不直接读 raw / sanitized / candidates。
-- Bad Case 不直接修改 RAG。
-
-## Roadmap
-
-P1 已完成：
-
-```text
-Text Customer Service Knowledge Loop
--> Unified local DataHub RAG release
-```
-
-P2 Roadmap，未实现：
-
-```text
-AI Material Center & Multimodal Knowledge
-```
-
-P3 Roadmap，未实现：
-
-```text
-Sales training dataset export
-Fine-tuning dataset export
-```
-
-P4 Roadmap，未实现：
-
-```text
-MCP Tools & Agent Cluster Integration
-```
-
-## FAQ
-
-### DataHub 是否已经是生产级 RAG？
-
-不是。P1-M11 使用 local JSON + keyword/mock retrieval，用于证明治理闭环和接口契约。
-
-### 是否已经接入真实向量库或 embedding？
-
-没有。Qdrant、pgvector、embedding model、database、ORM 都仍是候选。
-
-### CustomerOpsAgent 仓库是否已被修改？
-
-没有。本仓库只提供 DataHub 侧 API 和集成说明。
-
-### Bad Case 是否会自动进入 RAG？
-
-不会。Bad Case 只能转成 `pending_review` candidate，必须人工 approve 后才能通过 RAG build 进入 chunks。
-
-### P2/P3/P4 是否完成？
-
-没有。它们是正式 roadmap，但未实现。
-
-## 术语表
-
-- `raw_imported`：原始导入批次。
-- `sanitized`：清洗脱敏后的数据。
-- `knowledge candidate`：待审核知识候选。
-- `pending_review`：候选知识待审核。
-- `approved`：人工审核通过。
-- `rag_chunked`：已生成本地 RAG chunk。
-- `indexed`：保留给未来真实生产索引。
-- `retrieval_id`：CustomerOpsAgent 检索 trace id，用于 Bad Case 绑定。
-- `legacy_rag`：从 CustomerOpsAgent 原 RAG export 迁入的知识来源。
-
-## 版本里程碑
-
-- `m2-raw-json-import`
-- `m3-cleaning-sanitization`
-- `m4-knowledge-candidates`
-- `m5-human-review-workflow`
-- `m6-rag-builder`
-- `m6.5-rag-quality-hardening`
-- `m7-customerops-retrieval`
-- `m7.5-retrieval-contract-polish`
-- `m8-bad-case-feedback`
-- `m8.5-bad-case-to-draft`
-- `p1-m9-phase-one-release-freeze`
-- `p1-m9.5-public-dataset-eval`
-- `p1-m10-legacy-rag-migration`
-- `p1-m11-unified-rag-release`
-
-历史 tag 保持不改。从 P1-M9 开始，新 tag 使用 phase-prefixed 命名。
+以上属于架构支持和 Roadmap 能力，当前仓库没有接入真实多模态、真实向量库、真实 LLM、真实数据库或 MCP 运行层。
 
 ## 项目目录
 
 ```text
 backend/
-  app/
-  tests/
-docs/
+  app/                 FastAPI API、schema、local JSON storage service
+  tests/               P1 flow、RAG、Bad Case、legacy migration、manual cleaning tests
 frontend/
-samples/
-scripts/
+  src/                 React + TypeScript 中文管理台
+docs/                  PRD、架构、API 契约、验收标准和治理规则
+samples/               安全假数据样例
+scripts/               小样本转换与评测辅助脚本
 ```
-
-关键文档：
-
-- `docs/10_FINAL_VISION_AND_ROADMAP.md`
-- `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md`
-- `docs/13_P1_RELEASE_FREEZE_REPORT.md`
-- `docs/14_PUBLIC_DATASET_EVAL_REPORT.md`
-- `docs/15_LEGACY_RAG_MIGRATION_REPORT.md`
-- `docs/16_P1_UNIFIED_RAG_RELEASE_REPORT.md`
-- `docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md`
