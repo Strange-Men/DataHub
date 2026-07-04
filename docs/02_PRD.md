@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through M7
+### Currently Implemented Through M8
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -85,7 +85,9 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - RAG search query and top_k validation.
 - `matched_terms` and source trace returned for local search debugging.
 - CustomerOpsAgent restricted retrieval API over approved local `rag_chunked` results.
-- Retrieval trace records for later M8 Bad Case linkage.
+- Retrieval trace records for Bad Case linkage.
+- CustomerOpsAgent Bad Case submission with `retrieval_id` validation.
+- Bad Case queue listing, detail lookup, and manual status / review note updates.
 
 ### Pending In Phase 1
 
@@ -93,7 +95,8 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Manual text paste import.
 - More complete deduplication.
 - Separate approved knowledge or knowledge asset version management.
-- Bad Case feedback.
+- Bad Case resolution into reviewable knowledge drafts.
+- Automatic re-entry of corrected Bad Cases into the normal candidate and review workflow.
 - Production retrieval/indexing beyond local mock RAG chunks.
 
 ### Phase 1: Text Customer Service Knowledge Loop
@@ -191,7 +194,7 @@ CustomerOpsAgent queries DataHub through retrieval APIs and receives approved kn
 
 ### 4.7 Handle Bad Cases
 
-CustomerOpsAgent submits Bad Cases. DataHub stores them for human correction. Corrected Bad Cases can become new or updated knowledge after review.
+CustomerOpsAgent submits Bad Cases with a `retrieval_id`. DataHub stores them for human handling. Current M8 only supports submission and queue management; corrected Bad Cases can become new or updated knowledge only in a later stage after explicit review-flow planning.
 
 ## 5. Phase-One Functional Requirements
 

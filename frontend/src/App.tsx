@@ -143,6 +143,26 @@ type CustomerOpsRetrieval = {
   created_at: string;
 };
 
+type BadCase = {
+  bad_case_id: string;
+  retrieval_id: string;
+  user_query: string;
+  agent_answer: string;
+  issue_type: string;
+  expected_answer?: string | null;
+  severity: "low" | "medium" | "high";
+  status: "open" | "triaged" | "resolved" | "ignored";
+  review_note: string;
+  resolution_type?: string | null;
+  linked_candidate_id?: string | null;
+  linked_chunk_ids: string[];
+  retrieval_result_count: number;
+  conversation_id?: string | null;
+  agent_session_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export function App() {
   const [sourceName, setSourceName] = useState("sample_customer_chat");
   const [jsonText, setJsonText] = useState(`{
@@ -221,6 +241,20 @@ export function App() {
   const [customerOpsTopK, setCustomerOpsTopK] = useState("5");
   const [customerOpsRetrieval, setCustomerOpsRetrieval] =
     useState<CustomerOpsRetrieval | null>(null);
+  const [badCaseRetrievalId, setBadCaseRetrievalId] = useState("");
+  const [badCaseUserQuery, setBadCaseUserQuery] = useState("Where is my order?");
+  const [badCaseAgentAnswer, setBadCaseAgentAnswer] = useState("Your package should arrive soon.");
+  const [badCaseExpectedAnswer, setBadCaseExpectedAnswer] = useState(
+    "The answer should mention tracking status or escalation."
+  );
+  const [badCaseIssueType, setBadCaseIssueType] = useState("wrong_answer");
+  const [badCaseSeverity, setBadCaseSeverity] = useState("medium");
+  const [badCases, setBadCases] = useState<BadCase[]>([]);
+  const [selectedBadCase, setSelectedBadCase] = useState<BadCase | null>(null);
+  const [badCaseReviewStatus, setBadCaseReviewStatus] = useState("triaged");
+  const [badCaseReviewNote, setBadCaseReviewNote] = useState("");
+  const [badCaseResolutionType, setBadCaseResolutionType] = useState("retrieval_tuning");
+  const [isSubmittingBadCase, setIsSubmittingBadCase] = useState(false);
   const [isBuildingRag, setIsBuildingRag] = useState(false);
   const [isSearchingRag, setIsSearchingRag] = useState(false);
   const [isSearchingCustomerOps, setIsSearchingCustomerOps] = useState(false);
@@ -231,6 +265,7 @@ export function App() {
     void loadReviewQueue();
     void loadCandidates();
     void loadRagChunks();
+    void loadBadCases();
   }, []);
 
   async function loadSources() {
@@ -596,10 +631,110 @@ export function App() {
         return;
       }
       setCustomerOpsRetrieval(body.data);
+      setBadCaseRetrievalId(body.data.retrieval_id);
     } catch {
       setError("CustomerOps retrieval request failed.");
     } finally {
       setIsSearchingCustomerOps(false);
+    }
+  }
+
+  async function loadBadCases() {
+    setError(null);
+    try {
+      const response = await fetch("/api/bad-cases");
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("Could not load Bad Case queue.");
+        return;
+      }
+      setBadCases(body.data.bad_cases);
+    } catch {
+      setError("Could not load Bad Case queue.");
+    }
+  }
+
+  async function submitBadCase() {
+    if (!badCaseRetrievalId.trim()) {
+      setError("retrieval_id is required for Bad Case submission.");
+      return;
+    }
+    if (!badCaseUserQuery.trim()) {
+      setError("Bad Case user_query is required.");
+      return;
+    }
+    if (!badCaseAgentAnswer.trim()) {
+      setError("Bad Case agent_answer is required.");
+      return;
+    }
+    setError(null);
+    setIsSubmittingBadCase(true);
+    try {
+      const response = await fetch("/api/customer-ops-agent/bad-cases", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-DataHub-Client": "CustomerOpsAgent"
+        },
+        body: JSON.stringify({
+          retrieval_id: badCaseRetrievalId.trim(),
+          user_query: badCaseUserQuery.trim(),
+          agent_answer: badCaseAgentAnswer.trim(),
+          issue_type: badCaseIssueType,
+          expected_answer: badCaseExpectedAnswer.trim() || null,
+          severity: badCaseSeverity
+        })
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError(body.error?.message || "Bad Case submission failed.");
+        return;
+      }
+      setSelectedBadCase(body.data);
+      setBadCaseReviewStatus(body.data.status);
+      setBadCaseReviewNote(body.data.review_note || "");
+      setBadCaseResolutionType(body.data.resolution_type || "retrieval_tuning");
+      await loadBadCases();
+    } catch {
+      setError("Bad Case submission request failed.");
+    } finally {
+      setIsSubmittingBadCase(false);
+    }
+  }
+
+  function selectBadCase(badCase: BadCase) {
+    setSelectedBadCase(badCase);
+    setBadCaseReviewStatus(badCase.status);
+    setBadCaseReviewNote(badCase.review_note || "");
+    setBadCaseResolutionType(badCase.resolution_type || "retrieval_tuning");
+  }
+
+  async function updateBadCase() {
+    if (!selectedBadCase) {
+      return;
+    }
+    setError(null);
+    try {
+      const response = await fetch(`/api/bad-cases/${selectedBadCase.bad_case_id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          status: badCaseReviewStatus,
+          review_note: badCaseReviewNote,
+          resolution_type: badCaseResolutionType
+        })
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError("Could not update Bad Case.");
+        return;
+      }
+      setSelectedBadCase(body.data);
+      await loadBadCases();
+    } catch {
+      setError("Bad Case update request failed.");
     }
   }
 
@@ -611,12 +746,11 @@ export function App() {
     <main className="app-shell">
       <section className="workspace">
         <p className="eyebrow">DataHub</p>
-        <h1>CustomerOps retrieval</h1>
+        <h1>CustomerOps feedback loop</h1>
         <p className="summary">
-          M7 exposes a restricted CustomerOpsAgent retrieval API over approved
-          local RAG chunks. This does not modify the CustomerOpsAgent project,
-          does not implement Bad Case feedback, and does not use a real vector
-          database.
+          M8 adds a Bad Case queue on top of the restricted CustomerOpsAgent
+          retrieval API. Bad Cases bind to retrieval_id records, but do not
+          modify candidates, RAG chunks, or trigger re-indexing.
         </p>
 
         <form className="import-form" onSubmit={handleSubmit}>
@@ -1242,8 +1376,8 @@ export function App() {
           <h2>Restricted approved-chunk retrieval</h2>
           <p className="warning-note">
             This is DataHub's restricted API for approved rag_chunked results.
-            The CustomerOpsAgent repository has not been modified, Bad Case is
-            not implemented, and retrieval still uses local keyword/mock scoring.
+            The CustomerOpsAgent repository has not been modified, and retrieval
+            still uses local keyword/mock scoring.
             The test sends the local X-DataHub-Client header placeholder.
           </p>
           <div className="search-row">
@@ -1329,6 +1463,185 @@ export function App() {
           ) : null}
         </section>
 
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow compact">Bad Case Feedback</p>
+              <h2>Submit and triage Bad Cases</h2>
+            </div>
+            <button type="button" className="secondary" onClick={loadBadCases}>
+              Refresh queue
+            </button>
+          </div>
+          <p className="warning-note">
+            M8 only saves Bad Cases and manual handling notes. It does not
+            generate knowledge, modify candidates, modify RAG chunks, or
+            re-index.
+          </p>
+          <div className="review-grid">
+            <label>
+              <span>retrieval_id</span>
+              <input
+                value={badCaseRetrievalId}
+                onChange={(event) => setBadCaseRetrievalId(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>issue_type</span>
+              <select
+                value={badCaseIssueType}
+                onChange={(event) => setBadCaseIssueType(event.target.value)}
+              >
+                <option value="wrong_answer">wrong_answer</option>
+                <option value="missing_knowledge">missing_knowledge</option>
+                <option value="unsafe_answer">unsafe_answer</option>
+                <option value="bad_tone">bad_tone</option>
+                <option value="retrieval_miss">retrieval_miss</option>
+                <option value="other">other</option>
+              </select>
+            </label>
+            <label>
+              <span>severity</span>
+              <select
+                value={badCaseSeverity}
+                onChange={(event) => setBadCaseSeverity(event.target.value)}
+              >
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            <span>user_query</span>
+            <textarea
+              className="compact-textarea"
+              value={badCaseUserQuery}
+              onChange={(event) => setBadCaseUserQuery(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>agent_answer</span>
+            <textarea
+              className="compact-textarea"
+              value={badCaseAgentAnswer}
+              onChange={(event) => setBadCaseAgentAnswer(event.target.value)}
+            />
+          </label>
+          <label>
+            <span>expected_answer</span>
+            <textarea
+              className="compact-textarea"
+              value={badCaseExpectedAnswer}
+              onChange={(event) => setBadCaseExpectedAnswer(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={submitBadCase}
+            disabled={isSubmittingBadCase}
+          >
+            {isSubmittingBadCase ? "Submitting..." : "Submit Bad Case"}
+          </button>
+
+          {selectedBadCase ? (
+            <div className="result-panel compact-panel" aria-live="polite">
+              <h2>Selected Bad Case</h2>
+              <dl>
+                <div>
+                  <dt>bad_case_id</dt>
+                  <dd>{selectedBadCase.bad_case_id}</dd>
+                </div>
+                <div>
+                  <dt>retrieval_id</dt>
+                  <dd>{selectedBadCase.retrieval_id}</dd>
+                </div>
+                <div>
+                  <dt>linked_chunk_ids</dt>
+                  <dd>{selectedBadCase.linked_chunk_ids.join(", ") || "none"}</dd>
+                </div>
+                <div>
+                  <dt>status</dt>
+                  <dd>{selectedBadCase.status}</dd>
+                </div>
+              </dl>
+              <div className="review-grid">
+                <label>
+                  <span>status</span>
+                  <select
+                    value={badCaseReviewStatus}
+                    onChange={(event) => setBadCaseReviewStatus(event.target.value)}
+                  >
+                    <option value="open">open</option>
+                    <option value="triaged">triaged</option>
+                    <option value="resolved">resolved</option>
+                    <option value="ignored">ignored</option>
+                  </select>
+                </label>
+                <label>
+                  <span>resolution_type</span>
+                  <select
+                    value={badCaseResolutionType}
+                    onChange={(event) => setBadCaseResolutionType(event.target.value)}
+                  >
+                    <option value="create_new_knowledge">create_new_knowledge</option>
+                    <option value="update_existing_knowledge">update_existing_knowledge</option>
+                    <option value="retrieval_tuning">retrieval_tuning</option>
+                    <option value="ignore">ignore</option>
+                    <option value="other">other</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                <span>review_note</span>
+                <textarea
+                  className="compact-textarea"
+                  value={badCaseReviewNote}
+                  onChange={(event) => setBadCaseReviewNote(event.target.value)}
+                />
+              </label>
+              <button type="button" onClick={updateBadCase}>
+                Update Bad Case
+              </button>
+            </div>
+          ) : null}
+
+          {badCases.length === 0 ? (
+            <p className="empty-state">No Bad Cases submitted yet.</p>
+          ) : (
+            <div className="message-list">
+              {badCases.map((badCase) => (
+                <article className="candidate-card" key={badCase.bad_case_id}>
+                  <div className="message-meta">
+                    <span>{badCase.status}</span>
+                    <span>{badCase.issue_type}</span>
+                    <span>{badCase.severity}</span>
+                  </div>
+                  <h3>{badCase.user_query}</h3>
+                  <p>{badCase.agent_answer}</p>
+                  <dl className="review-meta">
+                    <div>
+                      <dt>bad_case_id</dt>
+                      <dd>{badCase.bad_case_id}</dd>
+                    </div>
+                    <div>
+                      <dt>retrieval_id</dt>
+                      <dd>{badCase.retrieval_id}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => selectBadCase(badCase)}
+                  >
+                    View details
+                  </button>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
         <div className="status-grid" aria-label="Project status">
           <div>
             <span className="label">Frontend</span>
@@ -1340,7 +1653,7 @@ export function App() {
           </div>
           <div>
             <span className="label">Current milestone</span>
-            <strong>M7 CustomerOps retrieval</strong>
+            <strong>M8 Bad Case feedback</strong>
           </div>
         </div>
       </section>

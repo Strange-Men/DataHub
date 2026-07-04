@@ -5,6 +5,9 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.schemas import (
+    BadCaseRecord,
+    BadCaseSubmitRequest,
+    BadCaseUpdateRequest,
     CandidateUpdateRequest,
     CleaningJobMetadata,
     CustomerOpsRetrievalFilters,
@@ -36,6 +39,7 @@ KNOWLEDGE_CANDIDATE_DIR = STORAGE_DIR / "knowledge_candidates"
 REVIEW_RECORD_DIR = STORAGE_DIR / "review_records"
 RAG_CHUNK_DIR = STORAGE_DIR / "rag_chunks"
 RETRIEVAL_LOG_DIR = STORAGE_DIR / "retrieval_logs"
+BAD_CASE_DIR = STORAGE_DIR / "bad_cases"
 INDEX_FILE = RAW_BATCH_DIR / "index.json"
 SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
 CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
@@ -44,6 +48,7 @@ KNOWLEDGE_CANDIDATE_INDEX_FILE = KNOWLEDGE_CANDIDATE_DIR / "index.json"
 REVIEW_RECORD_INDEX_FILE = REVIEW_RECORD_DIR / "index.json"
 RAG_CHUNK_INDEX_FILE = RAG_CHUNK_DIR / "index.json"
 RETRIEVAL_LOG_INDEX_FILE = RETRIEVAL_LOG_DIR / "index.json"
+BAD_CASE_INDEX_FILE = BAD_CASE_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -72,6 +77,7 @@ def _ensure_storage() -> None:
     REVIEW_RECORD_DIR.mkdir(parents=True, exist_ok=True)
     RAG_CHUNK_DIR.mkdir(parents=True, exist_ok=True)
     RETRIEVAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    BAD_CASE_DIR.mkdir(parents=True, exist_ok=True)
     if not INDEX_FILE.exists():
         INDEX_FILE.write_text("[]", encoding="utf-8")
     if not SANITIZED_INDEX_FILE.exists():
@@ -88,6 +94,8 @@ def _ensure_storage() -> None:
         RAG_CHUNK_INDEX_FILE.write_text("[]", encoding="utf-8")
     if not RETRIEVAL_LOG_INDEX_FILE.exists():
         RETRIEVAL_LOG_INDEX_FILE.write_text("[]", encoding="utf-8")
+    if not BAD_CASE_INDEX_FILE.exists():
+        BAD_CASE_INDEX_FILE.write_text("[]", encoding="utf-8")
 
 
 def _read_json_list(path: Path) -> list[dict[str, object]]:
@@ -944,3 +952,97 @@ def get_customerops_retrieval_trace(
     if not isinstance(data, dict):
         return None
     return CustomerOpsRetrievalTrace(**data)
+
+
+def create_bad_case(
+    payload: BadCaseSubmitRequest,
+    retrieval_trace: CustomerOpsRetrievalTrace,
+    user_query: str,
+    agent_answer: str,
+    expected_answer: str | None,
+) -> BadCaseRecord:
+    _ensure_storage()
+    now = datetime.now(UTC).isoformat()
+    bad_case = BadCaseRecord(
+        bad_case_id=f"badcase_{uuid4().hex[:12]}",
+        retrieval_id=payload.retrieval_id,
+        user_query=user_query,
+        agent_answer=agent_answer,
+        issue_type=payload.issue_type,
+        expected_answer=expected_answer,
+        severity=payload.severity,
+        status="open",
+        review_note="",
+        resolution_type=None,
+        linked_candidate_id=None,
+        linked_chunk_ids=retrieval_trace.result_chunk_ids,
+        retrieval_result_count=retrieval_trace.result_count,
+        conversation_id=payload.conversation_id or retrieval_trace.conversation_id,
+        agent_session_id=payload.agent_session_id or retrieval_trace.agent_session_id,
+        metadata=payload.metadata or {},
+        created_at=now,
+        updated_at=now,
+    )
+    return _write_bad_case(bad_case)
+
+
+def _write_bad_case(bad_case: BadCaseRecord) -> BadCaseRecord:
+    _ensure_storage()
+    (BAD_CASE_DIR / f"{bad_case.bad_case_id}.json").write_text(
+        json.dumps(bad_case.model_dump(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    items = [
+        item for item in _read_json_list(BAD_CASE_INDEX_FILE)
+        if item.get("bad_case_id") != bad_case.bad_case_id
+    ]
+    items.append(bad_case.model_dump())
+    _write_json_list(BAD_CASE_INDEX_FILE, items)
+    return bad_case
+
+
+def list_bad_cases(
+    status: str | None = None,
+    issue_type: str | None = None,
+    severity: str | None = None,
+) -> list[BadCaseRecord]:
+    records = [BadCaseRecord(**item) for item in _read_json_list(BAD_CASE_INDEX_FILE)]
+    if status:
+        records = [record for record in records if record.status == status]
+    if issue_type:
+        records = [record for record in records if record.issue_type == issue_type]
+    if severity:
+        records = [record for record in records if record.severity == severity]
+    return sorted(records, key=lambda item: item.created_at, reverse=True)
+
+
+def get_bad_case(bad_case_id: str) -> BadCaseRecord | None:
+    _ensure_storage()
+    bad_case_file = BAD_CASE_DIR / f"{bad_case_id}.json"
+    if not bad_case_file.exists():
+        return None
+    try:
+        data = json.loads(bad_case_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return BadCaseRecord(**data)
+
+
+def update_bad_case(
+    bad_case_id: str,
+    payload: BadCaseUpdateRequest,
+) -> BadCaseRecord | None:
+    bad_case = get_bad_case(bad_case_id)
+    if bad_case is None:
+        return None
+
+    updates = payload.model_dump(exclude_unset=True)
+    updated = bad_case.model_copy(
+        update={
+            **updates,
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+    )
+    return _write_bad_case(updated)

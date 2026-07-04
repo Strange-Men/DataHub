@@ -65,7 +65,7 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
     def test_customerops_retrieval_is_restricted_and_traceable(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "M7.5")
+        self.assertEqual(health.json()["phase"], "M8")
 
         candidates = [
             *self._create_candidates("a"),
@@ -243,7 +243,8 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
         self.assertTrue(
             "/api/customer-ops-agent/retrievals/{retrieval_id}" in routes
         )
-        self.assertFalse(any("/bad-cases" in path for path in routes))
+        self.assertFalse(any("/embeddings" in path for path in routes))
+        self.assertFalse(any("/vector" in path for path in routes))
 
 
 if __name__ == "__main__":

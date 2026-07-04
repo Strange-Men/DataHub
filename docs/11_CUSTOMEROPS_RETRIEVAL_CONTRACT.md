@@ -4,10 +4,10 @@
 
 This document defines the current DataHub retrieval contract for CustomerOpsAgent.
 
-Current stage:
+Current related stage:
 
 ```text
-M7.5 Retrieval Contract Polish
+M8 Bad Case Feedback
 ```
 
 The contract is read-only and restricted to approved local RAG chunks.
@@ -19,6 +19,7 @@ DataHub currently exposes these CustomerOpsAgent-facing APIs:
 ```text
 POST /api/customer-ops-agent/retrieve
 GET  /api/customer-ops-agent/retrievals/{retrieval_id}
+POST /api/customer-ops-agent/bad-cases
 ```
 
 These APIs are implemented in DataHub only. The CustomerOpsAgent repository has not been modified.
@@ -33,7 +34,7 @@ X-DataHub-Client: CustomerOpsAgent
 
 Rules:
 
-- Both CustomerOpsAgent retrieval APIs require this header.
+- CustomerOpsAgent retrieval and Bad Case submission APIs require this header.
 - Missing header returns `UNAUTHORIZED_CLIENT`.
 - Any value other than `CustomerOpsAgent` returns `UNAUTHORIZED_CLIENT`.
 - This is not production authentication.
@@ -70,11 +71,12 @@ The retrieval trace API supports:
 
 ## 5. Current Non-Capabilities
 
-M7.5 does not support:
+M8 still does not support:
 
-- Bad Case submission.
-- Bad Case UI.
-- Human correction workflow.
+- Automatic Bad Case to knowledge generation.
+- Automatic candidate modification from Bad Cases.
+- Automatic RAG chunk modification from Bad Cases.
+- Automatic RAG rebuild or re-index from Bad Cases.
 - Real vector database.
 - Embedding model.
 - Real LLM.
@@ -83,7 +85,7 @@ M7.5 does not support:
 - Direct RAG chunk writes by CustomerOpsAgent.
 - Production authentication.
 
-M8 is the planned stage for Bad Case feedback.
+M8 implements Bad Case submission and queue management only. M8.5 or later may plan Bad Case resolution into reviewable drafts.
 
 ## 6. CustomerOpsAgent Rules
 
@@ -280,9 +282,9 @@ Invoke-RestMethod `
 
 ## 11. M8 Linkage
 
-`retrieval_id` is reserved for M8 Bad Case feedback.
+`retrieval_id` is used by M8 Bad Case feedback.
 
-Future Bad Case records should be able to reference:
+Bad Case records can reference:
 
 - `retrieval_id`
 - user query
@@ -291,4 +293,47 @@ Future Bad Case records should be able to reference:
 - issue type
 - related context metadata
 
-M7.5 only prepares the retrieval side of this linkage. It does not implement Bad Case submission or resolution.
+M8 implements:
+
+```text
+POST /api/customer-ops-agent/bad-cases
+GET  /api/bad-cases
+GET  /api/bad-cases/{bad_case_id}
+PATCH /api/bad-cases/{bad_case_id}
+```
+
+Bad Case submission requires the same header:
+
+```text
+X-DataHub-Client: CustomerOpsAgent
+```
+
+Submit a Bad Case:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/bad-cases `
+  -Method Post `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"} `
+  -ContentType 'application/json' `
+  -Body '{"retrieval_id":"retrieval_xxx","user_query":"Where is my order?","agent_answer":"Your package should arrive soon.","issue_type":"wrong_answer","severity":"medium"}'
+```
+
+M8 Bad Case records are saved under:
+
+```text
+backend/storage/bad_cases/
+```
+
+M8 does not implement automatic Bad Case resolution, candidate mutation, RAG chunk mutation, RAG rebuild, or re-indexing.
+
+Bad Case submission may return safe structured errors such as:
+
+- `UNAUTHORIZED_CLIENT`
+- `INVALID_RETRIEVAL_REFERENCE`
+- `INVALID_USER_QUERY`
+- `USER_QUERY_TOO_LONG`
+- `INVALID_AGENT_ANSWER`
+- `AGENT_ANSWER_TOO_LONG`
+- `INVALID_ISSUE_TYPE`
+- `INVALID_SEVERITY`

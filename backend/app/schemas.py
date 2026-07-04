@@ -245,6 +245,46 @@ class CustomerOpsRetrievalTrace(BaseModel):
     retrieval_mode: Literal["customerops_local_mock_retrieval"]
 
 
+class BadCaseSubmitRequest(BaseModel):
+    retrieval_id: str = Field(min_length=1, max_length=160)
+    user_query: str = Field(min_length=1)
+    agent_answer: str = Field(min_length=1)
+    issue_type: str = Field(min_length=1, max_length=80)
+    expected_answer: str | None = None
+    severity: str = Field(default="medium", max_length=20)
+    conversation_id: str | None = Field(default=None, max_length=160)
+    agent_session_id: str | None = Field(default=None, max_length=160)
+    metadata: dict[str, object] | None = None
+
+
+class BadCaseRecord(BaseModel):
+    bad_case_id: str
+    retrieval_id: str
+    user_query: str
+    agent_answer: str
+    issue_type: str
+    expected_answer: str | None = None
+    severity: str
+    status: str
+    review_note: str
+    resolution_type: str | None = None
+    linked_candidate_id: str | None = None
+    linked_chunk_ids: list[str]
+    retrieval_result_count: int
+    conversation_id: str | None = None
+    agent_session_id: str | None = None
+    metadata: dict[str, object]
+    created_at: str
+    updated_at: str
+
+
+class BadCaseUpdateRequest(BaseModel):
+    status: str | None = Field(default=None, max_length=40)
+    review_note: str | None = Field(default=None, max_length=2000)
+    resolution_type: str | None = Field(default=None, max_length=80)
+    linked_candidate_id: str | None = Field(default=None, max_length=160)
+
+
 class ExtractionJobMetadata(BaseModel):
     job_id: str
     source_batch_id: str

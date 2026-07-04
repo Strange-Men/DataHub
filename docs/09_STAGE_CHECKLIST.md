@@ -418,3 +418,51 @@ M7.5 is complete when:
 - CustomerOpsAgent repository is not modified.
 - No Bad Case API, Bad Case UI, human correction workflow, production auth, vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
 - `backend/storage/` remains ignored by Git.
+
+## 17. M8 Bad Case Feedback Check
+
+M8 is complete when:
+
+- `POST /api/customer-ops-agent/bad-cases` exists.
+- `GET /api/bad-cases` exists.
+- `GET /api/bad-cases/{bad_case_id}` exists.
+- `PATCH /api/bad-cases/{bad_case_id}` exists.
+- `/health` reports `phase: M8`.
+- CustomerOpsAgent Bad Case submission requires:
+  - `X-DataHub-Client: CustomerOpsAgent`
+- Missing or invalid client header returns `UNAUTHORIZED_CLIENT`.
+- `retrieval_id` is required and must exist in `backend/storage/retrieval_logs/`.
+- Bad Cases are saved under `backend/storage/bad_cases/`.
+- Bad Case records include:
+  - `bad_case_id`
+  - `retrieval_id`
+  - `user_query`
+  - `agent_answer`
+  - `issue_type`
+  - `expected_answer`
+  - `severity`
+  - `status`
+  - `linked_chunk_ids`
+  - `retrieval_result_count`
+  - timestamps
+- New Bad Cases default to `status: open`.
+- Supported statuses are:
+  - `open`
+  - `triaged`
+  - `resolved`
+  - `ignored`
+- PATCH can update:
+  - `status`
+  - `review_note`
+  - `resolution_type`
+  - `linked_candidate_id`
+- PATCH does not create knowledge candidates.
+- PATCH does not modify existing knowledge candidates.
+- PATCH does not modify RAG chunks.
+- PATCH does not automatically rebuild or re-index RAG.
+- Frontend can submit a Bad Case, show the queue, view details, and update handling status or note.
+- Tests cover auth, invalid `retrieval_id`, validation errors, successful submission, list/detail/PATCH, retrieval trace linkage, and no candidate/RAG mutation.
+- CustomerOpsAgent repository is not modified.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
+- `backend/storage/` remains ignored by Git.
+- `docs/04_API_CONTRACT.md`, `docs/07_ACCEPTANCE_CRITERIA.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md`, and `README.md` are updated.

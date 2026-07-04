@@ -80,6 +80,8 @@ Customer chat logs
 -> Knowledge Extraction
 -> Human Review
 -> Local RAG Builder
+-> CustomerOpsAgent Restricted Retrieval
+-> Bad Case Queue
 ```
 
 Current Phase 1 modules already started or implemented locally:
@@ -89,11 +91,13 @@ Current Phase 1 modules already started or implemented locally:
 - Knowledge Extraction.
 - Human Review.
 - Local RAG Builder.
+- CustomerOpsAgent Restricted Retrieval.
+- Bad Case Queue.
 
 Future modules not implemented yet:
 
 - CustomerOpsAgent production vector retrieval beyond the M7 local restricted retrieval API.
-- Bad Case feedback.
+- Bad Case resolution into knowledge drafts beyond the M8 queue.
 - Material Understanding.
 - Knowledge Asset Store beyond local files.
 - Dataset Export.
@@ -143,7 +147,7 @@ Responsibilities:
 - Show extracted knowledge drafts.
 - Support human review, editing, approval, rejection, and supplementation.
 - Show approved knowledge and index status.
-- Show Bad Case queue and correction workflow.
+- Show Bad Case queue and manual handling status.
 - Provide loading, empty, error, and success states for core operations.
 
 Non-goals:
@@ -272,11 +276,12 @@ Responsibilities:
 
 - Provide retrieval APIs for CustomerOpsAgent.
 - Return only approved retrieval-ready knowledge.
-- In M7, retrieval-ready means approved local `rag_chunked` records from `backend/storage/rag_chunks/`.
+- In M7/M8, retrieval-ready means approved local `rag_chunked` records from `backend/storage/rag_chunks/`.
 - Include source trace, retrieval id, and knowledge type metadata.
 - Apply request validation and access boundaries.
 - In M7.5, require `X-DataHub-Client: CustomerOpsAgent` as a local development auth placeholder.
 - M7.5 auth placeholder is not a production token, API key, or `.env` secret.
+- In M8, the same auth placeholder is reused for CustomerOpsAgent Bad Case submission.
 
 Must enforce:
 
@@ -292,12 +297,15 @@ Responsibilities:
 - Receive Bad Cases from CustomerOpsAgent.
 - Store the original query, agent answer, issue type, and expected correction if available.
 - Link Bad Cases to retrieval traces when available.
-- Allow human correction.
-- Send corrected content back into the normal knowledge workflow.
+- Allow humans to triage the Bad Case and record handling notes.
+- M8 stores Bad Cases under `backend/storage/bad_cases/` and does not directly create knowledge.
+- Later stages may send corrected content back into the normal knowledge workflow.
 
 Must enforce:
 
 - Bad Cases cannot directly update the RAG index.
+- Bad Cases cannot directly update candidates or RAG chunks.
+- M8 must not automatically rebuild or re-index RAG.
 - Bad Case fixes require review before indexing.
 
 ## 7. Data State Boundaries

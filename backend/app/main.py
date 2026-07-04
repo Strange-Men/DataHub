@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 
 from app.schemas import (
     ApiResponse,
+    BadCaseSubmitRequest,
+    BadCaseUpdateRequest,
     CandidateUpdateRequest,
     CustomerOpsRetrievalRequest,
     ImportJsonRequest,
@@ -14,7 +16,9 @@ from app.schemas import (
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
+    create_bad_case,
     create_raw_batch,
+    get_bad_case,
     get_cleaning_job,
     get_customerops_retrieval_trace,
     get_extraction_job,
@@ -23,6 +27,7 @@ from app.storage import (
     get_raw_batch_metadata,
     get_sanitized_batch,
     list_knowledge_candidates,
+    list_bad_cases,
     list_pending_review_candidates,
     list_rag_chunks,
     list_raw_batches,
@@ -30,10 +35,29 @@ from app.storage import (
     run_customerops_retrieval,
     run_extraction,
     search_rag_chunks,
+    update_bad_case,
     update_knowledge_candidate,
 )
 
 app = FastAPI(title="DataHub API", version="0.1.0")
+
+BAD_CASE_ISSUE_TYPES = {
+    "wrong_answer",
+    "missing_knowledge",
+    "unsafe_answer",
+    "bad_tone",
+    "retrieval_miss",
+    "other",
+}
+BAD_CASE_SEVERITIES = {"low", "medium", "high"}
+BAD_CASE_STATUSES = {"open", "triaged", "resolved", "ignored"}
+BAD_CASE_RESOLUTION_TYPES = {
+    "create_new_knowledge",
+    "update_existing_knowledge",
+    "retrieval_tuning",
+    "ignore",
+    "other",
+}
 
 
 def _request_id() -> str:
@@ -75,7 +99,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M7.5",
+        "phase": "M8",
     }
 
 
@@ -427,5 +451,185 @@ def get_customerops_retrieval(
     return ApiResponse(
         success=True,
         data=trace.model_dump(),
+        requestId=_request_id(),
+    )
+
+
+@app.post("/api/customer-ops-agent/bad-cases", response_model=None)
+def submit_customerops_bad_case(
+    payload: BadCaseSubmitRequest,
+    x_datahub_client: str | None = Header(default=None, alias="X-DataHub-Client"),
+) -> ApiResponse | JSONResponse:
+    auth_error = _authorize_customerops_client(x_datahub_client)
+    if auth_error is not None:
+        return auth_error
+
+    user_query = payload.user_query.strip()
+    if not user_query:
+        return _customerops_error(
+            code="INVALID_USER_QUERY",
+            message="user_query must not be empty.",
+            status_code=400,
+        )
+    if len(user_query) > 500:
+        return _customerops_error(
+            code="USER_QUERY_TOO_LONG",
+            message="user_query must be 500 characters or fewer.",
+            status_code=400,
+        )
+
+    agent_answer = payload.agent_answer.strip()
+    if not agent_answer:
+        return _customerops_error(
+            code="INVALID_AGENT_ANSWER",
+            message="agent_answer must not be empty.",
+            status_code=400,
+        )
+    if len(agent_answer) > 2000:
+        return _customerops_error(
+            code="AGENT_ANSWER_TOO_LONG",
+            message="agent_answer must be 2000 characters or fewer.",
+            status_code=400,
+        )
+
+    expected_answer = None
+    if payload.expected_answer is not None:
+        expected_answer = payload.expected_answer.strip() or None
+        if expected_answer is not None and len(expected_answer) > 2000:
+            return _customerops_error(
+                code="EXPECTED_ANSWER_TOO_LONG",
+                message="expected_answer must be 2000 characters or fewer.",
+                status_code=400,
+            )
+
+    if payload.issue_type not in BAD_CASE_ISSUE_TYPES:
+        return _customerops_error(
+            code="INVALID_ISSUE_TYPE",
+            message="issue_type is not supported.",
+            status_code=400,
+            details={"allowed": sorted(BAD_CASE_ISSUE_TYPES)},
+        )
+    if payload.severity not in BAD_CASE_SEVERITIES:
+        return _customerops_error(
+            code="INVALID_SEVERITY",
+            message="severity must be low, medium, or high.",
+            status_code=400,
+            details={"allowed": sorted(BAD_CASE_SEVERITIES)},
+        )
+
+    retrieval_trace = get_customerops_retrieval_trace(payload.retrieval_id)
+    if retrieval_trace is None:
+        return _customerops_error(
+            code="INVALID_RETRIEVAL_REFERENCE",
+            message="retrieval_id was not found.",
+            status_code=404,
+        )
+
+    bad_case = create_bad_case(
+        payload=payload,
+        retrieval_trace=retrieval_trace,
+        user_query=user_query,
+        agent_answer=agent_answer,
+        expected_answer=expected_answer,
+    )
+    return ApiResponse(
+        success=True,
+        data=bad_case.model_dump(),
+        requestId=_request_id(),
+    )
+
+
+@app.get("/api/bad-cases", response_model=ApiResponse)
+def list_bad_case_queue(
+    status: str | None = None,
+    issue_type: str | None = None,
+    severity: str | None = None,
+) -> ApiResponse:
+    if status is not None and status not in BAD_CASE_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_BAD_CASE_STATUS",
+                "message": "Bad Case status filter is not supported.",
+            },
+        )
+    if issue_type is not None and issue_type not in BAD_CASE_ISSUE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_ISSUE_TYPE",
+                "message": "Bad Case issue_type filter is not supported.",
+            },
+        )
+    if severity is not None and severity not in BAD_CASE_SEVERITIES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_SEVERITY",
+                "message": "Bad Case severity filter is not supported.",
+            },
+        )
+    bad_cases = [
+        bad_case.model_dump()
+        for bad_case in list_bad_cases(status=status, issue_type=issue_type, severity=severity)
+    ]
+    return ApiResponse(
+        success=True,
+        data={"bad_cases": bad_cases},
+        requestId=_request_id(),
+    )
+
+
+@app.get("/api/bad-cases/{bad_case_id}", response_model=ApiResponse)
+def get_bad_case_detail(bad_case_id: str) -> ApiResponse:
+    bad_case = get_bad_case(bad_case_id)
+    if bad_case is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "BAD_CASE_NOT_FOUND",
+                "message": "Bad Case was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=bad_case.model_dump(),
+        requestId=_request_id(),
+    )
+
+
+@app.patch("/api/bad-cases/{bad_case_id}", response_model=ApiResponse)
+def update_bad_case_detail(
+    bad_case_id: str,
+    payload: BadCaseUpdateRequest,
+) -> ApiResponse:
+    if payload.status is not None and payload.status not in BAD_CASE_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_BAD_CASE_STATUS",
+                "message": "Bad Case status is not supported.",
+            },
+        )
+    if payload.resolution_type is not None and payload.resolution_type not in BAD_CASE_RESOLUTION_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_RESOLUTION_TYPE",
+                "message": "Bad Case resolution_type is not supported.",
+            },
+        )
+    bad_case = update_bad_case(bad_case_id, payload)
+    if bad_case is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "BAD_CASE_NOT_FOUND",
+                "message": "Bad Case was not found.",
+            },
+        )
+    return ApiResponse(
+        success=True,
+        data=bad_case.model_dump(),
         requestId=_request_id(),
     )

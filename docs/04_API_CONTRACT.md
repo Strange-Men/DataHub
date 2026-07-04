@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-M7.5
+Implemented APIs: M2-M8
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -23,11 +23,12 @@ Implemented APIs: M2-M7.5
 - M6.5 local RAG quality hardening.
 - M7 CustomerOpsAgent restricted retrieval over approved local RAG chunks.
 - M7.5 CustomerOpsAgent retrieval contract polish, auth placeholder, and unified CustomerOps retrieval errors.
+- M8 CustomerOpsAgent Bad Case submission and DataHub Bad Case queue management.
 
-Planned Phase 1 APIs: M8
+Planned Phase 1 APIs: M8.5-M9
 
-- CustomerOpsAgent Bad Case feedback.
-- Bad Case management and resolution.
+- Bad Case resolution to candidate draft.
+- Phase-one release freeze and hardening.
 - Future production retrieval hardening beyond local JSON plus mock retrieval.
 
 Future Roadmap APIs: Phase 2-4
@@ -59,6 +60,15 @@ Important M7.5 boundary:
 - M7.5 does not introduce API keys, real tokens, or `.env` secrets.
 - M7.5 does not implement Bad Case feedback.
 - The detailed CustomerOpsAgent contract is documented in `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md`.
+
+Important M8 boundary:
+
+- `POST /api/customer-ops-agent/bad-cases` is implemented as the CustomerOpsAgent-facing Bad Case feedback entry.
+- Bad Cases must bind to an existing `retrieval_id` stored under `backend/storage/retrieval_logs/`.
+- Bad Cases are saved under `backend/storage/bad_cases/`.
+- M8 only creates and manages Bad Case records.
+- M8 does not create knowledge candidates, modify existing candidates, modify RAG chunks, rebuild RAG, or re-index.
+- M8 does not modify the CustomerOpsAgent repository.
 
 ## 0A. Canonical State Names
 
@@ -1234,22 +1244,32 @@ Invoke-RestMethod `
   -Headers @{"X-DataHub-Client"="CustomerOpsAgent"}
 ```
 
-### 9.3 Planned Phase 1 API: CustomerOpsAgent Bad Case Feedback (M8, Not Implemented)
+### 9.3 Implemented API: CustomerOpsAgent Bad Case Feedback (M8)
 
 `POST /api/customer-ops-agent/bad-cases`
+
+Required header:
+
+```text
+X-DataHub-Client: CustomerOpsAgent
+```
 
 Request:
 
 ```json
 {
-  "conversationId": "customer_conv_001",
-  "retrievalId": "retrieval_001",
-  "userQuery": "Can I return this product after 7 days?",
-  "agentAnswer": "Incorrect or low-quality answer",
-  "issueType": "wrong_answer | missing_knowledge | unsafe_answer | outdated_knowledge | other",
-  "expectedAnswer": "Optional corrected answer",
-  "reportedBy": "CustomerOpsAgent",
-  "metadata": {}
+  "retrieval_id": "retrieval_abc123",
+  "user_query": "Where is my order?",
+  "agent_answer": "Your package should arrive soon.",
+  "issue_type": "wrong_answer",
+  "expected_answer": "The answer should mention tracking status or escalation.",
+  "severity": "medium",
+  "conversation_id": "conv_001",
+  "agent_session_id": "session_001",
+  "metadata": {
+    "channel": "web_chat",
+    "language": "en"
+  }
 }
 ```
 
@@ -1259,43 +1279,121 @@ Response:
 {
   "success": true,
   "data": {
-    "badCaseId": "badcase_001",
+    "bad_case_id": "badcase_abc123",
+    "retrieval_id": "retrieval_abc123",
+    "issue_type": "wrong_answer",
+    "severity": "medium",
     "status": "open",
-    "createdAt": "2026-07-03T12:00:00+08:00"
+    "linked_chunk_ids": ["chunk_kc_abc123"],
+    "retrieval_result_count": 1,
+    "created_at": "2026-07-03T12:00:00+00:00",
+    "updated_at": "2026-07-03T12:00:00+00:00"
   },
   "requestId": "req_009"
 }
 ```
 
+Validation:
+
+- `retrieval_id` is required and must exist in `backend/storage/retrieval_logs/`.
+- `user_query` is required, trimmed, non-empty, and at most 500 characters.
+- `agent_answer` is required, trimmed, non-empty, and at most 2000 characters.
+- `issue_type` must be one of `wrong_answer`, `missing_knowledge`, `unsafe_answer`, `bad_tone`, `retrieval_miss`, or `other`.
+- `expected_answer` is optional and at most 2000 characters.
+- `severity` defaults to `medium` and must be `low`, `medium`, or `high`.
+
 Possible errors:
 
-- `VALIDATION_ERROR`
-- `AGENT_NOT_AUTHORIZED`
-- `PAYLOAD_TOO_LARGE`
+- `UNAUTHORIZED_CLIENT`
 - `INVALID_RETRIEVAL_REFERENCE`
+- `INVALID_USER_QUERY`
+- `USER_QUERY_TOO_LONG`
+- `INVALID_AGENT_ANSWER`
+- `AGENT_ANSWER_TOO_LONG`
+- `EXPECTED_ANSWER_TOO_LONG`
+- `INVALID_ISSUE_TYPE`
+- `INVALID_SEVERITY`
 
 Hard rule:
 
-- Bad Cases cannot directly update approved knowledge or the RAG index.
+- Bad Cases cannot directly update candidates, approved knowledge, RAG chunks, or any retrieval index.
 
-## 10. Planned Phase 1 APIs: Bad Case Management (M8, Not Implemented)
+## 10. Implemented APIs: Bad Case Management (M8)
 
 ### 10.1 List Bad Cases
 
-`GET /api/bad-cases?status=open&issueType=missing_knowledge`
+`GET /api/bad-cases?status=open&issue_type=missing_knowledge&severity=medium`
 
-Response fields:
+Optional filters:
 
-- `badCaseId`
 - `status`
-- `issueType`
-- `userQuery`
-- `agentAnswer`
-- `expectedAnswer`
-- `retrievalId`
-- `createdAt`
+- `issue_type`
+- `severity`
 
-### 10.2 Resolve Bad Case
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "bad_cases": [
+      {
+        "bad_case_id": "badcase_abc123",
+        "retrieval_id": "retrieval_abc123",
+        "issue_type": "wrong_answer",
+        "severity": "medium",
+        "status": "open",
+        "linked_chunk_ids": ["chunk_kc_abc123"],
+        "retrieval_result_count": 1,
+        "created_at": "2026-07-03T12:00:00+00:00",
+        "updated_at": "2026-07-03T12:00:00+00:00"
+      }
+    ]
+  },
+  "requestId": "req_010"
+}
+```
+
+### 10.2 Get Bad Case Detail
+
+`GET /api/bad-cases/{bad_case_id}`
+
+Possible errors:
+
+- `BAD_CASE_NOT_FOUND`
+
+### 10.3 Update Bad Case Handling State
+
+`PATCH /api/bad-cases/{bad_case_id}`
+
+Request:
+
+```json
+{
+  "status": "triaged",
+  "review_note": "Confirmed retrieval miss.",
+  "resolution_type": "retrieval_tuning",
+  "linked_candidate_id": "kc_manual_reference_only"
+}
+```
+
+Editable fields:
+
+- `status`: one of `open`, `triaged`, `resolved`, `ignored`.
+- `review_note`: human handling note.
+- `resolution_type`: one of `create_new_knowledge`, `update_existing_knowledge`, `retrieval_tuning`, `ignore`, or `other`.
+- `linked_candidate_id`: optional manual reference only.
+
+Hard rules:
+
+- `linked_candidate_id` does not create or update a candidate.
+- `resolution_type` does not trigger knowledge flow.
+- PATCH does not modify RAG chunks.
+- PATCH does not rebuild or re-index RAG.
+
+## 10A. Planned Phase 1 APIs: Bad Case Resolution To Draft (M8.5/M9, Not Implemented)
+
+### 10A.1 Resolve Bad Case Into Reviewable Draft
 
 `POST /api/bad-cases/{badCaseId}/resolution`
 

@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. Current checkpoint: M7.5 retrieval contract polish.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. Current checkpoint: M8 Bad Case feedback.
 
 Current code remains Phase 1.
 
@@ -221,6 +221,29 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Updated README, API contract, acceptance criteria, development status, and stage checklist.
 - Confirmed M7.5 does not introduce API keys, real tokens, `.env` secrets, production auth, Bad Case, CustomerOpsAgent repository changes, vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
 
+## Completed In M8
+
+- Added CustomerOpsAgent Bad Case submission API: `POST /api/customer-ops-agent/bad-cases`.
+- Added Bad Case queue APIs:
+  - `GET /api/bad-cases`
+  - `GET /api/bad-cases/{bad_case_id}`
+  - `PATCH /api/bad-cases/{bad_case_id}`
+- Reused the local CustomerOpsAgent auth placeholder:
+  - `X-DataHub-Client: CustomerOpsAgent`
+- Added Bad Case storage under `backend/storage/bad_cases/`.
+- Required Bad Cases to bind to an existing `retrieval_id`.
+- Saved retrieval trace metadata on Bad Cases:
+  - `linked_chunk_ids`
+  - `retrieval_result_count`
+- Added Bad Case statuses:
+  - `open`
+  - `triaged`
+  - `resolved`
+  - `ignored`
+- Added minimal React Bad Case submission and triage UI.
+- Added lightweight M8 verification script under `backend/tests/`.
+- Confirmed M8 does not create knowledge candidates, modify existing candidates, modify RAG chunks, rebuild RAG, re-index, modify the CustomerOpsAgent repository, or introduce vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -262,6 +285,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - local auth placeholder header
   - unified CustomerOps retrieval error responses
   - PowerShell examples with headers
+- M8 Bad Case feedback:
+  - CustomerOpsAgent Bad Case submission
+  - retrieval_id validation
+  - local Bad Case queue storage
+  - manual status and review note updates
 
 ### Current Forbidden Work
 
@@ -273,9 +301,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - ORM integration.
 - Real LLM integration.
 - Modifying the CustomerOpsAgent repository.
-- Bad Case feedback.
-- Bad Case API or UI.
-- Human correction workflow.
+- Automatic Bad Case to knowledge generation.
+- Automatic Bad Case to candidate modification.
+- Automatic Bad Case to RAG chunk modification.
+- Automatic RAG rebuild or re-index from Bad Case resolution.
+- Human correction workflow beyond Bad Case status and note management.
 - Production authentication.
 - API key or real token introduction.
 - `.env` secret introduction.
@@ -306,7 +336,8 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- M8 Bad Case Feedback.
+- M8.5 Bad Case Resolution To Draft.
+- M9 Phase-One Release Freeze.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
 
@@ -334,7 +365,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports M6.5.
+- `/health` endpoint is defined and reports M8.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -359,7 +390,11 @@ Still candidates:
 - CustomerOpsAgent retrieval requires `X-DataHub-Client: CustomerOpsAgent`.
 - CustomerOpsAgent retrieval errors use the unified safe error shape.
 - Retrieval traces are written to ignored local storage.
-- No Bad Case workflow, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
+- M8 Bad Case submission and queue management APIs are defined.
+- Bad Cases are written to ignored local storage.
+- Bad Cases bind to existing retrieval traces through `retrieval_id`.
+- Bad Case PATCH updates only the Bad Case record.
+- No Bad Case automatic knowledge generation, candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
 Manual verification:
@@ -463,20 +498,46 @@ Read retrieval trace:
 Invoke-RestMethod http://127.0.0.1:8000/api/customer-ops-agent/retrievals/{retrieval_id}
 ```
 
+Submit a Bad Case:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/bad-cases `
+  -Method Post `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"} `
+  -ContentType 'application/json' `
+  -Body '{"retrieval_id":"retrieval_xxx","user_query":"Where is my order?","agent_answer":"Your package should arrive soon.","issue_type":"wrong_answer","severity":"medium"}'
+```
+
+List Bad Cases:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/bad-cases
+```
+
+Update a Bad Case:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/bad-cases/{bad_case_id} `
+  -Method Patch `
+  -ContentType 'application/json' `
+  -Body '{"status":"triaged","review_note":"Confirmed retrieval miss.","resolution_type":"retrieval_tuning"}'
+```
+
 ## Next Suggested Stage
 
 Continue Phase 1 only.
 
 Recommended option:
 
-- M8 Bad Case feedback planning and implementation.
+- M8.5 Bad Case resolution to draft planning, or M9 Phase-One release freeze.
 
-Before M8 starts:
+Before M8.5 starts:
 
-- Confirm Bad Case request and response contract.
-- Confirm how M8 references `retrieval_id`.
-- Confirm Bad Case status names and human review queue boundaries.
 - Confirm that Bad Case fixes must re-enter the normal candidate and review workflow.
+- Confirm whether Bad Cases may create new `pending_review` candidates.
+- Confirm that any generated draft must not directly enter RAG.
 
 M8 must not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
 

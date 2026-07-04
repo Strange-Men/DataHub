@@ -4,11 +4,11 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M7.5 retrieval contract polish: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, and served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records and a local development auth placeholder.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M8 Bad Case feedback: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records, and linked to a managed Bad Case queue.
 
 ## Current Scope
 
-Implemented through M7.5:
+Implemented through M8:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -31,6 +31,8 @@ Implemented through M7.5:
 - Local development auth placeholder for CustomerOpsAgent retrieval: `X-DataHub-Client: CustomerOpsAgent`.
 - Unified safe error responses for CustomerOpsAgent retrieval APIs.
 - CustomerOpsAgent retrieval contract document.
+- CustomerOpsAgent Bad Case submission with `retrieval_id` validation.
+- Bad Case queue listing, detail lookup, and manual status/note updates.
 - Final vision and four-phase roadmap documentation.
 - Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
@@ -39,7 +41,8 @@ Implemented through M7.5:
 Not implemented yet:
 
 - Separate approved knowledge/version management.
-- Bad Case feedback.
+- Automatic Bad Case resolution into knowledge drafts.
+- Automatic candidate or RAG chunk modification from Bad Cases.
 - Multimodal material ingestion and understanding.
 - Sales training dataset export.
 - Fine-tuning dataset export.
@@ -98,7 +101,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M7.5"
+  "phase": "M8"
 }
 ```
 
@@ -464,7 +467,7 @@ Rules:
 - Each retrieval creates a `retrieval_id` for later M8 Bad Case linkage.
 - Retrieval traces store metadata only: query, top_k, filters, result count, result chunk ids, optional conversation/session ids, created time, and retrieval mode.
 - This does not modify the CustomerOpsAgent repository.
-- This does not implement Bad Case.
+- M7/M7.5 did not implement Bad Case; M8 adds a separate Bad Case queue below.
 - This is still local JSON plus keyword/mock retrieval, not a real vector database, embedding model, database, ORM, or production RAG index.
 
 Retrieve for CustomerOpsAgent:
@@ -510,7 +513,86 @@ Lightweight M7 verification:
 python backend\tests\test_customerops_retrieval.py
 ```
 
-The test covers the full M2-M7.5 path, auth placeholder errors, approved-only retrieval, retrieval trace lookup, safe query/top_k errors, and the absence of Bad Case APIs.
+The test covers the full M2-M7.5 path, auth placeholder errors, approved-only retrieval, retrieval trace lookup, and safe query/top_k errors.
+
+## M8 Bad Case Feedback
+
+Bad Cases are saved locally under:
+
+```text
+backend/storage/bad_cases/
+```
+
+This directory is ignored by Git through `backend/storage/`.
+
+Rules:
+
+- Bad Case submission requires `X-DataHub-Client: CustomerOpsAgent`.
+- `retrieval_id` must reference an existing retrieval trace in `backend/storage/retrieval_logs/`.
+- Bad Case records store `linked_chunk_ids` and `retrieval_result_count` from the retrieval trace.
+- Bad Case records do not copy raw data or sanitized batches.
+- M8 does not automatically generate knowledge candidates.
+- M8 does not modify existing candidates.
+- M8 does not modify RAG chunks.
+- M8 does not rebuild or re-index RAG.
+- M8 still uses local JSON storage and does not introduce a database, ORM, vector store, embedding model, or real LLM.
+
+Submit a Bad Case:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/customer-ops-agent/bad-cases `
+  -Method Post `
+  -Headers @{"X-DataHub-Client"="CustomerOpsAgent"} `
+  -ContentType 'application/json' `
+  -Body '{
+    "retrieval_id":"retrieval_xxx",
+    "user_query":"Where is my order?",
+    "agent_answer":"Your package should arrive soon.",
+    "issue_type":"wrong_answer",
+    "expected_answer":"The answer should mention tracking status or escalation.",
+    "severity":"medium"
+  }'
+```
+
+List Bad Cases:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/bad-cases
+```
+
+View one Bad Case:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/bad-cases/{bad_case_id}
+```
+
+Update status and handling note:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/bad-cases/{bad_case_id} `
+  -Method Patch `
+  -ContentType 'application/json' `
+  -Body '{"status":"triaged","review_note":"Confirmed retrieval miss.","resolution_type":"retrieval_tuning"}'
+```
+
+Frontend M8 verification:
+
+1. Start both backend and frontend.
+2. Complete M2-M6.5 until at least one approved RAG chunk exists.
+3. Run CustomerOpsAgent Retrieval Test and copy or reuse the shown `retrieval_id`.
+4. In Bad Case Feedback, submit a Bad Case with that `retrieval_id`.
+5. Confirm the Bad Case queue shows the submitted record.
+6. Select it, update `status` and `review_note`, and confirm the record updates.
+
+Lightweight M8 verification:
+
+```powershell
+python backend\tests\test_bad_case_feedback.py
+```
+
+The test covers CustomerOpsAgent Bad Case auth, invalid `retrieval_id`, validation errors, successful queue insertion, list/detail/PATCH APIs, retrieval trace linkage, and the boundary that Bad Case management does not create candidates or modify RAG chunks.
 
 ## Development Rules
 
@@ -527,3 +609,4 @@ Before each development round, read:
 - `docs/08_DEV_STATUS.md`
 - `docs/09_STAGE_CHECKLIST.md`
 - `docs/10_FINAL_VISION_AND_ROADMAP.md`
+- `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md`

@@ -179,12 +179,15 @@ Goal:
 Acceptance criteria:
 
 - CustomerOpsAgent can submit Bad Cases.
-- Bad Cases store user query, agent answer, issue type, expected answer if available, retrieval id if available, and metadata.
-- Bad Cases enter an open or pending state.
-- Human reviewers can resolve Bad Cases.
-- Resolution can create a new knowledge draft or update an existing knowledge draft.
-- Bad Case fixes must pass human review before indexing.
-- Bad Cases cannot directly update approved knowledge or the RAG index.
+- Bad Cases must bind to an existing `retrieval_id`.
+- Bad Cases store user query, agent answer, issue type, expected answer if available, retrieval id, linked chunk ids, retrieval result count, and metadata.
+- Bad Cases enter `open` state by default.
+- Human reviewers can update management status and review notes.
+- Allowed statuses are `open`, `triaged`, `resolved`, and `ignored`.
+- M8 does not create new knowledge drafts or update existing knowledge drafts.
+- Bad Case fixes must pass a later normal review flow before entering RAG.
+- Bad Cases cannot directly update candidates, approved knowledge, RAG chunks, or the RAG index.
+- Bad Cases cannot trigger automatic RAG rebuild or re-index.
 
 ## M9 Phase-One Release Freeze
 
@@ -310,7 +313,31 @@ M7.5 is complete when:
 - `top_k` below 1 or above 10 returns `INVALID_TOP_K`.
 - Missing retrieval trace returns `RETRIEVAL_NOT_FOUND`.
 - No RAG chunks still returns an empty result list, not an error.
-- No API key, real token, `.env` secret, production auth, Bad Case API, CustomerOpsAgent repository change, vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
+- No API key, real token, `.env` secret, production auth, CustomerOpsAgent repository change, vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
+
+## M8 Bad Case Feedback Completion Check
+
+M8 is complete when:
+
+- `POST /api/customer-ops-agent/bad-cases` exists.
+- `GET /api/bad-cases` exists.
+- `GET /api/bad-cases/{bad_case_id}` exists.
+- `PATCH /api/bad-cases/{bad_case_id}` exists.
+- `/health` reports `phase: M8`.
+- CustomerOpsAgent Bad Case submission requires `X-DataHub-Client: CustomerOpsAgent`.
+- Missing or invalid header returns `UNAUTHORIZED_CLIENT`.
+- Bad Case submission validates `retrieval_id` against existing retrieval logs.
+- Bad Cases are saved under `backend/storage/bad_cases/`.
+- Bad Cases store `linked_chunk_ids` and `retrieval_result_count` from the retrieval trace.
+- Bad Case records default to `status: open`.
+- PATCH can update `status`, `review_note`, `resolution_type`, and `linked_candidate_id`.
+- PATCH records manual handling only.
+- PATCH does not create candidates.
+- PATCH does not modify existing candidates.
+- PATCH does not modify RAG chunks.
+- PATCH does not rebuild or re-index RAG.
+- The CustomerOpsAgent repository is not modified.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
 
 ## Future Phase Acceptance Outline
 
