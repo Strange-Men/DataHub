@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.schemas import (
     ApiResponse,
+    BadCaseDraftRequest,
     BadCaseSubmitRequest,
     BadCaseUpdateRequest,
     CandidateUpdateRequest,
@@ -16,6 +17,7 @@ from app.schemas import (
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
+    create_candidate_from_bad_case,
     create_bad_case,
     create_raw_batch,
     get_bad_case,
@@ -58,6 +60,22 @@ BAD_CASE_RESOLUTION_TYPES = {
     "ignore",
     "other",
 }
+KNOWLEDGE_TYPES = {
+    "faq",
+    "standard_answer",
+    "business_rule",
+    "human_handoff_rule",
+    "forbidden_answer_rule",
+}
+KNOWLEDGE_INTENTS = {
+    "shipping",
+    "refund",
+    "order_status",
+    "product_info",
+    "handoff",
+    "prohibited_answer",
+    "general",
+}
 
 
 def _request_id() -> str:
@@ -99,7 +117,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "M8",
+        "phase": "M8.5",
     }
 
 
@@ -631,5 +649,116 @@ def update_bad_case_detail(
     return ApiResponse(
         success=True,
         data=bad_case.model_dump(),
+        requestId=_request_id(),
+    )
+
+
+@app.post("/api/bad-cases/{bad_case_id}/create-draft", response_model=ApiResponse)
+def create_draft_from_bad_case(
+    bad_case_id: str,
+    payload: BadCaseDraftRequest,
+) -> ApiResponse:
+    bad_case = get_bad_case(bad_case_id)
+    if bad_case is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "BAD_CASE_NOT_FOUND",
+                "message": "Bad Case was not found.",
+            },
+        )
+    if bad_case.status == "ignored":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "BAD_CASE_IGNORED",
+                "message": "Ignored Bad Cases cannot create knowledge drafts.",
+            },
+        )
+
+    question = payload.question.strip()
+    if not question:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "question must not be empty.",
+            },
+        )
+    if len(question) > 500:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "question must be 500 characters or fewer.",
+            },
+        )
+
+    answer = payload.answer.strip()
+    if not answer:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "answer must not be empty.",
+            },
+        )
+    if len(answer) > 2000:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "answer must be 2000 characters or fewer.",
+            },
+        )
+
+    if payload.intent not in KNOWLEDGE_INTENTS:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "intent is not supported.",
+            },
+        )
+    if payload.risk_level not in BAD_CASE_SEVERITIES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "risk_level must be low, medium, or high.",
+            },
+        )
+    if payload.knowledge_type not in KNOWLEDGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "knowledge_type is not supported.",
+            },
+        )
+    if payload.quality_score < 0 or payload.quality_score > 1:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_DRAFT_PAYLOAD",
+                "message": "quality_score must be between 0 and 1.",
+            },
+        )
+
+    tags = [
+        tag.strip()
+        for tag in payload.tags
+        if tag.strip()
+    ]
+    candidate = create_candidate_from_bad_case(
+        bad_case=bad_case,
+        payload=payload,
+        question=question,
+        answer=answer,
+        tags=tags,
+    )
+    return ApiResponse(
+        success=True,
+        data=candidate.model_dump(),
         requestId=_request_id(),
     )

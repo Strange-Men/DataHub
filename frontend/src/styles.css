@@ -281,6 +281,12 @@ button:disabled {
   min-height: 120px;
 }
 
+.divider {
+  height: 1px;
+  margin: 24px 0;
+  background: #d8e0eb;
+}
+
 .review-actions {
   display: flex;
   flex-wrap: wrap;

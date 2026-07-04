@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. Current checkpoint: M8 Bad Case feedback.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. Current checkpoint: M8.5 Bad Case resolution to draft.
 
 Current code remains Phase 1.
 
@@ -244,6 +244,27 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Added lightweight M8 verification script under `backend/tests/`.
 - Confirmed M8 does not create knowledge candidates, modify existing candidates, modify RAG chunks, rebuild RAG, re-index, modify the CustomerOpsAgent repository, or introduce vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
 
+## Completed In M8.5
+
+- Added Bad Case to pending-review draft API: `POST /api/bad-cases/{bad_case_id}/create-draft`.
+- Created new `kc_badcase_*` knowledge candidates from human-provided Bad Case resolution fields.
+- Added Bad Case source trace fields on generated candidates:
+  - `source_type`
+  - `source_bad_case_id`
+  - `source_retrieval_id`
+  - `source_chunk_ids`
+- Generated candidates use:
+  - `review_status: pending_review`
+  - `extraction_method: bad_case_resolution`
+- Updated the source Bad Case with:
+  - `status: resolved`
+  - `linked_candidate_id`
+  - `resolution_type`
+  - appended `review_note`
+- Added minimal React controls to create pending-review drafts from selected Bad Cases.
+- Extended Bad Case feedback tests to cover draft creation boundaries.
+- Confirmed M8.5 does not auto-approve candidates, modify existing candidates, modify RAG chunks, rebuild RAG, re-index, modify the CustomerOpsAgent repository, or introduce vector database, embedding, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -290,6 +311,10 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - retrieval_id validation
   - local Bad Case queue storage
   - manual status and review note updates
+- M8.5 Bad Case resolution to draft:
+  - pending-review candidate creation from Bad Cases
+  - Bad Case source trace on generated candidates
+  - linked_candidate_id recorded on Bad Cases
 
 ### Current Forbidden Work
 
@@ -301,11 +326,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - ORM integration.
 - Real LLM integration.
 - Modifying the CustomerOpsAgent repository.
-- Automatic Bad Case to knowledge generation.
-- Automatic Bad Case to candidate modification.
+- Automatic Bad Case to approved knowledge generation.
+- Direct Bad Case modification of existing candidates.
 - Automatic Bad Case to RAG chunk modification.
 - Automatic RAG rebuild or re-index from Bad Case resolution.
-- Human correction workflow beyond Bad Case status and note management.
+- Human correction workflow beyond pending-review draft creation.
 - Production authentication.
 - API key or real token introduction.
 - `.env` secret introduction.
@@ -336,7 +361,6 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- M8.5 Bad Case Resolution To Draft.
 - M9 Phase-One Release Freeze.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
@@ -365,7 +389,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports M8.
+- `/health` endpoint is defined and reports M8.5.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -394,7 +418,10 @@ Still candidates:
 - Bad Cases are written to ignored local storage.
 - Bad Cases bind to existing retrieval traces through `retrieval_id`.
 - Bad Case PATCH updates only the Bad Case record.
-- No Bad Case automatic knowledge generation, candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
+- M8.5 Bad Case to pending-review draft API is defined.
+- Bad Case-generated candidates are written to ignored local candidate storage.
+- Bad Case-generated candidates remain `pending_review`.
+- No Bad Case automatic approval, direct existing candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
 Manual verification:
@@ -525,20 +552,30 @@ Invoke-RestMethod `
   -Body '{"status":"triaged","review_note":"Confirmed retrieval miss.","resolution_type":"retrieval_tuning"}'
 ```
 
+Create a pending-review draft from a Bad Case:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/bad-cases/{bad_case_id}/create-draft `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{"question":"Where is my order?","answer":"Please provide your order number or tracking number. If tracking is unavailable, we will escalate this to a human agent.","intent":"order_status","tags":["order","tracking","handoff"],"risk_level":"medium","quality_score":0.7,"knowledge_type":"faq"}'
+```
+
 ## Next Suggested Stage
 
 Continue Phase 1 only.
 
 Recommended option:
 
-- M8.5 Bad Case resolution to draft planning, or M9 Phase-One release freeze.
+- M9 Phase-One release freeze.
 
-Before M8.5 starts:
+Before M9 starts:
 
-- Confirm that Bad Case fixes must re-enter the normal candidate and review workflow.
-- Confirm whether Bad Cases may create new `pending_review` candidates.
-- Confirm that any generated draft must not directly enter RAG.
+- Confirm the full Phase 1 loop acceptance criteria.
+- Confirm remaining known limitations.
+- Confirm release verification and tag naming.
 
-M8 must not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
+M8.5 must not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
 
 Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.

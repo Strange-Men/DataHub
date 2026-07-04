@@ -82,6 +82,7 @@ Customer chat logs
 -> Local RAG Builder
 -> CustomerOpsAgent Restricted Retrieval
 -> Bad Case Queue
+-> Bad Case To Draft
 ```
 
 Current Phase 1 modules already started or implemented locally:
@@ -93,11 +94,12 @@ Current Phase 1 modules already started or implemented locally:
 - Local RAG Builder.
 - CustomerOpsAgent Restricted Retrieval.
 - Bad Case Queue.
+- Bad Case To Draft.
 
 Future modules not implemented yet:
 
 - CustomerOpsAgent production vector retrieval beyond the M7 local restricted retrieval API.
-- Bad Case resolution into knowledge drafts beyond the M8 queue.
+- Bad Case-generated draft approval and RAG rebuild beyond M8.5.
 - Material Understanding.
 - Knowledge Asset Store beyond local files.
 - Dataset Export.
@@ -298,14 +300,16 @@ Responsibilities:
 - Store the original query, agent answer, issue type, and expected correction if available.
 - Link Bad Cases to retrieval traces when available.
 - Allow humans to triage the Bad Case and record handling notes.
-- M8 stores Bad Cases under `backend/storage/bad_cases/` and does not directly create knowledge.
-- Later stages may send corrected content back into the normal knowledge workflow.
+- M8 stores Bad Cases under `backend/storage/bad_cases/`.
+- M8.5 lets humans convert a Bad Case into a new `pending_review` candidate under `backend/storage/knowledge_candidates/`.
+- Later review stages may approve those drafts through the normal M5 workflow.
 
 Must enforce:
 
 - Bad Cases cannot directly update the RAG index.
 - Bad Cases cannot directly update candidates or RAG chunks.
-- M8 must not automatically rebuild or re-index RAG.
+- M8.5 must create new drafts only; it must not directly update existing candidates.
+- M8.5 must not automatically rebuild or re-index RAG.
 - Bad Case fixes require review before indexing.
 
 ## 7. Data State Boundaries

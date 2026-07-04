@@ -4,11 +4,11 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M8 Bad Case feedback: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records, and linked to a managed Bad Case queue.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at M8.5 Bad Case resolution to draft: JSON customer service chat records can be saved as raw batches, converted into sanitized batches, transformed into pending-review knowledge candidates, reviewed by a human, built into local RAG chunks when approved, served through a restricted CustomerOpsAgent retrieval API with traceable `retrieval_id` records, linked to a managed Bad Case queue, and converted by humans into new pending-review drafts.
 
 ## Current Scope
 
-Implemented through M8:
+Implemented through M8.5:
 
 - React + TypeScript frontend skeleton.
 - FastAPI + Python backend skeleton.
@@ -33,6 +33,7 @@ Implemented through M8:
 - CustomerOpsAgent retrieval contract document.
 - CustomerOpsAgent Bad Case submission with `retrieval_id` validation.
 - Bad Case queue listing, detail lookup, and manual status/note updates.
+- Bad Case to pending-review knowledge candidate draft creation.
 - Final vision and four-phase roadmap documentation.
 - Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
@@ -41,8 +42,8 @@ Implemented through M8:
 Not implemented yet:
 
 - Separate approved knowledge/version management.
-- Automatic Bad Case resolution into knowledge drafts.
 - Automatic candidate or RAG chunk modification from Bad Cases.
+- Automatic approval or RAG rebuild from Bad Case drafts.
 - Multimodal material ingestion and understanding.
 - Sales training dataset export.
 - Fine-tuning dataset export.
@@ -101,7 +102,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "M8"
+  "phase": "M8.5"
 }
 ```
 
@@ -593,6 +594,60 @@ python backend\tests\test_bad_case_feedback.py
 ```
 
 The test covers CustomerOpsAgent Bad Case auth, invalid `retrieval_id`, validation errors, successful queue insertion, list/detail/PATCH APIs, retrieval trace linkage, and the boundary that Bad Case management does not create candidates or modify RAG chunks.
+
+## M8.5 Bad Case Resolution To Draft
+
+Bad Case draft candidates are saved under the normal candidate layer:
+
+```text
+backend/storage/knowledge_candidates/
+```
+
+Rules:
+
+- `POST /api/bad-cases/{bad_case_id}/create-draft` creates a new `pending_review` candidate.
+- The generated candidate uses `extraction_method: bad_case_resolution`.
+- The generated candidate keeps `source_type: bad_case`, `source_bad_case_id`, `source_retrieval_id`, and `source_chunk_ids`.
+- `ignored` Bad Cases cannot create drafts.
+- The Bad Case is updated with `status: resolved` and `linked_candidate_id`.
+- The new candidate is not approved automatically.
+- The new candidate does not enter RAG automatically.
+- Existing candidates and RAG chunks are not modified.
+- RAG is not rebuilt or re-indexed automatically.
+
+Create a pending-review draft from a Bad Case:
+
+```powershell
+Invoke-RestMethod `
+  -Uri http://127.0.0.1:8000/api/bad-cases/{bad_case_id}/create-draft `
+  -Method Post `
+  -ContentType 'application/json' `
+  -Body '{
+    "question":"Where is my order?",
+    "answer":"Please provide your order number or tracking number. If tracking is unavailable, we will escalate this to a human agent.",
+    "intent":"order_status",
+    "tags":["order","tracking","handoff"],
+    "risk_level":"medium",
+    "quality_score":0.7,
+    "knowledge_type":"faq",
+    "reviewer":"local_reviewer",
+    "review_note":"Created from Bad Case after human correction."
+  }'
+```
+
+Then review candidates:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/knowledge/candidates
+```
+
+Lightweight M8.5 verification:
+
+```powershell
+python backend\tests\test_bad_case_feedback.py
+```
+
+The test covers missing and ignored Bad Cases, invalid draft payloads, pending-review candidate creation, source trace preservation, Bad Case `linked_candidate_id` updates, and the boundary that draft creation does not auto-approve, modify RAG chunks, or auto-rebuild RAG.
 
 ## Development Rules
 

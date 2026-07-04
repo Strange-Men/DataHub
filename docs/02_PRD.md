@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through M8
+### Currently Implemented Through M8.5
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -88,6 +88,8 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Retrieval trace records for Bad Case linkage.
 - CustomerOpsAgent Bad Case submission with `retrieval_id` validation.
 - Bad Case queue listing, detail lookup, and manual status / review note updates.
+- Human-triggered Bad Case conversion into new `pending_review` knowledge candidates.
+- Bad Case source trace on generated candidates.
 
 ### Pending In Phase 1
 
@@ -95,8 +97,8 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Manual text paste import.
 - More complete deduplication.
 - Separate approved knowledge or knowledge asset version management.
-- Bad Case resolution into reviewable knowledge drafts.
-- Automatic re-entry of corrected Bad Cases into the normal candidate and review workflow.
+- Approval of Bad Case-generated drafts through the normal M5 review workflow.
+- RAG rebuild after approved Bad Case-generated drafts.
 - Production retrieval/indexing beyond local mock RAG chunks.
 
 ### Phase 1: Text Customer Service Knowledge Loop
@@ -194,7 +196,7 @@ CustomerOpsAgent queries DataHub through retrieval APIs and receives approved kn
 
 ### 4.7 Handle Bad Cases
 
-CustomerOpsAgent submits Bad Cases with a `retrieval_id`. DataHub stores them for human handling. Current M8 only supports submission and queue management; corrected Bad Cases can become new or updated knowledge only in a later stage after explicit review-flow planning.
+CustomerOpsAgent submits Bad Cases with a `retrieval_id`. DataHub stores them for human handling. Current M8.5 allows a human to convert a Bad Case into a new `pending_review` candidate. The generated draft still requires M5 review and does not enter RAG automatically.
 
 ## 5. Phase-One Functional Requirements
 

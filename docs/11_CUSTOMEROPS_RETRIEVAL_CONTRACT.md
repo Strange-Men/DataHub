@@ -7,7 +7,7 @@ This document defines the current DataHub retrieval contract for CustomerOpsAgen
 Current related stage:
 
 ```text
-M8 Bad Case Feedback
+M8.5 Bad Case Resolution To Draft
 ```
 
 The contract is read-only and restricted to approved local RAG chunks.
@@ -73,7 +73,7 @@ The retrieval trace API supports:
 
 M8 still does not support:
 
-- Automatic Bad Case to knowledge generation.
+- Automatic Bad Case approval.
 - Automatic candidate modification from Bad Cases.
 - Automatic RAG chunk modification from Bad Cases.
 - Automatic RAG rebuild or re-index from Bad Cases.
@@ -85,7 +85,7 @@ M8 still does not support:
 - Direct RAG chunk writes by CustomerOpsAgent.
 - Production authentication.
 
-M8 implements Bad Case submission and queue management only. M8.5 or later may plan Bad Case resolution into reviewable drafts.
+M8.5 implements human-triggered Bad Case conversion into new `pending_review` drafts. It does not approve those drafts or put them into RAG.
 
 ## 6. CustomerOpsAgent Rules
 
@@ -325,7 +325,21 @@ M8 Bad Case records are saved under:
 backend/storage/bad_cases/
 ```
 
-M8 does not implement automatic Bad Case resolution, candidate mutation, RAG chunk mutation, RAG rebuild, or re-indexing.
+M8.5 implements:
+
+```text
+POST /api/bad-cases/{bad_case_id}/create-draft
+```
+
+This creates a new `pending_review` candidate with:
+
+- `source_type: bad_case`
+- `source_bad_case_id`
+- `source_retrieval_id`
+- `source_chunk_ids`
+- `extraction_method: bad_case_resolution`
+
+M8.5 does not implement automatic approval, existing candidate mutation, RAG chunk mutation, RAG rebuild, or re-indexing.
 
 Bad Case submission may return safe structured errors such as:
 
@@ -337,3 +351,6 @@ Bad Case submission may return safe structured errors such as:
 - `AGENT_ANSWER_TOO_LONG`
 - `INVALID_ISSUE_TYPE`
 - `INVALID_SEVERITY`
+- `BAD_CASE_NOT_FOUND`
+- `BAD_CASE_IGNORED`
+- `INVALID_DRAFT_PAYLOAD`

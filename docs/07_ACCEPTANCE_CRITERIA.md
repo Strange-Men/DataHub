@@ -394,3 +394,29 @@ Acceptance outline:
 - Tool responses return only approved, indexed, and authorized data.
 - Bad Case submission enters a governed review workflow.
 - Tool contracts are documented and versioned.
+
+## M8.5 Bad Case Resolution To Draft Completion Check
+
+M8.5 is complete when:
+
+- `POST /api/bad-cases/{bad_case_id}/create-draft` exists.
+- `/health` reports `phase: M8.5`.
+- Existing Bad Cases with `open`, `triaged`, or `resolved` status can create a draft.
+- `ignored` Bad Cases return `BAD_CASE_IGNORED`.
+- Missing Bad Cases return `BAD_CASE_NOT_FOUND`.
+- Invalid draft fields return `INVALID_DRAFT_PAYLOAD`.
+- Created candidates are saved under `backend/storage/knowledge_candidates/`.
+- Created candidate ids start with `kc_badcase_`.
+- Created candidates use `source_type: bad_case`.
+- Created candidates include:
+  - `source_bad_case_id`
+  - `source_retrieval_id`
+  - `source_chunk_ids`
+- Created candidates use `extraction_method: bad_case_resolution`.
+- Created candidates always use `review_status: pending_review`.
+- Bad Case records update `linked_candidate_id` to the new candidate.
+- Existing candidates are not modified.
+- RAG chunks are not modified.
+- RAG build is not triggered automatically.
+- The CustomerOpsAgent repository is not modified.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.

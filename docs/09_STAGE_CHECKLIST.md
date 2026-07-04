@@ -466,3 +466,43 @@ M8 is complete when:
 - No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
 - `backend/storage/` remains ignored by Git.
 - `docs/04_API_CONTRACT.md`, `docs/07_ACCEPTANCE_CRITERIA.md`, `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, `docs/11_CUSTOMEROPS_RETRIEVAL_CONTRACT.md`, and `README.md` are updated.
+
+## 18. M8.5 Bad Case Resolution To Draft Check
+
+M8.5 is complete when:
+
+- `POST /api/bad-cases/{bad_case_id}/create-draft` exists.
+- `/health` reports `phase: M8.5`.
+- The API accepts human-provided draft fields:
+  - `question`
+  - `answer`
+  - `intent`
+  - `tags`
+  - `risk_level`
+  - `quality_score`
+  - `knowledge_type`
+  - `reviewer`
+  - `review_note`
+- Missing Bad Cases return `BAD_CASE_NOT_FOUND`.
+- Ignored Bad Cases return `BAD_CASE_IGNORED`.
+- Invalid draft payloads return `INVALID_DRAFT_PAYLOAD`.
+- The generated candidate is saved under `backend/storage/knowledge_candidates/`.
+- The generated candidate has:
+  - `candidate_id` starting with `kc_badcase_`
+  - `source_type: bad_case`
+  - `source_bad_case_id`
+  - `source_retrieval_id`
+  - `source_chunk_ids`
+  - `review_status: pending_review`
+  - `extraction_method: bad_case_resolution`
+- The source Bad Case records `linked_candidate_id`.
+- The source Bad Case can be marked `resolved`.
+- No existing candidate is directly modified.
+- No candidate is automatically approved.
+- No RAG chunk is created automatically.
+- No existing RAG chunk is modified.
+- RAG build is not triggered automatically.
+- CustomerOpsAgent repository is not modified.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales training export, or fine-tuning work is implemented.
+- `backend/storage/` remains ignored by Git.
+- README, API contract, architecture, acceptance criteria, development status, stage checklist, and CustomerOps retrieval contract are updated.

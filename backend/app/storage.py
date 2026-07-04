@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from app.schemas import (
+    BadCaseDraftRequest,
     BadCaseRecord,
     BadCaseSubmitRequest,
     BadCaseUpdateRequest,
@@ -1046,3 +1047,60 @@ def update_bad_case(
         }
     )
     return _write_bad_case(updated)
+
+
+def create_candidate_from_bad_case(
+    bad_case: BadCaseRecord,
+    payload: BadCaseDraftRequest,
+    question: str,
+    answer: str,
+    tags: list[str],
+) -> KnowledgeCandidate:
+    _ensure_storage()
+    now = datetime.now(UTC).isoformat()
+    candidate = KnowledgeCandidate(
+        candidate_id=f"kc_badcase_{uuid4().hex[:12]}",
+        source_type="bad_case",
+        source_batch_id=None,
+        source_conversation_id=bad_case.conversation_id or "bad_case",
+        source_message_ids=[],
+        source_bad_case_id=bad_case.bad_case_id,
+        source_retrieval_id=bad_case.retrieval_id,
+        source_chunk_ids=bad_case.linked_chunk_ids,
+        linked_candidate_id=bad_case.linked_candidate_id,
+        knowledge_type=payload.knowledge_type,  # type: ignore[arg-type]
+        question=question,
+        answer=answer,
+        intent=payload.intent,  # type: ignore[arg-type]
+        tags=tags,
+        risk_level=payload.risk_level,  # type: ignore[arg-type]
+        review_status="pending_review",
+        quality_score=payload.quality_score,
+        extraction_method="bad_case_resolution",
+        created_at=now,
+        reviewer=payload.reviewer,
+        review_note=payload.review_note,
+        updated_at=now,
+    )
+    _write_knowledge_candidate(candidate)
+
+    resolution_type = bad_case.resolution_type
+    if resolution_type not in {"create_new_knowledge", "update_existing_knowledge"}:
+        resolution_type = "create_new_knowledge"
+    note_suffix = f"Created pending_review draft {candidate.candidate_id} from Bad Case."
+    existing_note = bad_case.review_note.strip()
+    review_note = (
+        f"{existing_note}\n{note_suffix}" if existing_note else note_suffix
+    )
+    _write_bad_case(
+        bad_case.model_copy(
+            update={
+                "status": "resolved",
+                "resolution_type": resolution_type,
+                "linked_candidate_id": candidate.candidate_id,
+                "review_note": review_note,
+                "updated_at": now,
+            }
+        )
+    )
+    return candidate

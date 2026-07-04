@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-M8
+Implemented APIs: M2-M8.5
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -24,10 +24,11 @@ Implemented APIs: M2-M8
 - M7 CustomerOpsAgent restricted retrieval over approved local RAG chunks.
 - M7.5 CustomerOpsAgent retrieval contract polish, auth placeholder, and unified CustomerOps retrieval errors.
 - M8 CustomerOpsAgent Bad Case submission and DataHub Bad Case queue management.
+- M8.5 Bad Case conversion into pending-review knowledge candidate drafts.
 
-Planned Phase 1 APIs: M8.5-M9
+Planned Phase 1 APIs: M9
 
-- Bad Case resolution to candidate draft.
+- Approval and RAG rebuild for Bad Case-generated drafts through existing review/RAG steps.
 - Phase-one release freeze and hardening.
 - Future production retrieval hardening beyond local JSON plus mock retrieval.
 
@@ -69,6 +70,15 @@ Important M8 boundary:
 - M8 only creates and manages Bad Case records.
 - M8 does not create knowledge candidates, modify existing candidates, modify RAG chunks, rebuild RAG, or re-index.
 - M8 does not modify the CustomerOpsAgent repository.
+
+Important M8.5 boundary:
+
+- `POST /api/bad-cases/{bad_case_id}/create-draft` creates a new `pending_review` candidate from a Bad Case.
+- M8.5 generated candidates use `extraction_method: bad_case_resolution`.
+- M8.5 records `source_bad_case_id`, `source_retrieval_id`, and `source_chunk_ids`.
+- M8.5 does not auto-approve candidates.
+- M8.5 does not modify existing candidates or RAG chunks.
+- M8.5 does not rebuild or re-index RAG.
 
 ## 0A. Canonical State Names
 
@@ -1391,27 +1401,25 @@ Hard rules:
 - PATCH does not modify RAG chunks.
 - PATCH does not rebuild or re-index RAG.
 
-## 10A. Planned Phase 1 APIs: Bad Case Resolution To Draft (M8.5/M9, Not Implemented)
+## 10A. Implemented API: Bad Case Resolution To Draft (M8.5)
 
-### 10A.1 Resolve Bad Case Into Reviewable Draft
+### 10A.1 Create Pending-Review Draft From Bad Case
 
-`POST /api/bad-cases/{badCaseId}/resolution`
+`POST /api/bad-cases/{bad_case_id}/create-draft`
 
 Request:
 
 ```json
 {
-  "resolutionType": "create_knowledge_draft | update_existing_knowledge | mark_not_actionable",
-  "reviewerId": "user_001",
-  "note": "Resolution note",
-  "draftKnowledge": {
-    "knowledgeType": "faq",
-    "title": "Return after 7 days",
-    "question": "Can customers return products after 7 days?",
-    "answer": "Draft corrected answer",
-    "tags": ["return_policy"]
-  },
-  "targetKnowledgeId": "know_001"
+  "question": "Where is my order?",
+  "answer": "Please provide your order number or tracking number. If tracking is unavailable, we will escalate this to a human agent.",
+  "intent": "order_status",
+  "tags": ["order", "tracking", "handoff"],
+  "risk_level": "medium",
+  "quality_score": 0.7,
+  "knowledge_type": "faq",
+  "reviewer": "local_reviewer",
+  "review_note": "Created from Bad Case after human correction."
 }
 ```
 
@@ -1421,17 +1429,53 @@ Response:
 {
   "success": true,
   "data": {
-    "badCaseId": "badcase_001",
-    "status": "resolved",
-    "createdDraftId": "draft_010"
+    "candidate_id": "kc_badcase_abc123",
+    "source_type": "bad_case",
+    "source_bad_case_id": "badcase_abc123",
+    "source_retrieval_id": "retrieval_abc123",
+    "source_chunk_ids": ["chunk_kc_abc123"],
+    "source_batch_id": null,
+    "source_conversation_id": "conv_001",
+    "source_message_ids": [],
+    "knowledge_type": "faq",
+    "question": "Where is my order?",
+    "answer": "Please provide your order number or tracking number...",
+    "intent": "order_status",
+    "tags": ["order", "tracking", "handoff"],
+    "risk_level": "medium",
+    "review_status": "pending_review",
+    "quality_score": 0.7,
+    "extraction_method": "bad_case_resolution"
   },
   "requestId": "req_010"
 }
 ```
 
+Validation:
+
+- `bad_case_id` must exist.
+- Bad Cases with `status: ignored` cannot create drafts.
+- `question` is required, trimmed, non-empty, and at most 500 characters.
+- `answer` is required, trimmed, non-empty, and at most 2000 characters.
+- `intent` defaults to `general`.
+- `tags` defaults to an empty array.
+- `risk_level` defaults to `medium`.
+- `quality_score` defaults to `0.7` and must be 0-1.
+- `knowledge_type` defaults to `faq`.
+
+Possible errors:
+
+- `BAD_CASE_NOT_FOUND`
+- `BAD_CASE_IGNORED`
+- `INVALID_DRAFT_PAYLOAD`
+
 Hard rule:
 
-- Created or updated knowledge from Bad Case resolution must enter review before indexing.
+- Created candidates must use `review_status: pending_review`.
+- Created candidates must pass the normal M5 review flow before RAG build.
+- This API must not modify existing candidates.
+- This API must not modify RAG chunks.
+- This API must not rebuild or re-index RAG.
 
 ## 11. Future Roadmap APIs: Phase 2-4 (Not Implemented)
 

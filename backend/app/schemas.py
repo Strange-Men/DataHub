@@ -68,9 +68,14 @@ class SanitizedBatch(BaseModel):
 
 class KnowledgeCandidate(BaseModel):
     candidate_id: str
-    source_batch_id: str
+    source_type: Literal["sanitized_batch", "bad_case"] = "sanitized_batch"
+    source_batch_id: str | None = None
     source_conversation_id: str
     source_message_ids: list[str]
+    source_bad_case_id: str | None = None
+    source_retrieval_id: str | None = None
+    source_chunk_ids: list[str] = Field(default_factory=list)
+    linked_candidate_id: str | None = None
     knowledge_type: Literal[
         "faq",
         "standard_answer",
@@ -93,7 +98,7 @@ class KnowledgeCandidate(BaseModel):
     risk_level: Literal["low", "medium", "high"]
     review_status: Literal["pending_review", "needs_revision", "approved", "rejected"]
     quality_score: float
-    extraction_method: Literal["rule_based_mock"]
+    extraction_method: Literal["rule_based_mock", "bad_case_resolution"]
     created_at: str
     reviewer: str | None = None
     review_note: str | None = None
@@ -283,6 +288,18 @@ class BadCaseUpdateRequest(BaseModel):
     review_note: str | None = Field(default=None, max_length=2000)
     resolution_type: str | None = Field(default=None, max_length=80)
     linked_candidate_id: str | None = Field(default=None, max_length=160)
+
+
+class BadCaseDraftRequest(BaseModel):
+    question: str = Field(min_length=1)
+    answer: str = Field(min_length=1)
+    intent: str = Field(default="general", max_length=80)
+    tags: list[str] = Field(default_factory=list)
+    risk_level: str = Field(default="medium", max_length=20)
+    quality_score: float = Field(default=0.7)
+    knowledge_type: str = Field(default="faq", max_length=80)
+    reviewer: str | None = Field(default=None, max_length=120)
+    review_note: str | None = Field(default=None, max_length=2000)
 
 
 class ExtractionJobMetadata(BaseModel):

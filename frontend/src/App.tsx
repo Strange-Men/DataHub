@@ -11,7 +11,7 @@ type ImportResult = {
 
 type CleaningJob = {
   job_id: string;
-  source_batch_id: string;
+  source_batch_id: string | null;
   sanitized_batch_id: string;
   raw_message_count: number;
   sanitized_message_count: number;
@@ -60,6 +60,11 @@ type KnowledgeCandidate = {
   source_batch_id: string;
   source_conversation_id: string;
   source_message_ids: string[];
+  source_type?: "sanitized_batch" | "bad_case";
+  source_bad_case_id?: string | null;
+  source_retrieval_id?: string | null;
+  source_chunk_ids?: string[];
+  linked_candidate_id?: string | null;
   knowledge_type:
     | "faq"
     | "standard_answer"
@@ -80,7 +85,7 @@ type KnowledgeCandidate = {
   risk_level: "low" | "medium" | "high";
   review_status: "pending_review" | "needs_revision" | "approved" | "rejected";
   quality_score: number;
-  extraction_method: "rule_based_mock";
+  extraction_method: "rule_based_mock" | "bad_case_resolution";
   created_at: string;
   reviewer?: string | null;
   review_note?: string | null;
@@ -254,7 +259,19 @@ export function App() {
   const [badCaseReviewStatus, setBadCaseReviewStatus] = useState("triaged");
   const [badCaseReviewNote, setBadCaseReviewNote] = useState("");
   const [badCaseResolutionType, setBadCaseResolutionType] = useState("retrieval_tuning");
+  const [draftQuestion, setDraftQuestion] = useState("Where is my order?");
+  const [draftAnswer, setDraftAnswer] = useState(
+    "Please provide your order number or tracking number. If tracking is unavailable, we will escalate this to a human agent."
+  );
+  const [draftIntent, setDraftIntent] = useState("order_status");
+  const [draftTags, setDraftTags] = useState("order, tracking, handoff");
+  const [draftRiskLevel, setDraftRiskLevel] = useState("medium");
+  const [draftQualityScore, setDraftQualityScore] = useState("0.7");
+  const [draftKnowledgeType, setDraftKnowledgeType] = useState("faq");
+  const [createdDraftCandidate, setCreatedDraftCandidate] =
+    useState<KnowledgeCandidate | null>(null);
   const [isSubmittingBadCase, setIsSubmittingBadCase] = useState(false);
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
   const [isBuildingRag, setIsBuildingRag] = useState(false);
   const [isSearchingRag, setIsSearchingRag] = useState(false);
   const [isSearchingCustomerOps, setIsSearchingCustomerOps] = useState(false);
@@ -707,6 +724,11 @@ export function App() {
     setBadCaseReviewStatus(badCase.status);
     setBadCaseReviewNote(badCase.review_note || "");
     setBadCaseResolutionType(badCase.resolution_type || "retrieval_tuning");
+    setDraftQuestion(badCase.user_query);
+    setDraftAnswer(
+      badCase.expected_answer || "Please provide a corrected answer for this Bad Case."
+    );
+    setCreatedDraftCandidate(null);
   }
 
   async function updateBadCase() {
@@ -735,6 +757,69 @@ export function App() {
       await loadBadCases();
     } catch {
       setError("Bad Case update request failed.");
+    }
+  }
+
+  async function createDraftFromBadCase() {
+    if (!selectedBadCase) {
+      return;
+    }
+    if (!draftQuestion.trim()) {
+      setError("Draft question is required.");
+      return;
+    }
+    if (!draftAnswer.trim()) {
+      setError("Draft answer is required.");
+      return;
+    }
+    setError(null);
+    setIsCreatingDraft(true);
+    setCreatedDraftCandidate(null);
+    try {
+      const response = await fetch(
+        `/api/bad-cases/${selectedBadCase.bad_case_id}/create-draft`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            question: draftQuestion.trim(),
+            answer: draftAnswer.trim(),
+            intent: draftIntent,
+            tags: draftTags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean),
+            risk_level: draftRiskLevel,
+            quality_score: Number(draftQualityScore),
+            knowledge_type: draftKnowledgeType,
+            reviewer: "local_reviewer",
+            review_note: "Created from Bad Case after human correction."
+          })
+        }
+      );
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setError(body.detail?.message || "Could not create pending-review draft.");
+        return;
+      }
+      setCreatedDraftCandidate(body.data);
+      await loadCandidates();
+      await loadReviewQueue();
+      await loadBadCases();
+      const refreshed = await fetch(`/api/bad-cases/${selectedBadCase.bad_case_id}`);
+      const refreshedBody = await refreshed.json();
+      if (refreshed.ok && refreshedBody.success) {
+        setSelectedBadCase(refreshedBody.data);
+        setBadCaseReviewStatus(refreshedBody.data.status);
+        setBadCaseReviewNote(refreshedBody.data.review_note || "");
+        setBadCaseResolutionType(refreshedBody.data.resolution_type || "retrieval_tuning");
+      }
+    } catch {
+      setError("Create draft request failed.");
+    } finally {
+      setIsCreatingDraft(false);
     }
   }
 
@@ -1603,6 +1688,114 @@ export function App() {
               <button type="button" onClick={updateBadCase}>
                 Update Bad Case
               </button>
+              <div className="divider" />
+              <h2>Create pending-review draft</h2>
+              <p className="warning-note">
+                This creates a new pending_review candidate only. It does not
+                approve, enter RAG, modify existing candidates, modify chunks,
+                rebuild, or re-index.
+              </p>
+              <label>
+                <span>draft question</span>
+                <textarea
+                  className="compact-textarea"
+                  value={draftQuestion}
+                  onChange={(event) => setDraftQuestion(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>draft answer</span>
+                <textarea
+                  className="compact-textarea"
+                  value={draftAnswer}
+                  onChange={(event) => setDraftAnswer(event.target.value)}
+                />
+              </label>
+              <div className="review-grid">
+                <label>
+                  <span>intent</span>
+                  <select
+                    value={draftIntent}
+                    onChange={(event) => setDraftIntent(event.target.value)}
+                  >
+                    <option value="shipping">shipping</option>
+                    <option value="refund">refund</option>
+                    <option value="order_status">order_status</option>
+                    <option value="product_info">product_info</option>
+                    <option value="handoff">handoff</option>
+                    <option value="prohibited_answer">prohibited_answer</option>
+                    <option value="general">general</option>
+                  </select>
+                </label>
+                <label>
+                  <span>risk_level</span>
+                  <select
+                    value={draftRiskLevel}
+                    onChange={(event) => setDraftRiskLevel(event.target.value)}
+                  >
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                  </select>
+                </label>
+                <label>
+                  <span>knowledge_type</span>
+                  <select
+                    value={draftKnowledgeType}
+                    onChange={(event) => setDraftKnowledgeType(event.target.value)}
+                  >
+                    <option value="faq">faq</option>
+                    <option value="standard_answer">standard_answer</option>
+                    <option value="business_rule">business_rule</option>
+                    <option value="human_handoff_rule">human_handoff_rule</option>
+                    <option value="forbidden_answer_rule">forbidden_answer_rule</option>
+                  </select>
+                </label>
+                <label>
+                  <span>quality_score</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={draftQualityScore}
+                    onChange={(event) => setDraftQualityScore(event.target.value)}
+                  />
+                </label>
+              </div>
+              <label>
+                <span>tags</span>
+                <input
+                  value={draftTags}
+                  onChange={(event) => setDraftTags(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={createDraftFromBadCase}
+                disabled={isCreatingDraft || selectedBadCase.status === "ignored"}
+              >
+                {isCreatingDraft ? "Creating..." : "Create pending-review draft"}
+              </button>
+              {createdDraftCandidate ? (
+                <div className="result-panel compact-panel" aria-live="polite">
+                  <h2>Draft created</h2>
+                  <dl>
+                    <div>
+                      <dt>candidate_id</dt>
+                      <dd>{createdDraftCandidate.candidate_id}</dd>
+                    </div>
+                    <div>
+                      <dt>review_status</dt>
+                      <dd>{createdDraftCandidate.review_status}</dd>
+                    </div>
+                    <div>
+                      <dt>source_bad_case_id</dt>
+                      <dd>{createdDraftCandidate.source_bad_case_id}</dd>
+                    </div>
+                  </dl>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
