@@ -923,17 +923,35 @@ P1-M15.9 is complete when:
 P1-M16 is complete when:
 
 - `backend/app/database.py` 存在，支持 DATABASE_URL 环境变量。
-- `backend/app/models.py` 存在，包含核心表 SQLAlchemy 模型。
+- `backend/app/db_models.py` 存在，包含核心表 SQLAlchemy 模型。
 - 本地默认 SQLite（`sqlite:///./datahub.db`）。
 - 线上通过 DATABASE_URL 支持 PostgreSQL。
-- 数据库初始化脚本可用（自动 create_all）。
-- `/health` 返回 `db_status` 字段。
+- `scripts/init_database.py` 可用（自动 create_all）。
+- `backend/tests/test_database_foundation.py` 存在并通过。
+- `/health` 返回 `database_status` 字段，不暴露 DATABASE_URL。
+- SQLAlchemy 和 psycopg2-binary 已加入 `backend/requirements.txt`。
 - 现有 P1 JSON demo 链路未被破坏。
 - 现有测试全部通过。
-- 不迁移任何现有 API。
+- py_compile 全部通过。
+- init_database.py 执行成功。
+- 前端 build 通过。
+- 不迁移任何现有业务 API。
 - git status clean。
-- 不打 tag（commit only，除非明确 release）。
+- 不打 tag（commit only）。
 - 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+
+本轮已完成 (2026-07-04)：
+
+- [x] SQLAlchemy dependency added (sqlalchemy==2.0.36, psycopg2-binary==2.9.10)
+- [x] database.py added (engine, SessionLocal, Base, get_db, check_database_connection)
+- [x] db_models.py added (10 core table models)
+- [x] init_database.py added (Base.metadata.create_all)
+- [x] database foundation test added (test_database_foundation.py)
+- [x] health check includes safe database_status (no URL/password/host leak)
+- [x] local SQLite initialization works (sqlite:///./datahub.db when DATABASE_URL unset)
+- [x] existing P1 tests still pass (phase updated to P1-M16)
+- [x] no business API migration yet
+- [x] no tag
 
 ## 34. P1-M17 Import & Cleaning DB Persistence Check
 

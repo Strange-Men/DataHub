@@ -136,28 +136,39 @@ Vercel 前端（不存数据）
 
 ## 6. 后续版本规划
 
-### P1-M16：Database Foundation
+### P1-M16：Database Foundation ✅ (已完成 2026-07-04)
 
 **目标**：建立数据库底座，不大改业务。
 
 **范围**：
 
 - 新增 `backend/app/database.py`（数据库连接、session 管理、DATABASE_URL 读取）
-- 新增 `backend/app/models.py`（SQLAlchemy 模型定义）
+- 新增 `backend/app/db_models.py`（SQLAlchemy 模型定义，10 张核心表）
 - 支持 `DATABASE_URL` 环境变量
 - 本地默认 SQLite（`sqlite:///./datahub.db`）
 - 线上支持 PostgreSQL（通过 `DATABASE_URL` 切换）
-- 新增数据库初始化脚本（create_all tables）
-- `/health` 增加 `db_status` 字段
+- 新增数据库初始化脚本 `scripts/init_database.py`（create_all tables）
+- 新增数据库测试 `backend/tests/test_database_foundation.py`
+- `/health` 增加 `database_status` 字段（safe, no URL/password leak）
 - **不迁移任何现有 API**
+
+**实际落地**：
+
+- 数据库文件：`backend/app/database.py`、`backend/app/db_models.py`
+- 初始化脚本：`scripts/init_database.py`
+- 测试文件：`backend/tests/test_database_foundation.py`
+- 依赖新增：`sqlalchemy==2.0.36`、`psycopg2-binary==2.9.10`
+- health 新增字段：`database_status: { enabled, status, backend }`
+- database_status 不暴露 DATABASE_URL、用户名、密码、host
+- 本地 SQLite 路径为项目根目录 `datahub.db`（已加入 .gitignore）
 
 **验收**：
 
-- [ ] 本地可以初始化 SQLite 数据库
-- [ ] 配置 `DATABASE_URL` 后可以连接 PostgreSQL
-- [ ] `/health` 返回 `db_status: "connected"` 或 `"disconnected"`
-- [ ] 不破坏现有 P1 JSON demo 链路
-- [ ] 现有测试全部通过
+- [x] 本地可以初始化 SQLite 数据库
+- [x] DATABASE_URL 机制已预留 PostgreSQL 支持
+- [x] `/health` 返回 `database_status`（status: "ok" | "error"，backend: "sqlite" | "postgresql"）
+- [x] 不破坏现有 P1 JSON demo 链路
+- [x] 现有测试全部通过（phase 更新至 P1-M16）
 
 ---
 

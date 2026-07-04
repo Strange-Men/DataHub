@@ -17,6 +17,7 @@ from app.schemas import (
     RagSearchRequest,
     ReviewDecisionRequest,
 )
+from app.database import check_database_connection
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -132,16 +133,17 @@ def _authorize_customerops_client(client_header: str | None) -> JSONResponse | N
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, object]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "P1-M15",
+        "phase": "P1-M16",
+        "database_status": check_database_connection(),
     }
 
 
 @app.get("/api/health")
-def api_health() -> dict[str, str]:
+def api_health() -> dict[str, object]:
     return health()
 
 

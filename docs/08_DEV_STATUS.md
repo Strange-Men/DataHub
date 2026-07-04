@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation.
 
 ## Completed Through M1
 
@@ -1014,8 +1014,34 @@ This is a documentation-only checkpoint. No code changes were made.
 - Confirmed `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
 - Confirmed no tag was created (commit only).
 
+## Completed In P1-M16
+
+- Added `backend/app/database.py` with SQLAlchemy engine, session, Base, and connection check.
+- Added `backend/app/db_models.py` with 10 core SQLAlchemy table models.
+- Added `scripts/init_database.py` for create_all initialization.
+- Added `backend/tests/test_database_foundation.py`.
+- Updated `/health` and `/api/health` to include safe `database_status` (no DATABASE_URL exposure).
+- Updated `backend/requirements.txt` with `sqlalchemy==2.0.36` and `psycopg2-binary==2.9.10`.
+- Confirmed local SQLite default (`sqlite:///./datahub.db`) works when DATABASE_URL is unset.
+- Confirmed DATABASE_URL-based PostgreSQL support is wired but not yet tested in production.
+- Confirmed existing P1 JSON demo APIs are unchanged — no business API migration yet.
+- Confirmed no P2/P3/P4, real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.
+- Confirmed no tag was created (commit only).
+
+### P1-M16 Boundaries
+
+This is a database foundation checkpoint only. No business API was migrated to use the database.
+
+- Confirmed no business API migration (import, cleaning, manual cleaning, extraction, review, RAG, retrieval, Bad Case).
+- Confirmed `backend/storage/` logic is preserved unchanged.
+- Confirmed existing P1 JSON demo flow still works.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed no tag was created (commit only).
+
 ## Current Database Status
 
-当前数据库状态：**尚未接入数据库，当前仍为 local JSON storage demo**。
+当前数据库状态：**数据库底座已建立（SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选），业务 API 尚未迁移为数据库持久化**。
 
-P1 后续数据库目标：用户在 Vercel 页面操作导入、清洗、人工清洗、知识审核、构建 RAG 后，数据可以持久保存在数据库中。页面刷新后数据还在，Render 后端重启后数据还在，Render 重新部署后数据还在。
+P1 后续数据库目标：P1-M17 至 P1-M19 逐步将导入、清洗、人工清洗、知识审核、RAG 与 Bad Case 链路迁移为数据库持久化。
