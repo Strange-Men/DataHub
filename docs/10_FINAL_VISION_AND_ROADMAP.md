@@ -330,3 +330,44 @@ It does not add new product backend features. It improves how the completed P1 c
 - Project boundaries are documented in `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md`.
 
 This checkpoint does not implement Phase 2, Phase 3, Phase 4, real vector retrieval, embeddings, database, ORM, real LLM, MCP, or CustomerOpsAgent repository changes.
+
+## 10. P1-M15.9 Database Persistence Roadmap Lock
+
+P1-M15.9 is a documentation-only checkpoint that locks the P1 database persistence hardening roadmap.
+
+### Why P1 Cannot Directly Enter P2
+
+P1 当前仍是 local JSON storage demo。数据库持久化必须在 P1 阶段补完，原因：
+
+1. **P2 AI 素材中心**需要复用已审核知识、标签、SKU、素材审核状态。
+2. **P3 数据资产复用**需要查询已审核 FAQ、业务规则、Bad Case、优质问答。
+3. **P4 MCP + Agent 集群**需要稳定读取统一知识资产。
+4. 如果 P1 仍停留在 local JSON storage，P2/P3/P4 都没有可靠数据底座。
+
+因此，数据库持久化属于 P1 必须补强内容，不属于 P2 任务。P2 不应在数据库持久化完成前启动。
+
+### Database Hardening Route
+
+后续 P1 数据库补强路线：
+
+- **P1-M16**：Database Foundation — 建立 SQLAlchemy + SQLite 本地 + PostgreSQL 生产可选的数据底座。
+- **P1-M17**：Import & Cleaning DB Persistence — 导入和机器清洗结果真正入库。
+- **P1-M18**：Manual Cleaning & Review DB Persistence — 人工清洗和知识审核持久化。
+- **P1-M19**：RAG / Agent / Bad Case DB Persistence — RAG、检索、Bad Case 全量数据库化。
+- **P1-M20**：DB Release & Online Persistence Smoke Test — 数据库版 P1 最终验收。
+
+技术路线：`SQLAlchemy + SQLite（本地默认）+ PostgreSQL（生产可选）`，通过 `DATABASE_URL` 控制数据库连接。Vercel 前端不存数据，只通过 API 调 Render FastAPI。
+
+详细路线见 `docs/26_DATABASE_PERSISTENCE_ROADMAP.md`。
+
+### P1 Status After P1-M20
+
+P1-M20 完成后，P1 才能定义为：**可部署、可持久化、可支撑 P2/P3/P4 的高质量数据中台底座**。
+
+在此之前，P1 状态为：**local JSON demo 版高质量数据中台**。
+
+### P2/P3/P4 路线不变
+
+P2/P3/P4 的定位、范围和 Roadmap 保持不变。数据库持久化完成后，P2/P3/P4 的启动前提更充分，但不在 P1 阶段提前实施。
+
+This checkpoint does not introduce database code, ORM dependencies, backend API changes, frontend changes, P2/P3/P4 implementation, real LLM, embedding, vector database, or CustomerOpsAgent repository changes.

@@ -892,3 +892,125 @@ P1-M15.8 is complete when:
 - README was not turned into a stage log.
 - No interview packaging or resume packaging.
 - `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.
+
+## 32. P1-M15.9 Database Persistence Roadmap Lock Check
+
+P1-M15.9 is complete when:
+
+- `docs/26_DATABASE_PERSISTENCE_ROADMAP.md` exists and contains:
+  - P1 当前 local JSON storage 状态说明。
+  - 为什么数据库持久化必须属于 P1（不进入 P2 的理由）。
+  - 目标：页面操作数据持久保存在数据库中。
+  - 技术选型：SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选，DATABASE_URL 统一入口。
+  - 核心数据表规划（raw_batches, raw_messages, sanitized_batches, sanitized_messages, manual_cleaning_records, knowledge_candidates, review_records, rag_chunks, retrieval_logs, bad_cases）。
+  - P1-M16 到 P1-M20 完整路线。
+  - 不做什么清单。
+  - 风险与边界。
+  - 完成后的 P1 定义。
+- `docs/10_FINAL_VISION_AND_ROADMAP.md` 已补充数据库持久化补强内容。
+- `docs/08_DEV_STATUS.md` 已记录 P1-M15.9 checkpoint。
+- `docs/09_STAGE_CHECKLIST.md` 已新增 P1-M15.9 及 P1-M16 到 P1-M20 checklist。
+- `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md` 已说明当前未数据库化、后续补强计划。
+- README.md 和 README.en.md 已增加数据库持久化下一步提示。
+- 本轮为文档-only checkpoint，无代码修改。
+- 无数据库代码、SQLAlchemy、models.py、database.py、后端 API、前端修改。
+- 不提交 `backend/storage/`、`.env`、`.venv/`、`node_modules/`、`frontend/dist/`、API Key。
+- 不打 tag（commit only）。
+- Commit message 使用 `[P1-M15.9] docs: lock database persistence roadmap`。
+
+## 33. P1-M16 Database Foundation Check
+
+P1-M16 is complete when:
+
+- `backend/app/database.py` 存在，支持 DATABASE_URL 环境变量。
+- `backend/app/models.py` 存在，包含核心表 SQLAlchemy 模型。
+- 本地默认 SQLite（`sqlite:///./datahub.db`）。
+- 线上通过 DATABASE_URL 支持 PostgreSQL。
+- 数据库初始化脚本可用（自动 create_all）。
+- `/health` 返回 `db_status` 字段。
+- 现有 P1 JSON demo 链路未被破坏。
+- 现有测试全部通过。
+- 不迁移任何现有 API。
+- git status clean。
+- 不打 tag（commit only，除非明确 release）。
+- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+
+## 34. P1-M17 Import & Cleaning DB Persistence Check
+
+P1-M17 is complete when:
+
+- 导入 JSON 写 `raw_batches` / `raw_messages` 表。
+- 机器清洗写 `sanitized_batches` / `sanitized_messages` 表。
+- 批次列表从数据库读取。
+- 前端刷新后批次仍可见。
+- 保留 JSON fixture 作为测试样本。
+- 数据库可 SELECT 查到 raw/sanitized 数据。
+- 现有测试通过。
+- git status clean。
+- 不打 tag（commit only，除非明确 release）。
+- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+
+## 35. P1-M18 Manual Cleaning & Review DB Persistence Check
+
+P1-M18 is complete when:
+
+- 人工清洗写 `manual_cleaning_records` 表。
+- 知识抽取从数据库读取人工清洗后的数据。
+- candidate 写 `knowledge_candidates` 表。
+- 审核动作写 `review_records` 表。
+- candidate 状态（review_status）持久化。
+- 人工清洗保存后刷新页面仍在。
+- 审核通过后刷新页面仍为 approved。
+- Render 重启后记录仍在。
+- 数据库可查 manual_cleaning_records / knowledge_candidates / review_records。
+- 现有测试通过。
+- git status clean。
+- 不打 tag（commit only，除非明确 release）。
+- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+
+## 36. P1-M19 RAG / Agent / Bad Case DB Persistence Check
+
+P1-M19 is complete when:
+
+- approved candidate 构建 `rag_chunks` 表记录。
+- CustomerOpsAgent 检索写 `retrieval_logs` 表。
+- Bad Case 写 `bad_cases` 表。
+- Bad Case draft candidate 可进入审核链路。
+- Build RAG 后 rag_chunks 表有数据。
+- Agent 查询后 retrieval_logs 表有数据。
+- Bad Case 提交后 bad_cases 表有数据。
+- 页面刷新后 RAG chunks、retrieval logs、Bad Case 列表仍在。
+- 现有测试通过。
+- git status clean。
+- 不打 tag（commit only，除非明确 release）。
+- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+
+## 37. P1-M20 DB Release & Online Persistence Smoke Test Check
+
+P1-M20 is complete when:
+
+- 完整线上 Smoke Test 通过（Vercel 前端全流程 → Render 后端 → 数据库）。
+- Render 后端重启后复测通过（数据仍在）。
+- 数据库控制台 SELECT 验证通过（所有表有对应记录）。
+- README / 部署文档已更新本地 SQLite 与线上 PostgreSQL 配置说明。
+- `docs/27_DB_RELEASE_REPORT.md` 已输出。
+- P1 全链路仍能跑通。
+- 页面操作产生的数据能入库。
+- 页面刷新后数据仍在。
+- Render 重新部署后数据仍在。
+- 现有测试通过。
+- git status clean。
+- P1-M20 打 release tag：`p1-m20-db-release`。
+- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+
+## 38. P1-M16 To P1-M20 General Rules
+
+所有 P1-M16 到 P1-M20 阶段：
+
+- git status 必须 clean 才能开始。
+- 每个阶段 commit message 使用 `[P1-Mxx]` 前缀。
+- 不打 tag，除非明确标注 release（仅 P1-M20 打 tag）。
+- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key、真实客服数据。
+- 现有测试必须通过后再 push。
+- 不进入 P2/P3/P4 后端开发。
+- 不接真实 LLM、embedding、向量数据库。

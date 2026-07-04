@@ -122,12 +122,12 @@ Do not claim that multimodal ingestion, dataset export, fine-tuning export, MCP 
 
 Current boundaries:
 
-- Local JSON storage.
+- Local JSON storage（当前 P1 仍未数据库化）。
 - Local keyword/mock retrieval.
 - No real vector database.
 - No embedding model.
-- No database.
-- No ORM.
+- No database（数据库持久化已列入 P1-M16 至 P1-M20 补强计划，详见 `docs/26_DATABASE_PERSISTENCE_ROADMAP.md`）。
+- No ORM（计划在 P1-M16 引入 SQLAlchemy）。
 - No real LLM.
 - No real multimodal ingestion.
 - No OCR / Caption / SKU binding implementation.
@@ -135,7 +135,7 @@ Current boundaries:
 - No CustomerOpsAgent repository modification.
 - No production authentication.
 
-These are intentional P1 boundaries, not accidental omissions.
+These are intentional P1 boundaries, not accidental omissions. Database persistence is the next planned P1 hardening step (P1-M16 through P1-M20), after which P1 can be defined as a deployable, persistent data platform capable of supporting P2/P3/P4.
 
 ## 8. Demo-Friendly Flow
 

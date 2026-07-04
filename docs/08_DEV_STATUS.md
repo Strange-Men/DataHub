@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock.
 
 ## Completed Through M1
 
@@ -508,11 +508,12 @@ Forbidden from prior stages remains:
 
 P1-M11 is the unified DataHub RAG release. P1-M15 is the high-quality DataHub final Phase 1 release and is now complete.
 
+P1-M15.9 Database Persistence Roadmap Lock is the current documentation checkpoint.
+
 Allowed candidates:
 
-- Pause development for project review, resume packaging, and architecture retrospective.
-- Prepare P1-P4 architecture explanation materials.
-- Start P2-M1 only after separate scope approval.
+- **P1-M16 Database Foundation** — the next implementation stage: establish SQLAlchemy + SQLite/PostgreSQL data base without migrating existing APIs.
+- Continue documentation or project preparation work within P1 boundaries.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
 
@@ -767,22 +768,15 @@ P4:
 
 ## Next Suggested Stage
 
-P1 high-quality text data governance is complete.
+P1 high-quality text data governance is complete as a local JSON demo.
 
-Recommended option:
+当前下一步：**P1-M16 Database Foundation** — 建立 SQLAlchemy 数据库底座。
 
-- Pause feature development.
-- Prepare P1-P4 project retrospective, architecture walkthrough, and resume/project explanation materials.
+推荐路径：
 
-Before P2 starts:
-
-- Confirm Phase 2 material ingestion scope.
-- Confirm whether multimodal storage, OCR, Caption, and SKU binding are still only roadmap or ready to implement.
-- Confirm the next phase-prefixed tag name.
-
-P1-M11 does not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4.
-
-Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.
+- P1-M16 → P1-M17 → P1-M18 → P1-M19 → P1-M20，逐步完成数据库持久化补强。
+- P1-M20 完成后，P1 才能定义为可持久化、可支撑 P2/P3/P4 的高质量数据中台底座。
+- P2 不应在 P1 数据库持久化完成前启动。
 
 ## P1-M13 Chinese Admin Console And Manual Cleaning Workbench
 
@@ -985,3 +979,43 @@ This is a homepage UX cleanup and public surface cleanup only. No business logic
 - Confirmed P1 workbench remains fully operational.
 - Confirmed P2/P3/P4 pages retain complete product shells.
 - Confirmed README was not turned into a stage log.
+
+## Completed In P1-M15.9
+
+- Locked the P1 database persistence hardening roadmap.
+- Created `docs/26_DATABASE_PERSISTENCE_ROADMAP.md` with full P1-M16 to P1-M20 plan.
+- Updated `docs/10_FINAL_VISION_AND_ROADMAP.md` to add database persistence hardening as P1 prerequisite.
+- Updated `docs/08_DEV_STATUS.md` to record P1-M15.9 checkpoint.
+- Updated `docs/09_STAGE_CHECKLIST.md` with P1-M15.9 through P1-M20 checklists.
+- Updated `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md` to note current no-database status and planned DB hardening.
+- Updated README files with a brief database persistence note.
+- Confirmed this is a documentation-only checkpoint — no code, no dependencies, no API changes.
+- Confirmed no tag was created (commit only).
+
+### P1-M15.9 Core Conclusions
+
+1. P1 不能直接进入 P2。数据库持久化必须在 P1 阶段补完。
+2. 当前 P1 状态：local JSON demo 版高质量数据中台。
+3. 目标状态：数据库持久化版高质量数据中台。
+4. 数据库技术路线：SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选，通过 DATABASE_URL 控制。
+5. Vercel 前端不存数据，只通过 API 调 Render FastAPI。
+6. 后续从 P1-M16 Database Foundation 开始数据库开发。
+
+### P1-M15.9 Boundaries
+
+This is a documentation-only checkpoint. No code changes were made.
+
+- Confirmed no database code, SQLAlchemy, models.py, or database.py introduced.
+- Confirmed no backend API changes.
+- Confirmed no frontend changes.
+- Confirmed no business logic changes.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+- Confirmed no tag was created (commit only).
+
+## Current Database Status
+
+当前数据库状态：**尚未接入数据库，当前仍为 local JSON storage demo**。
+
+P1 后续数据库目标：用户在 Vercel 页面操作导入、清洗、人工清洗、知识审核、构建 RAG 后，数据可以持久保存在数据库中。页面刷新后数据还在，Render 后端重启后数据还在，Render 重新部署后数据还在。
