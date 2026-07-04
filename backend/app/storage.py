@@ -1303,6 +1303,18 @@ def build_rag_chunks() -> RagBuildResult:
         [chunk.model_dump() for chunk in chunks],
     )
 
+    # Dual-write RAG chunks to database (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.save_rag_chunks_to_db(
+                db, [chunk.model_dump() for chunk in chunks]
+            )
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to save RAG chunks to database")
+
     return RagBuildResult(
         built_count=built_count,
         updated_count=updated_count,
@@ -1322,10 +1334,34 @@ def _rag_chunk_changed(previous: RagChunk, current: RagChunk) -> bool:
 
 
 def list_rag_chunks() -> list[RagChunk]:
+    # Try DB first (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_results = db_repo.list_rag_chunks_from_db(db)
+            if db_results:
+                return [RagChunk(**item) for item in db_results]
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to list RAG chunks from database")
+
     return [RagChunk(**item) for item in _read_json_list(RAG_CHUNK_INDEX_FILE)]
 
 
 def get_rag_chunk(chunk_id: str) -> RagChunk | None:
+    # Try DB first (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_result = db_repo.get_rag_chunk_from_db(db, chunk_id)
+            if db_result is not None:
+                return RagChunk(**db_result)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to get RAG chunk %s from database", chunk_id)
+
     _ensure_storage()
     chunk_file = RAG_CHUNK_DIR / f"{chunk_id}.json"
     if not chunk_file.exists():
@@ -1545,10 +1581,32 @@ def _write_retrieval_trace(trace: CustomerOpsRetrievalTrace) -> None:
     items.append(trace.model_dump())
     _write_json_list(RETRIEVAL_LOG_INDEX_FILE, items)
 
+    # Dual-write retrieval log to database (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.save_retrieval_log_to_db(db, trace.model_dump())
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to save retrieval log %s to database", trace.retrieval_id)
+
 
 def get_customerops_retrieval_trace(
     retrieval_id: str,
 ) -> CustomerOpsRetrievalTrace | None:
+    # Try DB first (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_result = db_repo.get_retrieval_log_from_db(db, retrieval_id)
+            if db_result is not None:
+                return CustomerOpsRetrievalTrace(**db_result)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to get retrieval log %s from database", retrieval_id)
+
     _ensure_storage()
     trace_file = RETRIEVAL_LOG_DIR / f"{retrieval_id}.json"
     if not trace_file.exists():
@@ -1606,6 +1664,17 @@ def _write_bad_case(bad_case: BadCaseRecord) -> BadCaseRecord:
     ]
     items.append(bad_case.model_dump())
     _write_json_list(BAD_CASE_INDEX_FILE, items)
+
+    # Dual-write bad case to database (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.save_bad_case_to_db(db, bad_case.model_dump())
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to save bad case %s to database", bad_case.bad_case_id)
+
     return bad_case
 
 
@@ -1614,6 +1683,20 @@ def list_bad_cases(
     issue_type: str | None = None,
     severity: str | None = None,
 ) -> list[BadCaseRecord]:
+    # Try DB first (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_results = db_repo.list_bad_cases_from_db(
+                db, status=status, issue_type=issue_type, severity=severity
+            )
+            if db_results:
+                return [BadCaseRecord(**item) for item in db_results]
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to list bad cases from database")
+
     records = [BadCaseRecord(**item) for item in _read_json_list(BAD_CASE_INDEX_FILE)]
     if status:
         records = [record for record in records if record.status == status]
@@ -1625,6 +1708,18 @@ def list_bad_cases(
 
 
 def get_bad_case(bad_case_id: str) -> BadCaseRecord | None:
+    # Try DB first (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_result = db_repo.get_bad_case_from_db(db, bad_case_id)
+            if db_result is not None:
+                return BadCaseRecord(**db_result)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to get bad case %s from database", bad_case_id)
+
     _ensure_storage()
     bad_case_file = BAD_CASE_DIR / f"{bad_case_id}.json"
     if not bad_case_file.exists():
@@ -1653,6 +1748,17 @@ def update_bad_case(
             "updated_at": datetime.now(UTC).isoformat(),
         }
     )
+
+    # Update bad case in database (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.update_bad_case_in_db(db, bad_case_id, updates)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to update bad case %s in database", bad_case_id)
+
     return _write_bad_case(updated)
 
 
@@ -1690,6 +1796,20 @@ def create_candidate_from_bad_case(
         updated_at=now,
     )
     _write_knowledge_candidate(candidate)
+
+    # Dual-write candidate from bad case to database (P1-M19)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.create_candidate_from_bad_case_in_db(
+                db, candidate.model_dump()
+            )
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception(
+            "Failed to save bad case candidate %s to database", candidate.candidate_id
+        )
 
     resolution_type = bad_case.resolution_type
     if resolution_type not in {"create_new_knowledge", "update_existing_knowledge"}:

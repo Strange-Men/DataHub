@@ -756,3 +756,397 @@ def list_review_records_from_db(
             }
         )
     return result
+
+
+# ──────────────────────────────────────────────────────────────────
+#  RAG chunks  (P1-M19)
+# ──────────────────────────────────────────────────────────────────
+
+
+def save_rag_chunks_to_db(
+    db: Session,
+    chunks: list[dict[str, Any]],
+) -> None:
+    """Replace all RAG chunks in the database.
+
+    Idempotent: deletes all existing rag_chunks rows and inserts the new set.
+    This prevents infinite duplicate chunk accumulation on repeated builds.
+    """
+    now = datetime.now(UTC)
+    # Delete all existing chunks
+    db.query(RagChunk).delete()
+
+    for chunk in chunks:
+        metadata = dict(chunk)
+        # Extract fields that go into dedicated columns
+        chunk_id = metadata.pop("chunk_id", "")
+        candidate_id = metadata.pop("candidate_id", "")
+        chunk_text = metadata.pop("chunk_text", "")
+        intent = metadata.pop("intent", None)
+        tags = metadata.pop("tags", [])
+
+        db.add(
+            RagChunk(
+                id=chunk_id,
+                candidate_id=candidate_id,
+                chunk_text=chunk_text,
+                intent=str(intent) if intent else None,
+                tags=tags if isinstance(tags, list) else [],
+                metadata_json=metadata,
+                created_at=now,
+            )
+        )
+    db.commit()
+
+
+def list_rag_chunks_from_db(db: Session) -> list[dict[str, Any]]:
+    """Return all RAG chunks from the database, reconstructing full dicts."""
+    rows = db.query(RagChunk).order_by(RagChunk.created_at).all()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        chunk = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+        chunk["chunk_id"] = row.id
+        chunk["candidate_id"] = row.candidate_id
+        chunk["chunk_text"] = row.chunk_text
+        chunk["intent"] = row.intent or chunk.get("intent", "general")
+        chunk["tags"] = list(row.tags) if row.tags else chunk.get("tags", [])
+        chunk["created_at"] = row.created_at.isoformat() if row.created_at else ""
+        result.append(chunk)
+    return result
+
+
+def get_rag_chunk_from_db(db: Session, chunk_id: str) -> dict[str, Any] | None:
+    """Return a single RAG chunk by ID."""
+    row = db.query(RagChunk).filter(RagChunk.id == chunk_id).first()
+    if row is None:
+        return None
+    chunk = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+    chunk["chunk_id"] = row.id
+    chunk["candidate_id"] = row.candidate_id
+    chunk["chunk_text"] = row.chunk_text
+    chunk["intent"] = row.intent or chunk.get("intent", "general")
+    chunk["tags"] = list(row.tags) if row.tags else chunk.get("tags", [])
+    chunk["created_at"] = row.created_at.isoformat() if row.created_at else ""
+    return chunk
+
+
+def replace_rag_chunks_for_candidates(
+    db: Session,
+    chunks: list[dict[str, Any]],
+) -> None:
+    """Alias for save_rag_chunks_to_db — replace all RAG chunks atomically."""
+    save_rag_chunks_to_db(db, chunks)
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Retrieval logs  (P1-M19)
+# ──────────────────────────────────────────────────────────────────
+
+
+def save_retrieval_log_to_db(
+    db: Session,
+    trace: dict[str, Any],
+) -> None:
+    """Save a retrieval log trace to the database.
+
+    Idempotent: if a log with the same ID already exists, update it.
+    """
+    now = datetime.now(UTC)
+    retrieval_id = trace.get("retrieval_id", "")
+    existing = db.query(RetrievalLog).filter(RetrievalLog.id == retrieval_id).first()
+
+    matched_chunk_ids = trace.get("result_chunk_ids", [])
+    response_preview = _build_response_preview(trace)
+    metadata = dict(trace)
+
+    if existing:
+        existing.query = str(trace.get("query", ""))
+        existing.matched_chunk_ids = matched_chunk_ids
+        existing.response_preview = response_preview
+        existing.metadata_json = metadata
+        existing.created_at = now
+    else:
+        db.add(
+            RetrievalLog(
+                id=retrieval_id,
+                query=str(trace.get("query", "")),
+                matched_chunk_ids=matched_chunk_ids,
+                response_preview=response_preview,
+                metadata_json=metadata,
+                created_at=now,
+            )
+        )
+    db.commit()
+
+
+def get_retrieval_log_from_db(
+    db: Session, retrieval_id: str
+) -> dict[str, Any] | None:
+    """Return a single retrieval log trace from DB."""
+    row = db.query(RetrievalLog).filter(RetrievalLog.id == retrieval_id).first()
+    if row is None:
+        return None
+    trace = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+    trace["retrieval_id"] = row.id
+    trace["query"] = row.query
+    trace["result_chunk_ids"] = (
+        list(row.matched_chunk_ids) if row.matched_chunk_ids else []
+    )
+    trace["created_at"] = row.created_at.isoformat() if row.created_at else ""
+    return trace
+
+
+def list_retrieval_logs_from_db(db: Session) -> list[dict[str, Any]]:
+    """Return all retrieval logs from DB."""
+    rows = db.query(RetrievalLog).order_by(RetrievalLog.created_at.desc()).all()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        trace = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+        trace["retrieval_id"] = row.id
+        trace["query"] = row.query
+        trace["result_chunk_ids"] = (
+            list(row.matched_chunk_ids) if row.matched_chunk_ids else []
+        )
+        trace["created_at"] = row.created_at.isoformat() if row.created_at else ""
+        result.append(trace)
+    return result
+
+
+def _build_response_preview(trace: dict[str, Any]) -> str:
+    """Build a short response preview from a retrieval trace."""
+    result_count = trace.get("result_count", 0)
+    query_preview = str(trace.get("query", ""))[:100]
+    return f"Query: {query_preview} | Results: {result_count}"
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Bad cases  (P1-M19)
+# ──────────────────────────────────────────────────────────────────
+
+
+def save_bad_case_to_db(
+    db: Session,
+    bad_case: dict[str, Any],
+) -> None:
+    """Save a bad case record to the database.
+
+    Idempotent: if a bad case with the same ID already exists, update it.
+    """
+    now = datetime.now(UTC)
+    bc_id = bad_case.get("bad_case_id", "")
+    existing = db.query(BadCase).filter(BadCase.id == bc_id).first()
+
+    metadata = dict(bad_case)
+    linked_chunk_ids = metadata.pop("linked_chunk_ids", [])
+    retrieval_result_count = metadata.pop("retrieval_result_count", 0)
+    metadata["linked_chunk_ids"] = linked_chunk_ids
+    metadata["retrieval_result_count"] = retrieval_result_count
+
+    if existing:
+        existing.retrieval_id = bad_case.get("retrieval_id", "")
+        existing.user_question = bad_case.get("user_query", "")
+        existing.bad_answer = bad_case.get("agent_answer", "")
+        existing.expected_answer = bad_case.get("expected_answer")
+        existing.status = bad_case.get("status", "open")
+        existing.created_candidate_id = bad_case.get("linked_candidate_id")
+        existing.metadata_json = metadata
+        existing.updated_at = now
+    else:
+        db.add(
+            BadCase(
+                id=bc_id,
+                retrieval_id=bad_case.get("retrieval_id", ""),
+                user_question=bad_case.get("user_query", ""),
+                bad_answer=bad_case.get("agent_answer", ""),
+                expected_answer=bad_case.get("expected_answer"),
+                status=bad_case.get("status", "open"),
+                created_candidate_id=bad_case.get("linked_candidate_id"),
+                metadata_json=metadata,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+    db.commit()
+
+
+def get_bad_case_from_db(
+    db: Session, bad_case_id: str
+) -> dict[str, Any] | None:
+    """Return a single bad case record from DB."""
+    row = db.query(BadCase).filter(BadCase.id == bad_case_id).first()
+    if row is None:
+        return None
+    return _db_bad_case_to_dict(row)
+
+
+def list_bad_cases_from_db(
+    db: Session,
+    status: str | None = None,
+    issue_type: str | None = None,
+    severity: str | None = None,
+) -> list[dict[str, Any]]:
+    """Return all bad case records from DB, with optional filters."""
+    query = db.query(BadCase).order_by(BadCase.created_at.desc())
+    if status:
+        query = query.filter(BadCase.status == status)
+    rows = query.all()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        bc = _db_bad_case_to_dict(row)
+        # Apply in-memory filters for fields stored in metadata_json
+        if issue_type and bc.get("issue_type") != issue_type:
+            continue
+        if severity and bc.get("severity") != severity:
+            continue
+        result.append(bc)
+    return result
+
+
+def update_bad_case_in_db(
+    db: Session,
+    bad_case_id: str,
+    updates: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Update fields on an existing bad case row."""
+    row = db.query(BadCase).filter(BadCase.id == bad_case_id).first()
+    if row is None:
+        return None
+
+    now = datetime.now(UTC)
+    if "status" in updates:
+        row.status = updates["status"]
+    if "retrieval_id" in updates:
+        row.retrieval_id = updates["retrieval_id"]
+    if "user_query" in updates:
+        row.user_question = updates["user_query"]
+    if "agent_answer" in updates:
+        row.bad_answer = updates["agent_answer"]
+    if "expected_answer" in updates:
+        row.expected_answer = updates["expected_answer"]
+    if "linked_candidate_id" in updates:
+        row.created_candidate_id = updates["linked_candidate_id"]
+
+    # Merge metadata_json
+    meta = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+    for key in (
+        "review_note",
+        "resolution_type",
+        "issue_type",
+        "severity",
+        "linked_chunk_ids",
+        "retrieval_result_count",
+        "conversation_id",
+        "agent_session_id",
+        "metadata",
+    ):
+        if key in updates:
+            meta[key] = updates[key]
+    row.metadata_json = meta
+    row.updated_at = now
+    db.commit()
+    db.refresh(row)
+    return _db_bad_case_to_dict(row)
+
+
+def create_candidate_from_bad_case_in_db(
+    db: Session,
+    candidate_data: dict[str, Any],
+) -> None:
+    """Save a knowledge candidate created from a bad case to the database.
+
+    Prevents duplicate candidates: checks for same question + answer from the
+    same bad case source_id to avoid infinite duplicate draft generation.
+    """
+    now = datetime.now(UTC)
+    source_id = candidate_data.get("source_bad_case_id", "")
+    question = candidate_data.get("question", "")
+    answer = candidate_data.get("answer", "")
+
+    # Check for existing candidate with same bad_case source + question + answer
+    existing = (
+        db.query(DbKnowledgeCandidate)
+        .filter(
+            DbKnowledgeCandidate.source_id == source_id,
+            DbKnowledgeCandidate.question == question,
+            DbKnowledgeCandidate.answer == answer,
+        )
+        .first()
+    )
+    if existing is not None:
+        # Already exists — update instead of duplicate
+        existing.answer = answer
+        existing.status = "pending_review"
+        meta = dict(existing.metadata_json) if isinstance(existing.metadata_json, dict) else {}
+        meta.update(
+            {
+                "source_bad_case_id": candidate_data.get("source_bad_case_id"),
+                "source_retrieval_id": candidate_data.get("source_retrieval_id"),
+                "source_chunk_ids": candidate_data.get("source_chunk_ids", []),
+                "linked_candidate_id": candidate_data.get("linked_candidate_id"),
+                "extraction_method": "bad_case_resolution",
+                "reviewer": candidate_data.get("reviewer"),
+                "review_note": candidate_data.get("review_note"),
+            }
+        )
+        existing.metadata_json = meta
+        existing.updated_at = now
+        db.commit()
+        return
+
+    candidate_id = candidate_data.get("candidate_id", "")
+    db.add(
+        DbKnowledgeCandidate(
+            id=candidate_id,
+            source_type="bad_case",
+            source_id=source_id,
+            question=question,
+            answer=answer,
+            intent=candidate_data.get("intent", "general"),
+            tags=candidate_data.get("tags", []),
+            risk_level=candidate_data.get("risk_level", "medium"),
+            quality_score=float(candidate_data.get("quality_score", 0.7)),
+            status="pending_review",
+            metadata_json={
+                "source_bad_case_id": candidate_data.get("source_bad_case_id"),
+                "source_retrieval_id": candidate_data.get("source_retrieval_id"),
+                "source_chunk_ids": candidate_data.get("source_chunk_ids", []),
+                "source_type": "bad_case",
+                "knowledge_type": candidate_data.get("knowledge_type", "faq"),
+                "extraction_method": "bad_case_resolution",
+                "reviewer": candidate_data.get("reviewer"),
+                "review_note": candidate_data.get("review_note"),
+                "source_batch_id": None,
+                "source_conversation_id": candidate_data.get("source_conversation_id"),
+                "source_message_ids": [],
+                "linked_candidate_id": candidate_data.get("linked_candidate_id"),
+            },
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    db.commit()
+
+
+def _db_bad_case_to_dict(row: BadCase) -> dict[str, Any]:
+    """Convert a DB BadCase row to a dictionary matching the API schema."""
+    meta = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+    return {
+        "bad_case_id": row.id,
+        "retrieval_id": row.retrieval_id or "",
+        "user_query": row.user_question,
+        "agent_answer": row.bad_answer or "",
+        "issue_type": meta.get("issue_type", "other"),
+        "expected_answer": row.expected_answer,
+        "severity": meta.get("severity", "medium"),
+        "status": row.status,
+        "review_note": meta.get("review_note", ""),
+        "resolution_type": meta.get("resolution_type"),
+        "linked_candidate_id": row.created_candidate_id,
+        "linked_chunk_ids": list(meta.get("linked_chunk_ids", [])),
+        "retrieval_result_count": int(meta.get("retrieval_result_count", 0)),
+        "conversation_id": meta.get("conversation_id"),
+        "agent_session_id": meta.get("agent_session_id"),
+        "metadata": meta.get("metadata", {}),
+        "created_at": row.created_at.isoformat() if row.created_at else "",
+        "updated_at": row.updated_at.isoformat() if row.updated_at else "",
+    }

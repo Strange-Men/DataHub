@@ -155,7 +155,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "P1-M18",
+        "phase": "P1-M19",
         "database_status": check_database_connection(),
     }
 

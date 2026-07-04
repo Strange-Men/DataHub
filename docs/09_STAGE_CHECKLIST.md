@@ -1045,6 +1045,25 @@ P1-M19 is complete when:
 - 不打 tag（commit only，除非明确 release）。
 - 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
 
+本轮已完成 (2026-07-05)：
+
+- [x] approved candidates build rag_chunks
+- [x] pending/rejected candidates excluded from RAG
+- [x] rag_chunks are persisted
+- [x] duplicate RAG build is idempotent
+- [x] Agent retrieval reads DB rag_chunks
+- [x] retrieval_logs are persisted
+- [x] retrieval detail reads DB
+- [x] bad_cases are persisted
+- [x] Bad Case creates pending_review candidate
+- [x] Bad Case candidate enters review chain
+- [x] existing P1 tests still pass
+- [x] frontend build still passes
+- [x] no tag
+- [x] 新增 test_rag_agent_badcase_db_persistence.py (16 tests)
+- [x] 不提交 backend/storage/、.env、datahub.db、API Key
+- [x] git status clean
+
 ## 37. P1-M20 DB Release & Online Persistence Smoke Test Check
 
 P1-M20 is complete when:

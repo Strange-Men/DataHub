@@ -245,7 +245,7 @@ Vercel 前端（不存数据）
 
 ---
 
-### P1-M19：RAG / Agent / Bad Case DB Persistence
+### P1-M19：RAG / Agent / Bad Case DB Persistence ✅ (已完成 2026-07-05)
 
 **目标**：RAG、Agent 检索、Bad Case 回流全部数据库化。
 
@@ -257,13 +257,29 @@ Vercel 前端（不存数据）
 - Bad Case 生成 candidate 草稿并入库
 - RAG 页面刷新后仍可看到构建结果
 
+**实际落地**：
+
+- 新增 repository 函数（11 个）：save/list/get RAG chunks, save/get/list retrieval logs, save/get/list/update bad cases, create candidate from bad case
+- RAG build 双写 DB（rag_chunks 表）+ JSON
+- RAG 只使用 approved 候选；pending_review / rejected / needs_revision 不进入 RAG
+- 重复 Build RAG 幂等：替换全部 rag_chunks 行，不无限追加
+- Agent 检索优先从 DB 读取 rag_chunks，写 retrieval_logs
+- retrieval_logs 保存 query、matched_chunk_ids、response_preview、metadata_json
+- Bad Case 提交双写 DB（bad_cases 表）+ JSON
+- Bad Case → create-draft 双写 knowledge_candidates（source_type=bad_case, status=pending_review）
+- Bad Case candidate 按 source_id + question + answer 去重
+- bad_cases.created_candidate_id 关联生成的 candidate
+- 读取策略：DB 优先，JSON fallback（保留所有旧 JSON 写入）
+- 新增测试：16 个测试覆盖 RAG 持久化、Agent 检索持久化、Bad Case 持久化全链路
+- 未迁移：P2/P3/P4 后端功能
+
 **验收**：
 
-- [ ] Build RAG 后 `rag_chunks` 表有数据
-- [ ] Agent 查询后 `retrieval_logs` 表有数据
-- [ ] Bad Case 提交后 `bad_cases` 表有数据
-- [ ] Bad Case draft candidate 可进入审核链路
-- [ ] 页面刷新后 RAG chunks、retrieval logs、Bad Case 列表仍在
+- [x] Build RAG 后 `rag_chunks` 表有数据
+- [x] Agent 查询后 `retrieval_logs` 表有数据
+- [x] Bad Case 提交后 `bad_cases` 表有数据
+- [x] Bad Case draft candidate 可进入审核链路
+- [x] 页面刷新后 RAG chunks、retrieval logs、Bad Case 列表仍在
 
 ---
 
