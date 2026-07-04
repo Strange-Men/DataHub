@@ -84,6 +84,18 @@ def _backend_label() -> str:
     return "unknown"
 
 
+def init_database_tables() -> None:
+    """Idempotent: create all tables if they don't exist.
+
+    Safe to call multiple times — uses create_all(checkfirst equivalent).
+    Does NOT drop existing data.
+    Does NOT print DATABASE_URL.
+    """
+    # Import models so they register on Base.metadata
+    import app.db_models as _models  # noqa: F401
+    Base.metadata.create_all(bind=engine)
+
+
 def check_database_connection() -> dict[str, object]:
     """Test that the database is reachable.
 

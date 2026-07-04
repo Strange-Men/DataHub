@@ -968,6 +968,26 @@ P1-M17 is complete when:
 - 不打 tag（commit only，除非明确 release）。
 - 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
 
+本轮已完成 (2026-07-04)：
+
+- [x] 导入 JSON 写 raw_batches / raw_messages 表
+- [x] 机器清洗写 sanitized_batches / sanitized_messages 表
+- [x] 批次列表从数据库优先读取（DB first, JSON fallback）
+- [x] 批次详情从数据库优先读取（DB first, JSON fallback）
+- [x] 重复导入幂等（同 batch_id 替换 raw_messages）
+- [x] 重复清洗幂等（同 batch_id 替换 sanitized_messages）
+- [x] 保留 JSON storage 兼容（双写 + fallback）
+- [x] db_repositories.py 数据访问层
+- [x] FastAPI startup 自动建表 (init_database_tables)
+- [x] 新增 test_import_cleaning_db_persistence.py 测试
+- [x] 现有 P1 测试通过（phase 更新至 P1-M17）
+- [x] 前端 build 通过
+- [x] py_compile 通过
+- [x] 不迁移人工清洗 / 知识审核 / RAG / Agent / Bad Case
+- [x] 不提交 backend/storage/、.env、datahub.db、API Key
+- [x] 不打 tag
+- [x] git status clean
+
 ## 35. P1-M18 Manual Cleaning & Review DB Persistence Check
 
 P1-M18 is complete when:

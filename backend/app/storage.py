@@ -35,6 +35,11 @@ from app.schemas import (
     SanitizedMessage,
     SourceBatchMetadata,
 )
+from app.database import SessionLocal
+import app.db_repositories as db_repo
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -205,14 +210,61 @@ def create_raw_batch(payload: ImportJsonRequest) -> SourceBatchMetadata:
     items = _read_json_list(INDEX_FILE)
     items.append(metadata.model_dump())
     _write_json_list(INDEX_FILE, items)
+
+    # Dual-write to database (P1-M17)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.save_raw_batch_to_db(
+                db,
+                batch_id=batch_id,
+                source_name=payload.source_name,
+                message_count=message_count,
+                raw_payload={
+                    "metadata": metadata.model_dump(),
+                    "raw_payload": payload.model_dump(),
+                },
+                conversations=[
+                    conv.model_dump() for conv in payload.conversations
+                ],
+            )
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to save raw batch %s to database", batch_id)
+
     return metadata
 
 
 def list_raw_batches() -> list[SourceBatchMetadata]:
+    # Try DB first (P1-M17)
+    try:
+        db = SessionLocal()
+        try:
+            db_results = db_repo.list_raw_batches_from_db(db)
+            if db_results:
+                return db_results
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to list raw batches from database")
+
     return [SourceBatchMetadata(**item) for item in _read_json_list(INDEX_FILE)]
 
 
 def get_raw_batch_metadata(batch_id: str) -> SourceBatchMetadata | None:
+    # Try DB first (P1-M17)
+    try:
+        db = SessionLocal()
+        try:
+            db_result = db_repo.get_raw_batch_from_db(db, batch_id)
+            if db_result is not None:
+                return db_result
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to get raw batch %s from database", batch_id)
+
     for item in _read_json_list(INDEX_FILE):
         if item.get("batch_id") == batch_id:
             return SourceBatchMetadata(**item)
@@ -220,6 +272,18 @@ def get_raw_batch_metadata(batch_id: str) -> SourceBatchMetadata | None:
 
 
 def get_raw_batch_document(batch_id: str) -> dict[str, object] | None:
+    # Try DB first (P1-M17)
+    try:
+        db = SessionLocal()
+        try:
+            db_doc = db_repo.get_raw_batch_document_from_db(db, batch_id)
+            if db_doc is not None:
+                return db_doc
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to get raw batch document %s from database", batch_id)
+
     _ensure_storage()
     batch_file = RAW_BATCH_DIR / f"{batch_id}.json"
     if not batch_file.exists():
@@ -562,6 +626,17 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
     job_items = _read_json_list(CLEANING_JOB_INDEX_FILE)
     job_items.append(job.model_dump())
     _write_json_list(CLEANING_JOB_INDEX_FILE, job_items)
+
+    # Dual-write sanitized results to database (P1-M17)
+    try:
+        db = SessionLocal()
+        try:
+            db_repo.save_sanitized_batch_to_db(db, sanitized_batch, job)
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to save sanitized batch %s to database", batch_id)
+
     return job
 
 
@@ -580,17 +655,47 @@ def get_cleaning_job(job_id: str) -> CleaningJobMetadata | None:
 
 
 def get_sanitized_batch(batch_id: str) -> SanitizedBatch | None:
+    # Check JSON first for manual cleaning modifications (P1-M17)
+    # Manual cleaning is not yet migrated to DB, so if the JSON file
+    # has manual cleaning records, we must prefer JSON over DB.
     _ensure_storage()
     batch_file = SANITIZED_BATCH_DIR / f"{batch_id}.json"
-    if not batch_file.exists():
-        return None
+    json_has_manual_cleaning = False
+    json_data: dict[str, object] | None = None
+
+    if batch_file.exists():
+        try:
+            json_data = json.loads(batch_file.read_text(encoding="utf-8"))
+            if isinstance(json_data, dict):
+                messages = json_data.get("messages")
+                if isinstance(messages, list):
+                    for msg in messages:
+                        if isinstance(msg, dict) and msg.get("manual_cleaning_status") == "cleaned":
+                            json_has_manual_cleaning = True
+                            break
+        except json.JSONDecodeError:
+            json_data = None
+
+    # If JSON has manual cleaning changes, prefer JSON (DB is stale)
+    if json_has_manual_cleaning and json_data is not None:
+        return SanitizedBatch(**json_data)  # type: ignore[arg-type]
+
+    # Try DB first (P1-M17)
     try:
-        data = json.loads(batch_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return SanitizedBatch(**data)
+        db = SessionLocal()
+        try:
+            db_result = db_repo.get_sanitized_batch_from_db(db, batch_id)
+            if db_result is not None:
+                return db_result
+        finally:
+            db.close()
+    except Exception:
+        _logger.exception("Failed to get sanitized batch %s from database", batch_id)
+
+    # Fallback to JSON
+    if json_data is not None:
+        return SanitizedBatch(**json_data)  # type: ignore[arg-type]
+    return None
 
 
 def manual_clean_sanitized_message(

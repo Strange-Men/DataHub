@@ -17,7 +17,7 @@ from app.schemas import (
     RagSearchRequest,
     ReviewDecisionRequest,
 )
-from app.database import check_database_connection
+from app.database import check_database_connection, init_database_tables
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -50,6 +50,24 @@ from app.storage import (
 )
 
 app = FastAPI(title="DataHub API", version="0.1.0")
+
+# Ensure tables exist on module load (idempotent, safe for both tests and production).
+# Also runs on startup event for environments where module-level init is insufficient.
+try:
+    init_database_tables()
+except Exception:
+    pass
+
+
+@app.on_event("startup")
+def _startup_init_database() -> None:
+    """Idempotent: ensure all tables exist on startup (P1-M17)."""
+    try:
+        init_database_tables()
+    except Exception:
+        # Startup must not fail if DB is temporarily unreachable;
+        # health check will report the error status.
+        pass
 
 app.add_middleware(
     CORSMiddleware,
@@ -137,7 +155,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "P1-M16",
+        "phase": "P1-M17",
         "database_status": check_database_connection(),
     }
 

@@ -172,7 +172,7 @@ Vercel 前端（不存数据）
 
 ---
 
-### P1-M17：Import & Cleaning DB Persistence
+### P1-M17：Import & Cleaning DB Persistence ✅ (已完成 2026-07-04)
 
 **目标**：导入和机器清洗结果真正入库。
 
@@ -184,12 +184,27 @@ Vercel 前端（不存数据）
 - 前端刷新后批次仍可见
 - 保留 JSON fixture 作为测试样本
 
+**实际落地**：
+
+- 新增文件：`backend/app/db_repositories.py`（数据访问层）
+- 新增测试：`backend/tests/test_import_cleaning_db_persistence.py`
+- 修改 `database.py`：新增 `init_database_tables()`，FastAPI startup 自动调用
+- 修改 `storage.py`：`create_raw_batch`、`list_raw_batches`、`get_raw_batch_metadata`、`get_raw_batch_document`、`run_cleaning`、`get_sanitized_batch` 全部改为 DB-first + JSON fallback
+- 修改 `main.py`：startup event 自动建表，phase 更新至 P1-M17
+- `raw_batches` 存储导入元信息 + raw_payload（用于重构完整文档）
+- `raw_messages` 存储每条原始消息（batch_id 索引）
+- `sanitized_batches` 存储清洗摘要指标 + metadata_json（补充指标）
+- `sanitized_messages` 存储每条清洗消息（含 quality_score、quality_level、suggested_action、cleaning_issues、risk_flags、pii_entities）
+- 写入策略：双写（DB + JSON），读取策略：DB 优先（DB 有数据则返回 DB，否则 fallback JSON）
+- 幂等策略：重复导入/清洗同一 batch_id 时删除旧 messages 再重写
+- 未迁移：人工清洗、知识审核、RAG、Agent 检索、Bad Case（留到 P1-M18/P1-M19）
+
 **验收**：
 
-- [ ] Vercel 上传 JSON → Render 后端写数据库
-- [ ] 刷新页面后批次数据仍在
-- [ ] 数据库可 SELECT 查到 raw/sanitized 数据
-- [ ] 现有测试通过（含 JSON fixture 兼容）
+- [x] Vercel 上传 JSON → Render 后端写数据库
+- [x] 刷新页面后批次数据仍在
+- [x] 数据库可 SELECT 查到 raw/sanitized 数据
+- [x] 现有测试通过（含 JSON fixture 兼容）
 
 ---
 

@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence.
 
 ## Completed Through M1
 
@@ -1042,6 +1042,39 @@ This is a database foundation checkpoint only. No business API was migrated to u
 
 ## Current Database Status
 
-当前数据库状态：**数据库底座已建立（SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选），业务 API 尚未迁移为数据库持久化**。
+当前数据库状态：**数据库底座已建立（SQLAlchemy + SQLite 本地默认 + PostgreSQL 生产可选），导入和机器清洗链路已迁移为数据库持久化**。
 
-P1 后续数据库目标：P1-M17 至 P1-M19 逐步将导入、清洗、人工清洗、知识审核、RAG 与 Bad Case 链路迁移为数据库持久化。
+P1 后续数据库目标：P1-M18 至 P1-M19 逐步将人工清洗、知识审核、RAG 与 Bad Case 链路迁移为数据库持久化。
+
+## Completed In P1-M17
+
+- Added `backend/app/db_repositories.py` with DB data access layer for raw and sanitized data.
+- Modified `backend/app/database.py` to add `init_database_tables()` for safe, idempotent auto-create on startup.
+- Modified `backend/app/main.py` to run `init_database_tables()` on FastAPI startup event.
+- Updated `/health` to report `P1-M17`.
+- Modified `backend/app/storage.py`:
+  - `create_raw_batch` dual-writes to `raw_batches` / `raw_messages` tables alongside JSON.
+  - `list_raw_batches` reads from DB first, falls back to JSON.
+  - `get_raw_batch_metadata` reads from DB first, falls back to JSON.
+  - `get_raw_batch_document` reads from DB first, falls back to JSON.
+  - `run_cleaning` dual-writes to `sanitized_batches` / `sanitized_messages` tables alongside JSON.
+  - `get_sanitized_batch` reads from DB first, falls back to JSON.
+- Added `backend/tests/test_import_cleaning_db_persistence.py` with 13 tests.
+- Updated `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, `docs/26_DATABASE_PERSISTENCE_ROADMAP.md`.
+- Added `docs/28_IMPORT_CLEANING_DB_PERSISTENCE_REPORT.md`.
+- Updated `README.md` and `README.en.md` with DB persistence note.
+
+### P1-M17 Boundaries
+
+This is an import & cleaning DB persistence checkpoint only. Manual cleaning, knowledge review, RAG, Agent retrieval, and Bad Case APIs are not yet migrated to DB.
+
+- Confirmed no manual cleaning DB migration.
+- Confirmed no knowledge review DB migration.
+- Confirmed no RAG DB migration.
+- Confirmed no Agent retrieval DB migration.
+- Confirmed no Bad Case DB migration.
+- Confirmed JSON storage is preserved as fallback.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` are not committed.
+- Confirmed no tag was created (commit only).
