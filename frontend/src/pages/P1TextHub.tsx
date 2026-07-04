@@ -786,7 +786,7 @@ export function P1TextHub({
         <div className="step-next-actions">
           <button
             type="button"
-            className="btn-primary btn-lg"
+            className="btn-next"
             disabled={!selectedBatchId}
             onClick={() => { setCurrentStep(2); setCleaningSubTab("machine"); }}
           >
@@ -874,7 +874,7 @@ export function P1TextHub({
                 <div className="step-next-actions">
                   <button
                     type="button"
-                    className="btn-primary"
+                    className="btn-next"
                     onClick={() => setCleaningSubTab("manual")}
                   >
                     进入人工清洗工作台 →
@@ -1087,7 +1087,7 @@ export function P1TextHub({
                 <div className="step-next-actions">
                   <button
                     type="button"
-                    className="btn-primary"
+                    className="btn-next"
                     onClick={() => { setCurrentStep(3); setKnowledgeSubTab("generate"); }}
                   >
                     下一步：生成并审核知识 →
@@ -1171,7 +1171,7 @@ export function P1TextHub({
             <div className="step-next-actions">
               <button
                 type="button"
-                className="btn-primary"
+                className="btn-next"
                 disabled={!extractionResult}
                 onClick={() => { setKnowledgeSubTab("review"); loadCandidates(false); }}
               >
@@ -1424,7 +1424,7 @@ export function P1TextHub({
             <div className="step-next-actions">
               <button
                 type="button"
-                className="btn-primary"
+                className="btn-next"
                 disabled={reviewStatusCounts.approved === 0}
                 onClick={() => setCurrentStep(4)}
               >

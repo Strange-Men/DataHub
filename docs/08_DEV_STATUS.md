@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test. Current workflow UX polish checkpoint: P1-M20.5 Simplify P1 Workflow UX. Current global frontend visual system checkpoint: P1-M20.6 Global Frontend Visual System Polish.
 
 ## Completed Through M1
 
@@ -1215,9 +1215,77 @@ This is an online smoke test and documentation checkpoint only. No new feature d
 
 P1 数据库持久化版已通过线上 smoke test，可正式定义为可部署、可持久化、可支撑 P2/P3/P4 的高质量数据中台底座。
 
+## Completed In P1-M20.5
+
+- Simplified P1 workflow from 5 steps to 4 steps.
+- Merged original Step 2 (机器清洗) and Step 3 (人工清洗) into unified Step 2 (清洗数据).
+- Step 2 uses sub-tabs: A. 机器清洗 / B. 人工清洗工作台.
+- Merged original Step 4 (生成知识) and Step 5 (审核知识) into unified Step 3 (生成并审核知识).
+- Step 3 uses sub-tabs: A. 生成待审核知识 / B. 知识审核.
+- Step 4 (更新知识库并测试 Agent) stays as unified final step.
+- Step indicator shows only 4 steps.
+- Updated all step navigation links.
+- Confirmed no database logic, API logic, or P2/P3/P4 backend changes.
+- Updated `/health` to report `P1-M20.5`.
+- Confirmed no tag was created (commit only).
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+
+### P1-M20.5 Boundaries
+
+This is a workflow UX simplification only. No database, API, or business logic changes.
+
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed JSON storage is preserved as fallback.
+- Confirmed 4 P1 main steps preserved (import, clean, review, agent test).
+- Confirmed no tag was created (commit only).
+
+## Completed In P1-M20.6
+
+- Unified global frontend visual system across ALL pages (not just P1).
+- Established comprehensive CSS design tokens in `:root`:
+  - Background & surface tokens (`--bg-page`, `--bg-surface`, `--bg-surface-raised`, etc.)
+  - Border tokens (`--border-subtle`, `--border-strong`, `--border-accent`)
+  - Text tokens (`--text-primary`, `--text-secondary`, `--text-muted`, `--text-faint`)
+  - Accent tokens (`--accent: #22d3ee`, subdued cyan replacing bright blue)
+  - Semantic tokens (`--success`, `--warning`, `--error`, `--purple`)
+  - Spacing tokens (`--space-page: 28px`, `--space-section: 28px`, `--space-card: 24px`, etc.)
+  - Radius tokens (`--radius-card: 10px`, `--radius-button: 8px`, etc.)
+  - Button tokens (`--btn-height: 40px`, `--btn-height-lg: 48px`, `--btn-height-sm: 32px`)
+- Unified button system:
+  - Default button no longer uses bright blue gradient (`#1f9df0 → #1478ca`).
+  - Primary buttons use subdued dark teal/cyan gradient (`#0e5a6b → #0d4a58`).
+  - Added `.btn-next` class — all "下一步 →" buttons now identical in size, color, radius.
+  - Standardized `.btn-disabled`, `.btn-danger`, `.btn-outline`, `.btn-small`.
+- Unified card system:
+  - All cards share same border color (`--border-subtle`), radius (`--radius-card` or `--radius-button`).
+  - Standardized card backgrounds to `--bg-surface` or `--bg-surface-soft`.
+  - Homepage capability cards, P1 work steps, P2/P3 flow cards, P4 agent/tool cards all consistent.
+- Fixed bright blue issues:
+  - Nav logo gradient: `#0e7490 → #155e75` (was `#1f9df0 → #1478ca`).
+  - Progress bar gradient: `#0e7490 → #22d3ee` (was `#1f9df0 → #2dd4ff`).
+  - Content preview text: `#c4d5e8` (was `#dbeafe`, too bright).
+- Unified empty states, badges, tabs, status indicators, feedback panels.
+- Updated P1TextHub.tsx: 5 "下一步" buttons all use `btn-next`.
+- P2/P3/P4 pages get automatic visual consistency via shared CSS.
+- Created `docs/34_GLOBAL_FRONTEND_VISUAL_SYSTEM_POLISH.md`.
+- Updated `/health` to report `P1-M20.6`.
+- Confirmed no database logic, API logic, or P2/P3/P4 backend changes.
+- Confirmed no tag was created (commit only).
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+
+### P1-M20.6 Boundaries
+
+This is a global frontend visual system polish only. No business logic, database, or API changes.
+
+- Confirmed 4 P1 main steps preserved.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
+- Confirmed no tag was created (commit only).
+
 ## Next Suggested Stage
 
-P1 数据库持久化版 smoke test 已通过。后续建议：
+P1 数据库持久化版 smoke test 已通过，前端视觉系统已统一。后续建议：
 
 1. **P1 数据库版正式 release**：单独开一轮，打 tag `p1-m20-db-release`。
 2. **P2-M0 数据模型与素材中心规划**：进入 P2 前先明确 P2 表结构、素材上传 schema、OCR/Caption 策略、SKU 绑定模型、多模态审核状态模型。

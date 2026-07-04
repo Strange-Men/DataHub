@@ -1120,3 +1120,83 @@ P1-M20 is complete when:
 - 现有测试必须通过后再 push。
 - 不进入 P2/P3/P4 后端开发。
 - 不接真实 LLM、embedding、向量数据库。
+
+## 39. P1-M20.5 Simplify P1 Workflow UX Check
+
+P1-M20.5 is complete when:
+
+- P1 workflow simplified from 5 steps to 4 steps.
+- Original Step 2 (机器清洗) and Step 3 (人工清洗) merged into unified Step 2 (清洗数据).
+- Step 2 uses sub-tabs: A. 机器清洗 / B. 人工清洗工作台.
+- Original Step 4 (生成知识) and Step 5 (审核知识) merged into unified Step 3 (生成并审核知识).
+- Step 3 uses sub-tabs: A. 生成待审核知识 / B. 知识审核.
+- Step 4 (更新知识库并测试 Agent) stays as unified final step.
+- Step indicator shows exactly 4 steps.
+- All step navigation buttons updated.
+- `/health` reports `P1-M20.5`.
+- No database logic or API logic changed.
+- No P2/P3/P4 backend development.
+- `npm run build` passes.
+- `py_compile` passes.
+- git status clean.
+- No tag (commit only).
+- Commit message uses `[P1-M20.5] polish: simplify P1 workflow user experience`.
+
+本轮已完成 (2026-07-05):
+
+- [x] P1 workflow simplified to 4 steps
+- [x] Step 2 = 清洗数据 (machine + manual sub-tabs)
+- [x] Step 3 = 生成并审核知识 (generate + review sub-tabs)
+- [x] Step indicator shows 4 steps
+- [x] All navigation links updated
+- [x] `/health` reports P1-M20.5
+- [x] No database/API logic changed
+- [x] `npm run build` passed
+- [x] `py_compile` passed
+- [x] No tag
+- [x] git status clean
+
+## 40. P1-M20.6 Global Frontend Visual System Polish Check
+
+P1-M20.6 is complete when:
+
+- [/] 全站前端页面审计完成（首页、P1、P2、P3、P4、导航、组件）。
+- [/] 全局 CSS token 体系建立（背景、表面、边框、文本、强调色、语义色、间距、圆角、按钮高度）。
+- [/] 亮蓝按钮替换为克制的暗青/深蓝渐变。
+- [/] 新增 `.btn-next` 统一所有"下一步"按钮大小、颜色、圆角。
+- [/] 按钮规范统一：`.btn-primary`, `.btn-secondary`, `.btn-outline`, `.btn-danger`, `.btn-disabled`, `.btn-next`, `.btn-small`。
+- [/] 卡片规范统一：所有卡片边框、圆角、内边距、背景一致。
+- [/] 导航 Logo 渐变改为暗青色（不再使用亮蓝 `#1f9df0`）。
+- [/] 进度条渐变改为暗青色。
+- [/] 内容预览文字亮度降低。
+- [/] 空状态、badge、tab、状态指示器、反馈面板视觉统一。
+- [/] P1 四个主流程保持不变。
+- [/] P2/P3/P4 页面保持产品壳，按钮统一禁用样式。
+- [/] 首页能力卡片、P1 工作步骤、P2/P3 流程卡片、P4 Agent/工具卡片风格统一。
+- [/] `/health` 报告 `P1-M20.6`。
+- [/] `npm run build` 通过。
+- [/] `py_compile` 通过。
+- [/] 未改变数据库主逻辑。
+- [/] 未改变 API 逻辑。
+- [/] 未进入 P2/P3/P4 后端开发。
+- [/] 未提交 `.env`、`datahub.db`、`backend/storage/`、API Key。
+- [/] 不打 tag（commit only）。
+- [/] git status clean。
+- [/] Commit message 使用 `[P1-M20.6] polish: unify global frontend visual system`。
+
+本轮已完成 (2026-07-05):
+
+- [x] 全站前端审计完成
+- [x] CSS token 体系建立
+- [x] 亮蓝替换为暗青
+- [x] btn-next 统一下一步按钮
+- [x] 卡片/按钮/导航/badge/空状态统一
+- [x] P1 四个主流程不变
+- [x] P2/P3/P4 产品壳视觉统一
+- [x] docs/34 视觉系统文档新增
+- [x] docs/08, docs/09 更新
+- [x] npm run build 通过
+- [x] py_compile 通过
+- [x] 未改数据库/API 逻辑
+- [x] 无 tag
+- [x] git status clean
