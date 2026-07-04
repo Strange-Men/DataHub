@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config.
 
 ## Completed Through M1
 
@@ -746,6 +746,7 @@ P1:
 - `p1-m14-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
 - `p1-m15.5-frontend-ux-cleanup-boundary-review`
+- `p1-m15.6-render-deployment-config`
 
 P2:
 
@@ -882,3 +883,34 @@ Recommended next move:
 - Moved internal technical cards into a lower-priority advanced information section.
 - Added project review and boundary documentation at `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md`.
 - Confirmed no interview packaging, resume packaging, P2/P3/P4 implementation, vector database, embedding, database, ORM, real LLM, MCP, or CustomerOpsAgent repository change is included.
+
+## Completed In P1-M15.6
+
+- Fixed Render deployment configuration issue where Render could not find `requirements.txt`.
+  - Root cause: Render Build Command `pip install -r requirements.txt` looked in the repository root, but DataHub keeps requirements at `backend/requirements.txt`.
+- Created `.python-version` at repository root to pin Python to `3.11.9` (Render defaulted to 3.14.x which is untested).
+- Added `pydantic` to `backend/requirements.txt` as an explicit dependency (directly imported by `backend/app/schemas.py`).
+- Created `docs/23_RENDER_DEPLOYMENT_GUIDE.md` with the correct Render configuration.
+- Updated `docs/08_DEV_STATUS.md` and `docs/09_STAGE_CHECKLIST.md`.
+- Added Render deployment doc link to `README.md` and `README.en.md`.
+
+### Correct Render Configuration
+
+| Setting | Value |
+|---|---|
+| **Build Command** | `pip install -r backend/requirements.txt` |
+| **Start Command** | `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` |
+| **Root Directory** | (leave empty) |
+| **Branch** | `main` |
+| **Python Version** | 3.11.9 (via `.python-version`) |
+
+### P1-M15.6 Boundaries
+
+This is a deployment configuration fix only. No business logic, frontend, or backend API changes were made.
+
+- Confirmed no business logic change.
+- Confirmed no frontend change.
+- Confirmed no P2/P3/P4 implementation.
+- Confirmed no database, ORM, vector database, embedding, real LLM, MCP, or CustomerOpsAgent repository change.
+- Confirmed no tag was created for this checkpoint (commit only).
+- Confirmed `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.

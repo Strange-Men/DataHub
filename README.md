@@ -154,6 +154,8 @@ npm run dev
 Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
+Render 部署指南：[docs/23_RENDER_DEPLOYMENT_GUIDE.md](./docs/23_RENDER_DEPLOYMENT_GUIDE.md)
+
 ## API 示例
 
 导入客服聊天 JSON：

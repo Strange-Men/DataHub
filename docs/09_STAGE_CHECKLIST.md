@@ -100,6 +100,7 @@ P1:
 - `p1-m14-review-quality-console`
 - `p1-m15-high-quality-datahub-release`
 - `p1-m15.5-frontend-ux-cleanup-boundary-review`
+- `p1-m15.6-render-deployment-config`
 
 P2:
 
@@ -814,3 +815,25 @@ P1-M15.5 is complete when:
 - `docs/22_PROJECT_REVIEW_AND_BOUNDARY.md` exists.
 - No interview packaging, resume packaging, P2/P3/P4 backend implementation, vector database, embedding, database, ORM, real LLM, MCP, CustomerOpsAgent repository change, or historical tag rewrite is introduced.
 - New tag uses `p1-m15.5-frontend-ux-cleanup-boundary-review`.
+
+## 29. P1-M15.6 Render Deployment Config Check
+
+P1-M15.6 is complete when:
+
+- `backend/requirements.txt` exists and contains the minimal backend dependencies: `fastapi`, `uvicorn[standard]`, `pydantic`.
+- `.python-version` exists at the repository root with `3.11.9`.
+- `docs/23_RENDER_DEPLOYMENT_GUIDE.md` exists and documents:
+  - Service type: Web Service.
+  - Repository: `Strange-Men/DataHub`, branch `main`.
+  - Root Directory: leave empty.
+  - Build Command: `pip install -r backend/requirements.txt`.
+  - Start Command: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`.
+  - Python version: 3.11.9 (via `.python-version`).
+  - Health check URL and common errors.
+- `docs/08_DEV_STATUS.md` records P1-M15.6 as the deployment config checkpoint.
+- README files link to the Render deployment guide.
+- No business logic, frontend, or backend API changes are introduced.
+- No P2/P3/P4, database, ORM, vector database, embedding, real LLM, MCP, or CustomerOpsAgent repository change is introduced.
+- `backend/storage/`, `frontend/node_modules/`, `frontend/dist/`, `.env`, `.venv/` remain git-ignored.
+- No tag is created for this checkpoint (commit only).
+- Commit message uses `[P1-M15.6] chore: add Render deployment configuration`.
