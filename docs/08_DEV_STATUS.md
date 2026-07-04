@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. Current checkpoint: P1-M9 Phase-One Release Freeze.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. Current checkpoint: P1-M9.5 Public Dataset Evaluation.
 
 Current code remains Phase 1.
 
@@ -282,6 +282,26 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Confirmed Bad Case-generated drafts are not auto-approved and do not modify RAG chunks.
 - Established phase-prefixed tag naming for new tags from P1-M9 onward.
 
+## Completed In P1-M9.5
+
+- Selected the Bitext customer support dataset for public small-sample evaluation.
+- Recorded dataset source and license notes in `docs/14_PUBLIC_DATASET_EVAL_REPORT.md`.
+- Added a safe converted sample at `samples/public_dataset_eval_sample.json`.
+- Kept the full public CSV outside the repository.
+- Added `scripts/prepare_public_dataset_sample.py` to convert a local CSV into DataHub import JSON.
+- Added `scripts/run_public_dataset_eval.py` to run the public sample through the P1 pipeline and print metrics.
+- Added `backend/tests/test_public_dataset_eval_flow.py` for automated public sample flow verification.
+- Verified the public sample flow:
+  - JSON import
+  - cleaning and sanitization
+  - knowledge extraction
+  - controlled approval
+  - local RAG chunk build
+  - CustomerOpsAgent restricted retrieval
+  - Bad Case submission
+  - Bad Case to `pending_review` draft
+- Confirmed P1-M9.5 does not migrate CustomerOpsAgent legacy RAG, switch unified RAG, implement P2/P3/P4, or introduce database, ORM, embedding, vector database, or real LLM integrations.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -336,6 +356,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - full-chain verification
   - release report
   - phase-prefixed tag naming rule
+- P1-M9.5 public dataset evaluation:
+  - small public support dataset sample
+  - conversion script
+  - evaluation runner
+  - report and automated public sample flow test
 
 ### Current Forbidden Work
 
@@ -382,7 +407,6 @@ The next implementation stage must still stay inside Phase 1.
 
 Allowed candidates:
 
-- P1-M9.5 Public Dataset Evaluation.
 - P1-M10 Legacy RAG Migration.
 - P1-M11 Unified RAG Release.
 
@@ -445,6 +469,9 @@ Still candidates:
 - Bad Case-generated candidates are written to ignored local candidate storage.
 - Bad Case-generated candidates remain `pending_review`.
 - P1-M9 full-chain verification test is defined.
+- P1-M9.5 public dataset evaluation test is defined.
+- `samples/public_dataset_eval_sample.json` contains only a small public converted sample.
+- Full public dataset files are not committed.
 - No Bad Case automatic approval, direct existing candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
@@ -622,14 +649,14 @@ Continue Phase 1 only.
 
 Recommended option:
 
-- P1-M9.5 Public Dataset Evaluation.
+- P1-M10 Legacy RAG Migration.
 
-Before P1-M9.5 starts:
+Before P1-M10 starts:
 
-- Confirm allowed public dataset source.
-- Confirm no real private customer data is used.
-- Confirm evaluation metrics and sample size.
+- Confirm the exact CustomerOpsAgent legacy RAG source location.
+- Confirm migration will not bypass DataHub review and RAG boundaries.
+- Confirm rollback and checkpoint strategy.
 
-P1-M9 must not implement public dataset evaluation, legacy RAG migration, unified RAG switching, multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
+P1-M9.5 must not implement legacy RAG migration, unified RAG switching, multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
 
 Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.

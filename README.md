@@ -4,7 +4,7 @@ DataHub is a multi-source data governance and RAG knowledge platform for Agent c
 
 DataHub is not only a customer service RAG tool. The final product direction is a governed data asset center that can turn customer service records, product docs, Bad Cases, human corrections, and future AI Material Center assets into reviewed text and multimodal knowledge for CustomerOpsAgent, SalesAgent, OpsAgent, MaterialAgent, and future MCP tool consumers.
 
-Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at P1-M9 Phase-One Release Freeze: the P1 core loop has been verified from JSON chat import through Bad Case to pending-review draft creation.
+Phase one still focuses on the CustomerOpsAgent text knowledge loop. This repository is currently at P1-M9.5 Public Dataset Evaluation: the P1 core loop has been verified with the local sample data and a small public customer-support dataset sample.
 
 ## Current Scope
 
@@ -35,6 +35,7 @@ Implemented through P1-M9:
 - Bad Case queue listing, detail lookup, and manual status/note updates.
 - Bad Case to pending-review knowledge candidate draft creation.
 - P1 core loop release freeze report and full-chain verification test.
+- P1-M9.5 public dataset small-sample evaluation with report and lightweight test.
 - Final vision and four-phase roadmap documentation.
 - Documentation consistency fixes for phase status, API roadmap, canonical state names, and M6.5 boundaries.
 - Environment example file.
@@ -684,6 +685,66 @@ P1-M9 is not the final P1 unified RAG release. Remaining P1 milestones are:
 - `P1-M11 Unified RAG Release`
 
 Starting from P1-M9, new Git tags use phase-prefixed names. Historical tags remain unchanged.
+
+## P1-M9.5 Public Dataset Evaluation
+
+P1-M9.5 validates the same P1 core loop with a small public customer-support dataset sample.
+
+Dataset:
+
+```text
+Bitext customer support dataset
+```
+
+Source:
+
+```text
+https://github.com/bitext/customer-support-llm-chatbot-training-dataset
+```
+
+Submitted sample:
+
+```text
+samples/public_dataset_eval_sample.json
+```
+
+The committed sample contains 50 converted customer -> agent conversations and 100 messages. The full public CSV is not committed.
+
+Conversion script:
+
+```powershell
+python scripts\prepare_public_dataset_sample.py --help
+```
+
+Example conversion command, assuming the public CSV is kept outside the repo:
+
+```powershell
+python scripts\prepare_public_dataset_sample.py `
+  --input D:\temp\bitext.csv `
+  --output samples\public_dataset_eval_sample.json `
+  --limit 50
+```
+
+Evaluation runner:
+
+```powershell
+python scripts\run_public_dataset_eval.py --help
+python scripts\run_public_dataset_eval.py --sample samples\public_dataset_eval_sample.json --approve-count 10 --query "cancel order"
+```
+
+Automated evaluation test:
+
+```powershell
+python backend\tests\test_public_dataset_eval_flow.py
+```
+
+Evaluation report:
+
+```text
+docs/14_PUBLIC_DATASET_EVAL_REPORT.md
+```
+
+P1-M9.5 remains local JSON plus keyword/mock retrieval. It does not migrate CustomerOpsAgent legacy RAG, switch CustomerOpsAgent to a unified RAG, add embeddings, add a vector database, add a database/ORM, or implement Phase 2/3/4.
 
 ## Development Rules
 

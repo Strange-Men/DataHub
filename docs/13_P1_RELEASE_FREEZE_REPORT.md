@@ -239,3 +239,50 @@ P1-M11 Unified RAG Release
 ```
 
 Do not start P2/P3/P4 implementation until explicitly requested.
+
+## 13. P1-M9.5 Public Dataset Evaluation Addendum
+
+P1-M9.5 has now been completed as the next validation checkpoint after the P1-M9 core-loop freeze.
+
+Evaluation dataset:
+
+```text
+Bitext customer support dataset
+```
+
+Source:
+
+```text
+https://github.com/bitext/customer-support-llm-chatbot-training-dataset
+```
+
+Committed evaluation sample:
+
+```text
+samples/public_dataset_eval_sample.json
+```
+
+Submitted helper artifacts:
+
+```text
+scripts/prepare_public_dataset_sample.py
+scripts/run_public_dataset_eval.py
+backend/tests/test_public_dataset_eval_flow.py
+docs/14_PUBLIC_DATASET_EVAL_REPORT.md
+```
+
+P1-M9.5 validates that the P1 core loop can process a small external customer-support style dataset sample:
+
+```text
+public customer support sample
+-> DataHub import JSON
+-> cleaning / sanitization
+-> candidate extraction
+-> controlled approval
+-> local RAG chunks
+-> CustomerOpsAgent restricted retrieval
+-> Bad Case feedback
+-> Bad Case to pending_review draft
+```
+
+The full public dataset is not committed. P1-M9.5 does not migrate CustomerOpsAgent legacy RAG, does not switch unified RAG, does not introduce embeddings or a vector database, and does not implement P2/P3/P4.

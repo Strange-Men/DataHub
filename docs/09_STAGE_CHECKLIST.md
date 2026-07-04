@@ -569,3 +569,47 @@ P1-M9 is complete when:
 - P1-M11 unified RAG release is not implemented.
 - P2/P3/P4 features are not implemented.
 - `backend/storage/` remains ignored by Git.
+
+## 20. P1-M9.5 Public Dataset Evaluation Check
+
+P1-M9.5 is complete when:
+
+- A public customer-support or e-commerce dataset is selected and documented.
+- Dataset source URL, access method, fields used, sample size, and license notes are recorded.
+- Full public dataset files are not committed.
+- Real private customer data is not committed.
+- If a sample is committed, it is small, safe, and converted to the DataHub M2 import JSON format.
+- `scripts/prepare_public_dataset_sample.py` exists if a conversion script is submitted.
+- `scripts/run_public_dataset_eval.py` exists if an evaluation runner is submitted.
+- `docs/14_PUBLIC_DATASET_EVAL_REPORT.md` exists.
+- The report records:
+  - evaluation goal
+  - dataset selection
+  - sampling strategy
+  - DataHub pipeline results
+  - cleaning / sanitization results
+  - extraction results
+  - controlled approval results
+  - local RAG build results
+  - retrieval test results
+  - Bad Case feedback results
+  - Bad Case to draft results
+  - quality observations
+  - limitations
+  - P1-M10 next step
+- `backend/tests/test_public_dataset_eval_flow.py` verifies the public sample through:
+  - import
+  - cleaning
+  - extraction
+  - controlled approval
+  - local RAG build
+  - CustomerOpsAgent retrieval
+  - Bad Case submission
+  - Bad Case to `pending_review` draft
+- P1 existing tests still pass.
+- No CustomerOpsAgent legacy RAG migration is implemented.
+- No CustomerOpsAgent repository changes are made.
+- No unified RAG switch is implemented.
+- No database, ORM, vector database, embedding model, real LLM, multimodal, MCP, sales export, fine-tuning export, or P2/P3/P4 implementation is introduced.
+- New tag uses the phase-prefixed name `p1-m9.5-public-dataset-eval`.
+- Historical tags are not moved, deleted, or renamed.
