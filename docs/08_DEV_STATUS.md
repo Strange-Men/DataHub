@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. Current checkpoint: P1-M10 Legacy RAG Migration.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. Current checkpoint: P1-M11 Unified DataHub RAG Release.
 
 Current code remains Phase 1.
 
@@ -327,6 +327,26 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Confirmed P1-M10 does not switch CustomerOpsAgent to DataHub-only retrieval.
 - Confirmed P1-M10 does not introduce database, ORM, embedding, vector database, real LLM, or P2/P3/P4 features.
 
+## Completed In P1-M11
+
+- Completed the P1 final unified DataHub RAG release.
+- Updated `/health` to report `P1-M11`.
+- Defined the unified P1 source set:
+  - `chat_logs`
+  - `public_dataset`
+  - `bad_case`
+  - `legacy_rag`
+  - `manual` as a reserved source type.
+- Added source type propagation for new chat log and public dataset extractions.
+- Confirmed all governed sources converge into the same DataHub candidate, approved candidate, local RAG chunk, and CustomerOpsAgent retrieval format.
+- Added `backend/tests/test_unified_rag_release.py`.
+- Added `docs/16_P1_UNIFIED_RAG_RELEASE_REPORT.md`.
+- Added `docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md`.
+- Rewrote the Chinese `README.md` for P1-M11 release positioning with STAR structure.
+- Added English `README.en.md`.
+- Confirmed P1-M11 does not modify the CustomerOpsAgent repository.
+- Confirmed P1-M11 does not introduce database, ORM, embedding, vector database, real LLM, MCP, or P2/P3/P4 features.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -392,6 +412,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - trusted and review-required migration modes
   - idempotent legacy candidate generation
   - legacy source trace through candidate, chunk, and retrieval
+- P1-M11 unified DataHub RAG release:
+  - multi-source candidate and chunk source trace
+  - unified CustomerOpsAgent retrieval contract
+  - DataHub-only integration guide
+  - Chinese and English release README files
 
 ### Current Forbidden Work
 
@@ -434,15 +459,16 @@ Forbidden from prior stages remains:
 
 ## Next Allowed Stage Candidates
 
-The next implementation stage must still stay inside Phase 1.
+P1 is now released at P1-M11. The next step does not need to be another code stage.
 
 Allowed candidates:
 
-- P1-M11 Unified RAG Release.
+- Pause development for project review, resume packaging, and architecture retrospective.
+- Start P2-M1 Material Ingestion only if explicitly requested.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
 
-- Phase 2 AI Material Center or multimodal implementation.
+- Phase 2 AI Material Center or multimodal implementation without explicit approval.
 - Phase 3 sales training export or fine-tuning dataset export.
 - Phase 4 MCP Tools or Agent cluster integration.
 
@@ -466,7 +492,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports P1-M10.
+- `/health` endpoint is defined and reports P1-M11.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -508,6 +534,7 @@ Still candidates:
 - Trusted legacy candidates can become local RAG chunks.
 - Review-required legacy candidates remain out of RAG.
 - CustomerOpsAgent retrieval can return legacy chunks with source trace.
+- Unified release verification confirms CustomerOpsAgent retrieval can return approved `chat_logs`, `public_dataset`, `legacy_rag`, and approved `bad_case` chunks through one response shape.
 - No Bad Case automatic approval, direct existing candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
@@ -685,14 +712,14 @@ Continue Phase 1 only.
 
 Recommended option:
 
-- P1-M11 Unified RAG Release.
+- Pause feature development and use the P1-M11 release for project review / resume packaging / architecture retrospective.
 
-Before P1-M11 starts:
+Before P2 starts:
 
-- Confirm CustomerOpsAgent should stop using its old RAG path.
-- Confirm DataHub retrieval response contract is sufficient for CustomerOpsAgent.
-- Confirm rollback and checkpoint strategy.
+- Confirm Phase 2 material ingestion scope.
+- Confirm whether multimodal storage, OCR, Caption, and SKU binding are still only roadmap or ready to implement.
+- Confirm the next phase-prefixed tag name.
 
-P1-M10 must not implement unified RAG switching, multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4 unless explicitly approved later.
+P1-M11 does not implement multimodal retrieval, MCP, model fine-tuning, or Phase 2/3/4.
 
 Phase 2 AI Material Center, Phase 3 dataset export, and Phase 4 MCP are now documented as formal roadmap phases, but they are not the next implementation stage.

@@ -430,6 +430,18 @@ def _risk_level(question: str, answer: str) -> str:
     return "low"
 
 
+def _source_type_for_batch(batch_id: str) -> str:
+    metadata = get_raw_batch_metadata(batch_id)
+    if metadata is None:
+        return "sanitized_batch"
+    source_name = metadata.source_name.strip().lower()
+    if source_name.startswith("public_dataset") or "public_dataset_eval" in source_name:
+        return "public_dataset"
+    if source_name.startswith("manual"):
+        return "manual"
+    return "chat_logs"
+
+
 def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
     sanitized = get_sanitized_batch(batch_id)
     if sanitized is None:
@@ -437,6 +449,7 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
 
     created_at = datetime.now(UTC).isoformat()
     job_id = f"extract_job_{uuid4().hex[:12]}"
+    source_type = _source_type_for_batch(batch_id)
     candidates: list[KnowledgeCandidate] = []
     messages_by_conversation: dict[str, list[SanitizedMessage]] = {}
 
@@ -462,6 +475,7 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
             candidates.append(
                 KnowledgeCandidate(
                     candidate_id=candidate_id,
+                    source_type=source_type,  # type: ignore[arg-type]
                     source_batch_id=batch_id,
                     source_conversation_id=conversation_id,
                     source_message_ids=[message.source_message_id, answer_message.source_message_id],

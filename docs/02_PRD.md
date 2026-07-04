@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through P1-M10
+### Currently Implemented Through P1-M11
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -97,6 +97,9 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Trusted legacy import to approved candidates.
 - Review-required legacy import to pending-review candidates.
 - Legacy source trace through candidates, local RAG chunks, and CustomerOpsAgent retrieval results.
+- Unified DataHub RAG release across approved `chat_logs`, `public_dataset`, `bad_case`, and `legacy_rag` sources.
+- CustomerOpsAgent DataHub-only integration guide and locked retrieval contract.
+- Chinese and English P1-M11 release README files.
 
 ### Pending In Phase 1
 
@@ -106,7 +109,6 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Separate approved knowledge or knowledge asset version management.
 - Approval of Bad Case-generated drafts through the normal M5 review workflow.
 - RAG rebuild after approved Bad Case-generated drafts.
-- Unified CustomerOpsAgent RAG release.
 - Production retrieval/indexing beyond local mock RAG chunks.
 
 ### Phase 1: Text Customer Service Knowledge Loop
@@ -217,6 +219,26 @@ Current P1-M10 behavior:
 - Both modes preserve `source_legacy_id`, `source_import_id`, `migration_mode`, and source notes.
 - Only approved legacy candidates can enter local RAG chunks.
 - P1-M10 does not modify CustomerOpsAgent or switch it to DataHub-only retrieval.
+
+### 4.9 Unified DataHub RAG Release
+
+P1-M11 confirms that DataHub can unify approved knowledge from multiple governed sources into one local RAG and CustomerOpsAgent retrieval shape.
+
+Current P1-M11 source coverage:
+
+- `chat_logs`
+- `public_dataset`
+- `bad_case`
+- `legacy_rag`
+
+CustomerOpsAgent's recommended P1-M11 integration mode is DataHub-only retrieval through:
+
+```text
+POST /api/customer-ops-agent/retrieve
+GET  /api/customer-ops-agent/retrievals/{retrieval_id}
+```
+
+The CustomerOpsAgent repository is not modified in this DataHub milestone.
 
 ## 5. Phase-One Functional Requirements
 

@@ -332,3 +332,41 @@ Boundary:
 - Legacy source trace is preserved through candidate, chunk, and retrieval result.
 - P1-M10 remains local JSON plus keyword/mock retrieval.
 - P1-M10 does not introduce embeddings, a vector database, database, ORM, real LLM, or P2/P3/P4 features.
+
+## 15. P1-M11 Unified DataHub RAG Release Addendum
+
+P1-M11 has now been completed as the final Phase 1 unified RAG release.
+
+Submitted release artifacts:
+
+```text
+README.md
+README.en.md
+backend/tests/test_unified_rag_release.py
+docs/16_P1_UNIFIED_RAG_RELEASE_REPORT.md
+docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md
+```
+
+P1-M11 validates that these governed sources converge into the same DataHub candidate, local RAG chunk, and CustomerOpsAgent retrieval format:
+
+```text
+chat_logs
+public_dataset
+bad_case
+legacy_rag
+```
+
+CustomerOpsAgent's recommended P1-M11 mode is DataHub-only retrieval:
+
+```text
+CustomerOpsAgent
+-> POST /api/customer-ops-agent/retrieve
+-> DataHub approved local RAG chunks
+```
+
+Boundary:
+
+- CustomerOpsAgent repository is not modified in this DataHub milestone.
+- P1-M11 remains local JSON plus keyword/mock retrieval.
+- No real vector database, embedding model, database, ORM, real LLM, MCP, or P2/P3/P4 feature is introduced.
+- The P1 final tag is `p1-m11-unified-rag-release`.

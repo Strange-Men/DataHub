@@ -215,9 +215,9 @@ Expected result:
 All commands pass.
 ```
 
-## 11. Current Non-Goals
+## 11. P1-M10 Non-Goals
 
-P1-M10 does not implement:
+At the time of P1-M10, this milestone did not implement:
 
 - P1-M11 unified DataHub RAG release.
 - Production vector retrieval.
@@ -231,17 +231,38 @@ P1-M10 does not implement:
 - MCP.
 - P2/P3/P4 features.
 
-## 12. Next Step: P1-M11 Unified DataHub RAG Release
+## 12. P1-M11 Unified DataHub RAG Release Addendum
 
-Recommended next milestone:
+P1-M11 has now been completed after this migration checkpoint.
+
+P1-M11 confirms:
 
 ```text
-P1-M11 Unified DataHub RAG Release
+CustomerOpsAgent legacy RAG export
++ DataHub chat log candidates
++ public dataset candidates
++ approved Bad Case drafts
+-> unified DataHub local RAG chunks
+-> CustomerOpsAgent restricted retrieval API
 ```
 
-P1-M11 should switch CustomerOpsAgent to retrieve only through DataHub's restricted retrieval API after confirming:
+Submitted release artifacts:
 
-- legacy knowledge has been imported,
-- reviewed DataHub knowledge and legacy knowledge share one retrieval surface,
-- rollback is possible,
-- CustomerOpsAgent no longer maintains a separate knowledge base path.
+```text
+docs/16_P1_UNIFIED_RAG_RELEASE_REPORT.md
+docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md
+backend/tests/test_unified_rag_release.py
+README.md
+README.en.md
+```
+
+The P1-M11 release still does not modify the CustomerOpsAgent repository. It documents and validates the DataHub-only retrieval contract from the DataHub side.
+
+P1-M11 still does not introduce:
+
+- real vector database,
+- embedding model,
+- database or ORM,
+- real LLM,
+- MCP,
+- P2/P3/P4 features.

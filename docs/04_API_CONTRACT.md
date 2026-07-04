@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-P1-M10
+Implemented APIs: M2-P1-M11
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -28,11 +28,11 @@ Implemented APIs: M2-P1-M10
 - P1-M9 phase-one release freeze verification; no new API surface.
 - P1-M9.5 public dataset evaluation; no new API surface.
 - P1-M10 legacy RAG migration import APIs.
+- P1-M11 unified DataHub RAG release; no new public API surface.
 
-Planned Phase 1 APIs: P1-M11
+Planned Phase 1 APIs: After P1-M11
 
 - Approval and RAG rebuild for Bad Case-generated drafts through existing review/RAG steps.
-- CustomerOpsAgent unified DataHub RAG release.
 - Future production retrieval hardening beyond local JSON plus mock retrieval.
 
 Future Roadmap APIs: Phase 2-4
@@ -93,6 +93,15 @@ Important P1-M10 boundary:
 - `trusted_import=false` creates pending-review candidates with `migration_mode: review_required`.
 - Existing `/api/rag/build` is still the only way to create RAG chunks.
 - Existing `/api/customer-ops-agent/retrieve` is used only for retrieval verification.
+
+Important P1-M11 boundary:
+
+- P1-M11 does not add a new retrieval API.
+- P1-M11 locks the existing CustomerOpsAgent-facing retrieval API as the DataHub-only contract.
+- Unified RAG means approved `chat_logs`, `public_dataset`, `bad_case`, and `legacy_rag` chunks share the same local chunk and retrieval result shape.
+- P1-M11 still uses local JSON plus keyword/mock retrieval.
+- P1-M11 does not modify the CustomerOpsAgent repository.
+- P1-M11 does not introduce embeddings, a vector database, database, ORM, real LLM, MCP, or P2/P3/P4 features.
 
 ## 0A. Canonical State Names
 

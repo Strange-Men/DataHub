@@ -564,9 +564,9 @@ P1-M9 is complete when:
 - README and core docs describe the P1-M9 freeze status.
 - Version naming rules use phase-prefixed tags from P1-M9 onward.
 - Historical tags are not moved, deleted, or renamed.
-- P1-M9.5 public dataset evaluation is not implemented.
-- P1-M10 legacy RAG migration is not implemented.
-- P1-M11 unified RAG release is not implemented.
+- At the P1-M9 checkpoint, P1-M9.5 public dataset evaluation was not implemented yet.
+- At the P1-M9 checkpoint, P1-M10 legacy RAG migration was not implemented yet.
+- At the P1-M9 checkpoint, P1-M11 unified RAG release was not implemented yet.
 - P2/P3/P4 features are not implemented.
 - `backend/storage/` remains ignored by Git.
 
@@ -642,8 +642,43 @@ P1-M10 is complete when:
 - `backend/tests/test_legacy_rag_migration.py` passes.
 - Existing P1 tests still pass.
 - CustomerOpsAgent repository is not read or modified.
-- P1-M11 unified RAG release is not implemented.
+- At the P1-M10 checkpoint, P1-M11 unified RAG release was not implemented yet.
 - No private CustomerOpsAgent RAG data or real business knowledge is committed.
 - No database, ORM, vector database, embedding model, real LLM, multimodal, MCP, sales export, fine-tuning export, or P2/P3/P4 implementation is introduced.
 - New tag uses the phase-prefixed name `p1-m10-legacy-rag-migration`.
+- Historical tags are not moved, deleted, or renamed.
+
+## 22. P1-M11 Unified DataHub RAG Release Check
+
+P1-M11 is complete when:
+
+- `/health` reports `phase: P1-M11`.
+- `README.md` exists and is rewritten as the Chinese P1-M11 release README.
+- `README.en.md` exists and is aligned with the Chinese README.
+- Both READMEs include STAR project breakdowns.
+- Both READMEs use verified P1 metrics only.
+- Both READMEs clearly state that P2/P3/P4 are roadmap phases and not implemented.
+- `docs/16_P1_UNIFIED_RAG_RELEASE_REPORT.md` exists.
+- `docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md` exists.
+- `backend/tests/test_unified_rag_release.py` exists.
+- Unified RAG verification covers:
+  - `chat_logs` approved candidates entering RAG.
+  - `public_dataset` approved candidates entering RAG.
+  - trusted `legacy_rag` candidates entering RAG.
+  - Bad Case-generated drafts staying `pending_review` until approved.
+  - approved Bad Case drafts entering RAG.
+  - CustomerOpsAgent retrieval returning a consistent result shape.
+  - `source_type` and source trace in retrieval results.
+  - pending, rejected, and needs-revision candidates staying out of RAG.
+  - repeated RAG build idempotency.
+- CustomerOpsAgent DataHub-only contract is documented:
+  - `POST /api/customer-ops-agent/retrieve`
+  - `GET /api/customer-ops-agent/retrievals/{retrieval_id}`
+  - `POST /api/customer-ops-agent/bad-cases`
+  - `X-DataHub-Client: CustomerOpsAgent`
+- CustomerOpsAgent repository is not modified.
+- No CustomerOpsAgent private data or real business knowledge is committed.
+- No real vector database, embedding model, database, ORM, real LLM, multimodal workflow, sales export, fine-tuning export, MCP, or P2/P3/P4 implementation is introduced.
+- `backend/storage/` remains ignored by Git.
+- New tag uses the phase-prefixed name `p1-m11-unified-rag-release`.
 - Historical tags are not moved, deleted, or renamed.

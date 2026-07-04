@@ -218,9 +218,9 @@ import
 - Known limitations are recorded.
 - Git tag `p1-m9-phase-one-release-freeze` is created.
 - Historical tags are not moved, deleted, or renamed.
-- P1-M9.5 public dataset evaluation is not implemented.
-- P1-M10 legacy RAG migration is not implemented.
-- P1-M11 unified RAG release is not implemented.
+- At the P1-M9 checkpoint, P1-M9.5 public dataset evaluation was not implemented yet.
+- At the P1-M9 checkpoint, P1-M10 legacy RAG migration was not implemented yet.
+- At the P1-M9 checkpoint, P1-M11 unified RAG release was not implemented yet.
 - Future extensions are documented but not implemented:
   - Multimodal.
   - MCP.
@@ -468,6 +468,27 @@ P1-M10 is complete when:
 - Review-required legacy candidates cannot enter local RAG build.
 - CustomerOpsAgent retrieval can return approved legacy chunks with source trace.
 - CustomerOpsAgent repository is not read or modified.
-- P1-M11 unified RAG switch is not implemented.
+- At the P1-M10 checkpoint, P1-M11 unified RAG release was not implemented yet.
 - No real vector database, embedding model, database, ORM, real LLM, multimodal, MCP, sales export, or fine-tuning work is implemented.
 - `backend/storage/` remains ignored by Git.
+
+## P1-M11 Unified DataHub RAG Release Completion Check
+
+P1-M11 is complete when:
+
+- `/health` reports `phase: P1-M11`.
+- `README.md` and `README.en.md` present P1-M11 as the completed Phase 1 release.
+- Both READMEs contain STAR project breakdowns and verified metrics only.
+- `docs/16_P1_UNIFIED_RAG_RELEASE_REPORT.md` exists.
+- `docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md` exists.
+- `backend/tests/test_unified_rag_release.py` passes.
+- Approved candidates from `chat_logs`, `public_dataset`, and trusted `legacy_rag` can become local RAG chunks.
+- Bad Case-generated drafts remain `pending_review` until normal approval.
+- Approved Bad Case drafts can become local RAG chunks.
+- CustomerOpsAgent retrieval returns a consistent result shape with `source_type` and source trace.
+- Pending, needs-revision, and rejected candidates cannot enter RAG.
+- Repeated RAG build remains idempotent.
+- CustomerOpsAgent repository is not modified.
+- No real vector database, embedding model, database, ORM, real LLM, MCP, or P2/P3/P4 implementation is introduced.
+- Tag `p1-m11-unified-rag-release` is created.
+- Historical tags are not moved, deleted, or renamed.

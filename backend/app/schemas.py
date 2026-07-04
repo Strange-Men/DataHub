@@ -68,7 +68,14 @@ class SanitizedBatch(BaseModel):
 
 class KnowledgeCandidate(BaseModel):
     candidate_id: str
-    source_type: Literal["sanitized_batch", "bad_case", "legacy_rag"] = "sanitized_batch"
+    source_type: Literal[
+        "sanitized_batch",
+        "chat_logs",
+        "public_dataset",
+        "bad_case",
+        "legacy_rag",
+        "manual",
+    ] = "sanitized_batch"
     source_batch_id: str | None = None
     source_conversation_id: str | None = None
     source_message_ids: list[str]
@@ -148,7 +155,14 @@ class ReviewRecord(BaseModel):
 class RagChunk(BaseModel):
     chunk_id: str
     candidate_id: str
-    source_type: Literal["sanitized_batch", "bad_case", "legacy_rag"] = "sanitized_batch"
+    source_type: Literal[
+        "sanitized_batch",
+        "chat_logs",
+        "public_dataset",
+        "bad_case",
+        "legacy_rag",
+        "manual",
+    ] = "sanitized_batch"
     source_batch_id: str | None = None
     source_conversation_id: str | None = None
     source_message_ids: list[str]

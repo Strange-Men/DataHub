@@ -90,6 +90,13 @@ CustomerOpsAgent legacy RAG export
 -> Knowledge Candidates
 -> Local RAG Builder
 -> CustomerOpsAgent Restricted Retrieval Test
+Governed sources
+  - chat_logs
+  - public_dataset
+  - approved bad_case drafts
+  - trusted legacy_rag imports
+-> Unified Local RAG Chunks
+-> CustomerOpsAgent Restricted Retrieval
 ```
 
 Current Phase 1 modules already started or implemented locally:
@@ -105,12 +112,12 @@ Current Phase 1 modules already started or implemented locally:
 - P1 Core Loop Release Verification.
 - P1-M9.5 Public Dataset Evaluation.
 - P1-M10 Legacy RAG Migration.
+- P1-M11 Unified DataHub RAG Release.
 
 Future modules not implemented yet:
 
 - CustomerOpsAgent production vector retrieval beyond the M7 local restricted retrieval API.
 - Bad Case-generated draft approval and RAG rebuild beyond M8.5.
-- P1-M11 unified RAG release.
 - Material Understanding.
 - Knowledge Asset Store beyond local files.
 - Dataset Export.
@@ -347,6 +354,22 @@ Must enforce:
 - Review-required imports must create only `pending_review` candidates.
 - Legacy imports do not directly create RAG chunks; existing RAG build rules still apply.
 - P1-M10 does not switch CustomerOpsAgent to DataHub-only retrieval.
+
+### 6.9 Unified DataHub RAG Release Module
+
+Responsibilities:
+
+- Treat approved candidates from `chat_logs`, `public_dataset`, `bad_case`, and `legacy_rag` as one governed retrieval-ready source after local RAG build.
+- Preserve source trace in candidates, chunks, and CustomerOpsAgent retrieval results.
+- Keep CustomerOpsAgent retrieval read-only and restricted to `backend/storage/rag_chunks/`.
+- Document the DataHub-only CustomerOpsAgent integration path.
+
+Must enforce:
+
+- CustomerOpsAgent repository is not modified by DataHub P1-M11.
+- Pending, needs-revision, and rejected candidates remain outside RAG.
+- Bad Case drafts require normal approval before entering RAG.
+- P1-M11 does not introduce a vector database, embedding model, database, ORM, real LLM, MCP, or P2/P3/P4 implementation.
 
 ## 7. Data State Boundaries
 

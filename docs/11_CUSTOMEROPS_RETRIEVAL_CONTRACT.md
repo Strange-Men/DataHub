@@ -7,7 +7,7 @@ This document defines the current DataHub retrieval contract for CustomerOpsAgen
 Current related stage:
 
 ```text
-P1-M10 Legacy RAG Migration
+P1-M11 Unified DataHub RAG Release
 ```
 
 The contract is read-only and restricted to approved local RAG chunks.
@@ -90,7 +90,9 @@ M8.5 implements human-triggered Bad Case conversion into new `pending_review` dr
 
 P1-M9 freezes and verifies this contract as part of the Phase 1 core loop. It does not add new CustomerOpsAgent-facing APIs beyond the M7/M8 surface.
 
-P1-M10 adds DataHub-side legacy RAG migration. CustomerOpsAgent retrieval may now return approved chunks with `source_type: legacy_rag`, `source_legacy_id`, and `source_import_id`. P1-M10 still does not modify the CustomerOpsAgent repository or switch CustomerOpsAgent to DataHub-only retrieval.
+P1-M10 adds DataHub-side legacy RAG migration. CustomerOpsAgent retrieval may now return approved chunks with `source_type: legacy_rag`, `source_legacy_id`, and `source_import_id`.
+
+P1-M11 locks DataHub as the recommended CustomerOpsAgent-only retrieval source from the DataHub side. It documents the cutover path in `docs/17_CUSTOMEROPS_DATAHUB_ONLY_INTEGRATION_GUIDE.md`. P1-M11 still does not modify the CustomerOpsAgent repository.
 
 ## 6. CustomerOpsAgent Rules
 
@@ -100,6 +102,7 @@ CustomerOpsAgent must:
 - Send `X-DataHub-Client: CustomerOpsAgent`.
 - Treat retrieval results as read-only.
 - Store or pass `retrieval_id` when a future Bad Case needs to reference a retrieval.
+- Treat DataHub retrieval as the primary RAG source after P1-M11 cutover planning.
 
 CustomerOpsAgent must not:
 
