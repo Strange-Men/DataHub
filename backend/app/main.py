@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.schemas import (
@@ -48,6 +49,18 @@ from app.storage import (
 )
 
 app = FastAPI(title="DataHub API", version="0.1.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://data-hub-flame.vercel.app",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 BAD_CASE_ISSUE_TYPES = {
     "wrong_answer",

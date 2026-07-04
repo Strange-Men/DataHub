@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix.
 
 ## Completed Through M1
 
@@ -913,4 +913,40 @@ This is a deployment configuration fix only. No business logic, frontend, or bac
 - Confirmed no P2/P3/P4 implementation.
 - Confirmed no database, ORM, vector database, embedding, real LLM, MCP, or CustomerOpsAgent repository change.
 - Confirmed no tag was created for this checkpoint (commit only).
+- Confirmed `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+
+## Completed In P1-M15.7
+
+- Completely redesigned the DataHub frontend from a single-page developer debug console into a multi-page product demo platform.
+- Added React Router v6 with 6 pages:
+  - 首页 (Home)
+  - 客服文本中台 (P1, connected to real backend)
+  - AI 素材中心 (P2, product shell, disabled)
+  - 数据资产复用 (P3, product shell, disabled)
+  - MCP + Agent 集群 (P4, product shell, disabled)
+  - 高级信息 (Advanced, developer info)
+- Added top navigation bar with backend connection status indicator.
+- Redesigned P1 page as a 5-step user workflow with step indicator.
+- Added file upload support via file picker and drag-and-drop.
+- Added "使用示例数据" (Use Sample Data) button for one-click demo.
+- Added "高级模式：粘贴 JSON" (Advanced: Paste JSON) as a collapsed option.
+- Fixed Vercel → Render API connection:
+  - Created `api.ts` with dynamic `API_BASE_URL` detection.
+  - Production: reads `VITE_API_BASE_URL` env var → falls back to `https://datahub-jr8x.onrender.com`.
+  - Local: automatically uses `http://127.0.0.1:8000`.
+- Added CORS middleware to FastAPI backend allowing localhost and Vercel origins.
+- Designed P2/P3/P4 pages as complete product shells with disabled buttons labeled "P2 后接入" / "P3 后接入" / "P4 后接入".
+- Moved developer/technical info to the separate "高级信息" page.
+- Updated README.md and README.en.md with live demo URLs.
+- Created docs/24_FRONTEND_PRODUCT_UX_REDESIGN.md and docs/25_VERCEL_DEPLOYMENT_GUIDE.md.
+- Updated docs/08_DEV_STATUS.md and docs/09_STAGE_CHECKLIST.md.
+
+### P1-M15.7 Boundaries
+
+This is a frontend UX redesign and deployment link fix. No P2/P3/P4 backend development was done.
+
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real multimodal, sales export, fine-tuning export, MCP, vector database, embedding, real LLM, database, or ORM.
+- Confirmed no CustomerOpsAgent repository change.
+- Confirmed no tag was created (commit only).
 - Confirmed `backend/storage/`, `.env`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.

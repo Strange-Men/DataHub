@@ -10,6 +10,14 @@
 ![Data Governance](https://img.shields.io/badge/Data-Governance-216B5B)
 ![Agent Ready](https://img.shields.io/badge/Agent-ready-344054)
 
+**Live Demo:**
+
+- Frontend: https://data-hub-flame.vercel.app/
+- Backend API: https://datahub-jr8x.onrender.com
+- Health Check: https://datahub-jr8x.onrender.com/api/health
+
+> Note: Render free instances may experience cold starts (30-60 seconds on first access). The frontend connects to the backend via the `VITE_API_BASE_URL` environment variable. If the backend is not connected, the frontend displays a friendly status hint instead of a red error.
+
 DataHub is a data asset center for AI agent systems. It turns customer chat logs, legacy knowledge assets, public evaluation samples, Bad Case corrections, and future multimodal materials into governed, traceable knowledge that can be consumed by agents through restricted APIs.
 
 The current implementation focuses on the text customer-service knowledge loop. It includes local JSON storage, local keyword retrieval, machine cleaning, manual cleaning, Chinese knowledge review, Bad Case feedback, and legacy RAG migration. Multimodal assets, sales-training exports, fine-tuning datasets, and MCP tools are architectural extensions, not production-connected features in this repository.

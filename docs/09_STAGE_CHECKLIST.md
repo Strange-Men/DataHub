@@ -101,6 +101,7 @@ P1:
 - `p1-m15-high-quality-datahub-release`
 - `p1-m15.5-frontend-ux-cleanup-boundary-review`
 - `p1-m15.6-render-deployment-config`
+- `p1-m15.7-product-ux-redesign`
 
 P2:
 
@@ -837,3 +838,30 @@ P1-M15.6 is complete when:
 - `backend/storage/`, `frontend/node_modules/`, `frontend/dist/`, `.env`, `.venv/` remain git-ignored.
 - No tag is created for this checkpoint (commit only).
 - Commit message uses `[P1-M15.6] chore: add Render deployment configuration`.
+
+## 30. P1-M15.7 Product UX Redesign & Deployment Link Fix Check
+
+P1-M15.7 is complete when:
+
+- Frontend uses React Router with 6 pages: 首页, 客服文本中台, AI 素材中心, 数据资产复用, MCP + Agent 集群, 高级信息.
+- Top navigation bar is present with backend connection status indicator.
+- Home page shows product overview, capability cards, and backend connection state.
+- P1 "客服文本中台" is a 5-step workflow: 导入数据 → 机器清洗 → 人工清洗 → 知识审核 → RAG & Agent.
+- P1 supports file upload (file picker + drag-and-drop + sample data + collapsed paste area).
+- Technical fields are collapsed by default (details/summary).
+- P2 "AI 素材中心" has a complete product shell with 6 flow cards, all buttons disabled and labeled "P2 后接入".
+- P3 "数据资产复用" has a complete product shell with 6 module cards, all buttons disabled and labeled "P3 后接入".
+- P4 "MCP + Agent 集群" has a complete product shell with tool list, agent grid, all buttons disabled and labeled "P4 后接入".
+- "高级信息" page contains developer info, health status, technical boundaries.
+- API_BASE_URL is dynamic: reads VITE_API_BASE_URL env var → falls back to Render or localhost.
+- Backend has CORS middleware allowing localhost:5173 and data-hub-flame.vercel.app.
+- Backend disconnected state shows friendly hint about Render cold start (not red error).
+- README.md and README.en.md include live demo URLs.
+- docs/24_FRONTEND_PRODUCT_UX_REDESIGN.md exists.
+- docs/25_VERCEL_DEPLOYMENT_GUIDE.md exists.
+- No P2/P3/P4 backend development, no tag (commit only).
+- `npm run build` passes in frontend/.
+- Python compile check passes for backend.
+- No STAR/面试包装/简历包装 wording.
+- No tag is created for this checkpoint (commit only).
+- Commit message uses `[P1-M15.7] feat: redesign DataHub frontend for product demo`.
