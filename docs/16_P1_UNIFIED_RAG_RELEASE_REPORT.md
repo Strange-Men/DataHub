@@ -2,7 +2,9 @@
 
 ## 1. Release Goal
 
-P1-M11 is the final Phase 1 release checkpoint.
+P1-M11 is the unified DataHub RAG release checkpoint.
+
+P1-M11 was originally treated as the Phase 1 final release. After the high-quality DataHub goal was refined, P1-M11 is now considered the unified RAG release, while P1-M15 is the planned final Phase 1 high-quality data platform release.
 
 Goal:
 
@@ -213,20 +215,21 @@ Release tag:
 p1-m11-unified-rag-release
 ```
 
-This is the P1 final release tag.
+This is the P1 unified RAG release tag.
 
 ## 12. Next Route
 
 Recommended next step after P1-M11:
 
 ```text
-Pause development for project review / resume packaging / architecture retrospective
+P1-M12 Advanced Machine Cleaning & Data Quality Scoring
 ```
 
-If development continues later, the next product phase may be:
+Updated Phase 1 high-quality route:
 
-```text
-P2-M1 Material Ingestion
-```
+- P1-M12: Advanced machine cleaning and data quality scoring.
+- P1-M13: Chinese admin console and manual cleaning workbench.
+- P1-M14: Knowledge review quality console.
+- P1-M15: High-quality DataHub P1 final release.
 
-P2 must not start unless explicitly requested.
+P2 must not start unless explicitly requested after P1-M15.

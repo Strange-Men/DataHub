@@ -37,6 +37,13 @@ class CleaningJobMetadata(BaseModel):
     sanitized_message_count: int
     dropped_message_count: int
     pii_detected_count: int
+    exact_duplicate_count: int = 0
+    near_duplicate_count: int = 0
+    low_quality_count: int = 0
+    noise_count: int = 0
+    review_recommended_count: int = 0
+    drop_recommended_count: int = 0
+    average_quality_score: float = 0.0
     status: Literal["completed"]
     created_at: str
     completed_at: str
@@ -52,6 +59,11 @@ class SanitizedMessage(BaseModel):
     pii_detected: bool
     pii_types: list[str]
     cleaning_notes: list[str]
+    cleaning_issues: list[str] = Field(default_factory=list)
+    risk_flags: list[str] = Field(default_factory=list)
+    quality_score: float = 1.0
+    quality_level: Literal["high", "medium", "low"] = "high"
+    suggested_action: Literal["keep", "review", "drop"] = "keep"
 
 
 class SanitizedBatch(BaseModel):
@@ -62,6 +74,13 @@ class SanitizedBatch(BaseModel):
     sanitized_message_count: int
     dropped_message_count: int
     pii_detected_count: int
+    exact_duplicate_count: int = 0
+    near_duplicate_count: int = 0
+    low_quality_count: int = 0
+    noise_count: int = 0
+    review_recommended_count: int = 0
+    drop_recommended_count: int = 0
+    average_quality_score: float = 0.0
     created_at: str
     messages: list[SanitizedMessage]
 
@@ -114,6 +133,8 @@ class KnowledgeCandidate(BaseModel):
     ]
     migration_mode: Literal["trusted_import", "review_required"] | None = None
     source_note: str | None = None
+    cleaning_issues: list[str] = Field(default_factory=list)
+    risk_flags: list[str] = Field(default_factory=list)
     created_at: str
     reviewer: str | None = None
     review_note: str | None = None

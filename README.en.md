@@ -1,4 +1,4 @@
-# DataHub | Multi-source Data Governance And RAG Knowledge Platform For Agent Clusters
+﻿# DataHub | Multi-source Data Governance And RAG Knowledge Platform For Agent Clusters
 
 中文版：[README.md](./README.md)
 
@@ -8,12 +8,14 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-UI-3178C6)
 ![RAG](https://img.shields.io/badge/RAG-local%20mock-orange)
 ![pytest](https://img.shields.io/badge/pytest-optional-lightgrey)
-![Data Governance](https://img.shields.io/badge/Data%20Governance-P1%20complete-brightgreen)
+![Data Governance](https://img.shields.io/badge/Data%20Governance-P1--M12-blue)
 ![Agent-ready](https://img.shields.io/badge/Agent--ready-CustomerOpsAgent-brightgreen)
 
 DataHub is a governed data asset center for AI Agent applications. It turns customer support chats, public support dataset samples, Bad Case correction drafts, and CustomerOpsAgent legacy RAG exports into unified knowledge candidates. Approved candidates become local RAG chunks and are served through a restricted CustomerOpsAgent retrieval API.
 
-The repository is currently at **P1-M11 Unified DataHub RAG Release**. Phase 1 is complete, but the retrieval stack is still local JSON plus keyword/mock scoring. It is not a production vector database implementation.
+The repository is currently at **P1-M12 Advanced Data Cleaning**. P1-M11 completed the Unified DataHub RAG Release, but it is no longer treated as the final high-quality DataHub release. The final Phase 1 high-quality data platform release is now planned for **P1-M15 High-quality DataHub P1 Final Release**.
+
+P1-M12 adds advanced deterministic machine cleaning, duplicate and near-duplicate detection, low-quality and noise flags, enhanced PII masking, message-level quality scores, quality levels, and suggested actions. P1-M13, P1-M14, and P1-M15 remain roadmap stages and have not been implemented.
 
 ## Quick Start
 
@@ -39,7 +41,7 @@ Expected response:
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "P1-M11"
+  "phase": "P1-M12"
 }
 ```
 
@@ -56,6 +58,15 @@ Default URL:
 ```text
 http://localhost:5173
 ```
+
+## P1-M12 To P1-M15 High-quality DataHub Route
+
+- **P1-M12 Advanced Machine Cleaning & Data Quality Scoring**: advanced cleaning, duplicate and near-duplicate detection, low-quality/noise labels, enhanced PII masking, quality scores, and suggested actions.
+- **P1-M13 Chinese Admin Console & Manual Cleaning Workbench**: Chinese-first admin console, reserved P1/P2/P3/P4 module entries, manual cleaning workbench, and cleaner guide.
+- **P1-M14 Knowledge Review Quality Console**: Chinese review console, reviewer rules, source trace, quality_score, and risk_flags.
+- **P1-M15 High-quality DataHub P1 Final Release**: validates machine cleaning -> manual cleaning -> extraction -> human review -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case feedback.
+
+P1-M12 proves DataHub can output governed sanitized data with machine quality labels. It does not implement the full manual cleaning workbench, the P1-M14 review console, or P2/P3/P4 features.
 
 ## STAR Breakdown
 
@@ -79,6 +90,7 @@ Phase 1 implemented:
 
 - JSON customer support chat import.
 - Cleaning, basic sanitization, empty-content filtering, and role normalization.
+- Advanced machine cleaning with duplicate detection, quality scoring, risk flags, and suggested actions.
 - Rule-based mock knowledge candidate extraction.
 - Human review with approve / reject / needs_revision states.
 - Local RAG chunk building from approved candidates.

@@ -1,5 +1,6 @@
 import json
 import re
+from difflib import SequenceMatcher
 from hashlib import sha1
 from datetime import UTC, datetime
 from pathlib import Path
@@ -73,6 +74,46 @@ ADDRESS_PATTERN = re.compile(
     r"\b\d{1,6}\s+[A-Za-z0-9.' -]+(?:street|st|road|rd|avenue|ave|lane|ln|drive|dr|blvd|boulevard)\b(?:,\s*[A-Za-z .-]+){0,3}",
     re.IGNORECASE,
 )
+NAME_PATTERN = re.compile(
+    r"\b(my name is|i am|i'm|this is)\s+[A-Z][A-Za-z'-]*(?:\s+[A-Z][A-Za-z'-]*){0,2}\b",
+    re.IGNORECASE,
+)
+ZIP_PATTERN = re.compile(
+    r"\b(?:zip|zipcode|zip code|postal|postal code)[:#\s-]*(\d{5}(?:-\d{4})?)\b",
+    re.IGNORECASE,
+)
+PAYMENT_PATTERN = re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)")
+AD_KEYWORDS = [
+    "free money",
+    "click here",
+    "promo spam",
+    "subscribe now",
+    "limited offer",
+    "buy now",
+]
+NOISE_KEYWORDS = ["haha", "lol", "random text", "asdf", "test test"]
+QUESTION_TERMS = [
+    "?",
+    "how",
+    "what",
+    "where",
+    "when",
+    "why",
+    "can",
+    "could",
+    "do",
+    "does",
+    "is",
+    "are",
+    "will",
+    "would",
+    "please",
+    "help",
+    "order",
+    "refund",
+    "shipping",
+    "tracking",
+]
 
 
 def _ensure_storage() -> None:
@@ -203,14 +244,18 @@ def _standardize_role(value: object) -> tuple[str, list[str]]:
     return standardized, notes
 
 
-def _mask_pii(content: str) -> tuple[str, list[str]]:
+def _mask_pii(content: str) -> tuple[str, list[str], list[str]]:
     masked = content
     pii_types: list[str] = []
+    risk_flags: list[str] = []
 
     replacements = [
+        ("PAYMENT_SENSITIVE", PAYMENT_PATTERN, "[PAYMENT_SENSITIVE]"),
+        ("NAME", NAME_PATTERN, "[NAME]"),
         ("EMAIL", EMAIL_PATTERN, "[EMAIL]"),
         ("TRACKING_ID", TRACKING_PATTERN, "[TRACKING_ID]"),
         ("ORDER_ID", ORDER_PATTERN, "[ORDER_ID]"),
+        ("ZIP_CODE", ZIP_PATTERN, "[ZIP_CODE]"),
         ("ADDRESS", ADDRESS_PATTERN, "[ADDRESS]"),
         ("PHONE", PHONE_PATTERN, "[PHONE]"),
     ]
@@ -220,7 +265,92 @@ def _mask_pii(content: str) -> tuple[str, list[str]]:
         if count > 0:
             pii_types.append(pii_type)
 
-    return masked, pii_types
+    if any(pii_type in pii_types for pii_type in ["EMAIL", "PHONE", "ADDRESS", "NAME", "ZIP_CODE"]):
+        risk_flags.append("contains_personal_data")
+    if any(pii_type in pii_types for pii_type in ["ORDER_ID", "TRACKING_ID"]):
+        risk_flags.append("contains_business_identifier")
+    if "PAYMENT_SENSITIVE" in pii_types:
+        risk_flags.append("contains_payment_sensitive")
+
+    return masked, pii_types, risk_flags
+
+
+def _normalize_for_duplicate(content: str) -> str:
+    return re.sub(r"\s+", " ", content.strip().lower())
+
+
+def _effective_char_count(content: str) -> int:
+    return len(re.findall(r"[A-Za-z0-9\u4e00-\u9fff]", content))
+
+
+def _symbol_ratio(content: str) -> float:
+    chars = [char for char in content if not char.isspace()]
+    if not chars:
+        return 1.0
+    semantic = sum(1 for char in chars if re.match(r"[A-Za-z0-9\u4e00-\u9fff]", char))
+    return 1 - (semantic / len(chars))
+
+
+def _detect_quality_issues(content: str, role: str) -> list[str]:
+    issues: list[str] = []
+    effective_chars = _effective_char_count(content)
+    ratio = _symbol_ratio(content)
+    lowered = content.lower()
+
+    if effective_chars < 3:
+        issues.extend(["low_quality", "too_short"])
+    if len(content) > 1000:
+        issues.extend(["low_quality", "too_long"])
+    if re.search(r"(\S)\1{5,}", content):
+        issues.extend(["low_quality", "repeated_chars"])
+    if ratio >= 0.85 and len(content.strip()) >= 3:
+        issues.extend(["low_quality", "symbol_noise"])
+    if ratio >= 0.65 and len(content.strip()) >= 10:
+        issues.extend(["low_quality", "possible_garbled_text"])
+    if any(keyword in lowered for keyword in AD_KEYWORDS):
+        issues.extend(["possible_ad", "possible_noise"])
+    if any(keyword in lowered for keyword in NOISE_KEYWORDS):
+        issues.extend(["possible_noise", "off_topic"])
+    if role == "customer" and not any(term in lowered for term in QUESTION_TERMS):
+        issues.append("weak_question")
+    if role == "agent":
+        weak_answers = {"ok", "okay", "yes", "no", "sure", "thanks", "thank you"}
+        if effective_chars < 8 or lowered.strip(" .!?") in weak_answers:
+            issues.append("weak_answer")
+
+    return list(dict.fromkeys(issues))
+
+
+def _assess_quality(
+    issues: list[str],
+    pii_types: list[str],
+) -> tuple[float, str, str]:
+    score = 1.0
+    deductions = {
+        "exact_duplicate": 0.2,
+        "near_duplicate": 0.15,
+        "too_short": 0.35,
+        "too_long": 0.25,
+        "repeated_chars": 0.25,
+        "symbol_noise": 0.4,
+        "possible_garbled_text": 0.4,
+        "possible_ad": 0.3,
+        "possible_noise": 0.2,
+        "off_topic": 0.15,
+        "weak_question": 0.15,
+        "weak_answer": 0.2,
+    }
+    for issue in issues:
+        score -= deductions.get(issue, 0.0)
+    if pii_types:
+        score -= min(0.1, 0.02 * len(pii_types))
+    score = round(max(score, 0.0), 2)
+
+    if score >= 0.8:
+        return score, "high", "keep"
+    if score >= 0.5:
+        return score, "medium", "review"
+    return score, "low", "drop"
 
 
 def _safe_message_id(conversation_index: int, message_index: int, message: dict[str, object]) -> str:
@@ -248,6 +378,8 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
     raw_message_count = 0
     dropped_message_count = 0
     sanitized_messages: list[SanitizedMessage] = []
+    seen_normalized: set[str] = set()
+    prior_normalized: list[str] = []
 
     for conversation_index, conversation in enumerate(conversations):
         if not isinstance(conversation, dict):
@@ -277,9 +409,25 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
             notes.extend(role_notes)
             message_id = _safe_message_id(conversation_index, message_index, message)
             source_message_id = str(message.get("message_id") or message_id).strip() or message_id
-            masked_content, pii_types = _mask_pii(content)
+            masked_content, pii_types, risk_flags = _mask_pii(content)
             if pii_types:
                 notes.append("pii_masked")
+            normalized_content = _normalize_for_duplicate(masked_content)
+            cleaning_issues = _detect_quality_issues(masked_content, role)
+            if normalized_content in seen_normalized:
+                cleaning_issues.append("exact_duplicate")
+            elif any(
+                SequenceMatcher(None, normalized_content, prior).ratio() >= 0.92
+                for prior in prior_normalized
+            ):
+                cleaning_issues.append("near_duplicate")
+            seen_normalized.add(normalized_content)
+            prior_normalized.append(normalized_content)
+            cleaning_issues = list(dict.fromkeys(cleaning_issues))
+            quality_score, quality_level, suggested_action = _assess_quality(
+                cleaning_issues,
+                pii_types,
+            )
 
             sanitized_messages.append(
                 SanitizedMessage(
@@ -292,11 +440,45 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
                     pii_detected=bool(pii_types),
                     pii_types=pii_types,
                     cleaning_notes=notes,
+                    cleaning_issues=cleaning_issues,
+                    risk_flags=risk_flags,
+                    quality_score=quality_score,
+                    quality_level=quality_level,  # type: ignore[arg-type]
+                    suggested_action=suggested_action,  # type: ignore[arg-type]
                 )
             )
 
     completed_at = datetime.now(UTC).isoformat()
     pii_detected_count = sum(1 for message in sanitized_messages if message.pii_detected)
+    exact_duplicate_count = sum(
+        1 for message in sanitized_messages if "exact_duplicate" in message.cleaning_issues
+    )
+    near_duplicate_count = sum(
+        1 for message in sanitized_messages if "near_duplicate" in message.cleaning_issues
+    )
+    low_quality_count = sum(
+        1
+        for message in sanitized_messages
+        if message.quality_level == "low" or "low_quality" in message.cleaning_issues
+    )
+    noise_count = sum(
+        1
+        for message in sanitized_messages
+        if any(
+            issue in message.cleaning_issues
+            for issue in ["possible_ad", "possible_noise", "off_topic"]
+        )
+    )
+    review_recommended_count = sum(
+        1 for message in sanitized_messages if message.suggested_action == "review"
+    )
+    drop_recommended_count = sum(
+        1 for message in sanitized_messages if message.suggested_action == "drop"
+    )
+    average_quality_score = round(
+        sum(message.quality_score for message in sanitized_messages) / len(sanitized_messages),
+        4,
+    ) if sanitized_messages else 0.0
     sanitized_batch = SanitizedBatch(
         batch_id=batch_id,
         source_batch_id=batch_id,
@@ -305,6 +487,13 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
         sanitized_message_count=len(sanitized_messages),
         dropped_message_count=dropped_message_count,
         pii_detected_count=pii_detected_count,
+        exact_duplicate_count=exact_duplicate_count,
+        near_duplicate_count=near_duplicate_count,
+        low_quality_count=low_quality_count,
+        noise_count=noise_count,
+        review_recommended_count=review_recommended_count,
+        drop_recommended_count=drop_recommended_count,
+        average_quality_score=average_quality_score,
         created_at=completed_at,
         messages=sanitized_messages,
     )
@@ -316,6 +505,13 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
         sanitized_message_count=len(sanitized_messages),
         dropped_message_count=dropped_message_count,
         pii_detected_count=pii_detected_count,
+        exact_duplicate_count=exact_duplicate_count,
+        near_duplicate_count=near_duplicate_count,
+        low_quality_count=low_quality_count,
+        noise_count=noise_count,
+        review_recommended_count=review_recommended_count,
+        drop_recommended_count=drop_recommended_count,
+        average_quality_score=average_quality_score,
         status="completed",
         created_at=created_at,
         completed_at=completed_at,
@@ -344,6 +540,13 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
             "sanitized_message_count": sanitized_batch.sanitized_message_count,
             "dropped_message_count": sanitized_batch.dropped_message_count,
             "pii_detected_count": sanitized_batch.pii_detected_count,
+            "exact_duplicate_count": sanitized_batch.exact_duplicate_count,
+            "near_duplicate_count": sanitized_batch.near_duplicate_count,
+            "low_quality_count": sanitized_batch.low_quality_count,
+            "noise_count": sanitized_batch.noise_count,
+            "review_recommended_count": sanitized_batch.review_recommended_count,
+            "drop_recommended_count": sanitized_batch.drop_recommended_count,
+            "average_quality_score": sanitized_batch.average_quality_score,
             "created_at": sanitized_batch.created_at,
         }
     )
@@ -454,6 +657,8 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
     messages_by_conversation: dict[str, list[SanitizedMessage]] = {}
 
     for message in sanitized.messages:
+        if message.suggested_action == "drop":
+            continue
         messages_by_conversation.setdefault(message.conversation_id, []).append(message)
 
     for conversation_id, messages in messages_by_conversation.items():
@@ -470,8 +675,22 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
             answer = answer_message.content.strip()
             if not question or not answer:
                 continue
+            if message.quality_level == "low" or answer_message.quality_level == "low":
+                continue
             intent, tags = _infer_intent(question, answer)
             candidate_id = f"kc_{uuid4().hex[:12]}"
+            message_quality = round(
+                (message.quality_score + answer_message.quality_score) / 2,
+                2,
+            )
+            candidate_quality_score = round(
+                min(_quality_score(question, answer), message_quality),
+                2,
+            )
+            candidate_cleaning_issues = sorted(
+                set(message.cleaning_issues + answer_message.cleaning_issues)
+            )
+            candidate_risk_flags = sorted(set(message.risk_flags + answer_message.risk_flags))
             candidates.append(
                 KnowledgeCandidate(
                     candidate_id=candidate_id,
@@ -486,8 +705,10 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
                     tags=tags,
                     risk_level=_risk_level(question, answer),  # type: ignore[arg-type]
                     review_status="pending_review",
-                    quality_score=_quality_score(question, answer),
+                    quality_score=candidate_quality_score,
                     extraction_method="rule_based_mock",
+                    cleaning_issues=candidate_cleaning_issues,
+                    risk_flags=candidate_risk_flags,
                     created_at=created_at,
                 )
             )

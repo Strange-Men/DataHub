@@ -1,4 +1,4 @@
-# DataHub｜面向 Agent 集群的多源数据治理与 RAG 知识中台
+﻿# DataHub｜面向 Agent 集群的多源数据治理与 RAG 知识中台
 
 English version: [README.en.md](./README.en.md)
 
@@ -8,12 +8,12 @@ English version: [README.en.md](./README.en.md)
 ![TypeScript](https://img.shields.io/badge/TypeScript-UI-3178C6)
 ![RAG](https://img.shields.io/badge/RAG-local%20mock-orange)
 ![pytest](https://img.shields.io/badge/pytest-optional-lightgrey)
-![Data Governance](https://img.shields.io/badge/Data%20Governance-P1%20complete-brightgreen)
+![Data Governance](https://img.shields.io/badge/Data%20Governance-P1--M12-blue)
 ![Agent-ready](https://img.shields.io/badge/Agent--ready-CustomerOpsAgent-brightgreen)
 
 DataHub 是一个面向 AI Agent 集群的数据资产中心。它把客服聊天记录、公开客服数据小样本、Bad Case 修正草稿、CustomerOpsAgent legacy RAG 迁移数据统一治理成 knowledge candidates，经人工审核后构建为本地 RAG chunks，并通过受限检索 API 提供给 CustomerOpsAgent。
 
-当前仓库已完成 **P1-M11 Unified DataHub RAG Release**。P1 已收版，但仍然是本地 JSON + keyword/mock retrieval，不是生产级向量数据库方案。
+当前仓库已完成 **P1-M12 Advanced Data Cleaning**。P1-M11 是 Unified DataHub RAG Release；根据高质量数据中台目标，P1 最终收版调整为 P1-M15。当前仍然是本地 JSON + keyword/mock retrieval，不是生产级向量数据库方案。
 
 ## 快速上手
 
@@ -39,7 +39,7 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 {
   "status": "ok",
   "service": "datahub-api",
-  "phase": "P1-M11"
+  "phase": "P1-M12"
 }
 ```
 
@@ -56,6 +56,20 @@ npm run dev
 ```text
 http://localhost:5173
 ```
+
+## P1-M12 高质量数据中台补强
+
+P1-M11 是 Unified DataHub RAG Release，不再作为 P1 高质量数据中台最终收版。
+P1 最终高质量数据中台收版调整为 **P1-M15 High-quality DataHub P1 Final Release**。
+
+新增 P1 后续路线：
+
+- **P1-M12 Advanced Machine Cleaning & Data Quality Scoring**：高级机器清洗、重复/近重复检测、低质量与噪声标记、PII 增强脱敏、质量评分、建议动作。
+- **P1-M13 Chinese Admin Console & Manual Cleaning Workbench**：全中文管理台、P1/P2/P3/P4 模块入口、人工清洗工作台、清洗员操作指南。
+- **P1-M14 Knowledge Review Quality Console**：中文知识审核台、审核规则、source trace、quality_score、risk_flags。
+- **P1-M15 High-quality DataHub P1 Final Release**：验证机器清洗 -> 人工清洗 -> 知识抽取 -> 人工审核 -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case 回流。
+
+当前 P1-M12 已增强机器清洗能力，DataHub 不只跑通 RAG，也能输出带 `cleaning_issues`、`risk_flags`、`quality_score`、`quality_level` 和 `suggested_action` 的治理后数据。P1-M13、P1-M14、P1-M15 仍是 roadmap，尚未实现。
 
 ## STAR 项目拆解
 

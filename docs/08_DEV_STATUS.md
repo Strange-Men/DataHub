@@ -2,11 +2,14 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. Current checkpoint: P1-M11 Unified DataHub RAG Release.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. Current checkpoint: P1-M12 Advanced Data Cleaning.
 
 Current code remains Phase 1.
 
 Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be implemented early.
+
+P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
+P1-M15 is now the planned final Phase 1 high-quality data platform release.
 
 ## Completed Through M1
 
@@ -347,6 +350,44 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 - Confirmed P1-M11 does not modify the CustomerOpsAgent repository.
 - Confirmed P1-M11 does not introduce database, ORM, embedding, vector database, real LLM, MCP, or P2/P3/P4 features.
 
+## Completed In P1-M12
+
+- Updated the Phase 1 route so P1-M11 is the unified RAG release and P1-M15 is the final high-quality DataHub release.
+- Documented P1-M12 to P1-M15:
+  - P1-M12 Advanced Machine Cleaning & Data Quality Scoring.
+  - P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
+  - P1-M14 Knowledge Review Quality Console.
+  - P1-M15 High-quality DataHub P1 Final Release.
+- Added advanced machine cleaning:
+  - exact duplicate detection
+  - near duplicate detection
+  - low-quality text detection
+  - repeated-character and symbol-noise detection
+  - possible ad/noise/off-topic flags
+  - weak question and weak answer flags
+- Enhanced PII masking:
+  - name-like text
+  - ZIP/postal code
+  - payment-like long digit sequences
+- Added sanitized message governance fields:
+  - `cleaning_issues`
+  - `risk_flags`
+  - `quality_score`
+  - `quality_level`
+  - `suggested_action`
+- Added cleaning summary metrics:
+  - `exact_duplicate_count`
+  - `near_duplicate_count`
+  - `low_quality_count`
+  - `noise_count`
+  - `review_recommended_count`
+  - `drop_recommended_count`
+  - `average_quality_score`
+- Updated extraction so messages marked `suggested_action: drop` do not become candidates.
+- Added `backend/tests/test_advanced_cleaning.py`.
+- Added `docs/18_ADVANCED_CLEANING_RULES.md`.
+- Confirmed P1-M12 does not implement the full manual cleaning frontend, P1-M14 review console, P1-M15 final release, CustomerOpsAgent repository changes, database, ORM, embedding, vector database, real LLM, MCP, or P2/P3/P4 features.
+
 ## Current Boundaries
 
 ### Current Implemented Capabilities
@@ -417,6 +458,11 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
   - unified CustomerOpsAgent retrieval contract
   - DataHub-only integration guide
   - Chinese and English release README files
+- P1-M12 advanced data cleaning:
+  - quality scoring and issue labels on sanitized messages
+  - enhanced PII masking
+  - duplicate and near-duplicate detection
+  - extraction boundary that skips drop-recommended messages
 
 ### Current Forbidden Work
 
@@ -459,15 +505,18 @@ Forbidden from prior stages remains:
 
 ## Next Allowed Stage Candidates
 
-P1 is now released at P1-M11. The next step does not need to be another code stage.
+P1-M11 is released as the unified DataHub RAG release. P1 high-quality DataHub final release is now planned for P1-M15.
 
 Allowed candidates:
 
+- P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
+- P1-M14 Knowledge Review Quality Console.
+- P1-M15 High-quality DataHub P1 Final Release.
 - Pause development for project review, resume packaging, and architecture retrospective.
-- Start P2-M1 Material Ingestion only if explicitly requested.
 
 Not allowed as the next immediate implementation stage unless explicitly approved later:
 
+- P2-M1 Material Ingestion before P1-M15 is accepted.
 - Phase 2 AI Material Center or multimodal implementation without explicit approval.
 - Phase 3 sales training export or fine-tuning dataset export.
 - Phase 4 MCP Tools or Agent cluster integration.
@@ -492,7 +541,7 @@ Still candidates:
 
 - Frontend scaffold files are present.
 - Backend scaffold files are present.
-- `/health` endpoint is defined and reports P1-M11.
+- `/health` endpoint is defined and reports P1-M12.
 - M2 JSON import endpoints are defined.
 - Raw batches are written to ignored local storage.
 - M3 cleaning endpoints are defined.
@@ -535,6 +584,8 @@ Still candidates:
 - Review-required legacy candidates remain out of RAG.
 - CustomerOpsAgent retrieval can return legacy chunks with source trace.
 - Unified release verification confirms CustomerOpsAgent retrieval can return approved `chat_logs`, `public_dataset`, `legacy_rag`, and approved `bad_case` chunks through one response shape.
+- P1-M12 advanced cleaning verification confirms sanitized messages include quality fields and summary metrics.
+- P1-M12 extraction skips messages marked `suggested_action: drop`.
 - No Bad Case automatic approval, direct existing candidate mutation, RAG chunk mutation, RAG rebuild, database, ORM, vector store, embedding model, real LLM, or multimodal workflow has been implemented.
 - Final vision is documented, but Phase 2/3/4 features have not been implemented.
 
@@ -688,6 +739,10 @@ P1:
 - `p1-m9.5-public-dataset-eval`
 - `p1-m10-legacy-rag-migration`
 - `p1-m11-unified-rag-release`
+- `p1-m12-advanced-data-cleaning`
+- `p1-m13-chinese-admin-manual-cleaning`
+- `p1-m14-knowledge-review-quality-console`
+- `p1-m15-high-quality-datahub-release`
 
 P2:
 
@@ -712,10 +767,11 @@ Continue Phase 1 only.
 
 Recommended option:
 
-- Pause feature development and use the P1-M11 release for project review / resume packaging / architecture retrospective.
+- Continue to P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
 
 Before P2 starts:
 
+- Complete P1-M13, P1-M14, and P1-M15 unless the user explicitly changes the roadmap.
 - Confirm Phase 2 material ingestion scope.
 - Confirm whether multimodal storage, OCR, Caption, and SKU binding are still only roadmap or ready to implement.
 - Confirm the next phase-prefixed tag name.

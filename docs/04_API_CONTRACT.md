@@ -13,7 +13,7 @@ Base assumptions:
 
 This document separates APIs by implementation status.
 
-Implemented APIs: M2-P1-M11
+Implemented APIs: M2-P1-M12
 
 - M2 JSON import.
 - M3 cleaning and sanitization.
@@ -29,9 +29,13 @@ Implemented APIs: M2-P1-M11
 - P1-M9.5 public dataset evaluation; no new API surface.
 - P1-M10 legacy RAG migration import APIs.
 - P1-M11 unified DataHub RAG release; no new public API surface.
+- P1-M12 advanced machine cleaning; no new public API surface, but cleaning responses and sanitized messages include additional quality and governance fields.
 
-Planned Phase 1 APIs: After P1-M11
+Planned Phase 1 APIs: After P1-M12
 
+- P1-M13 manual cleaning workbench APIs if the current sanitized batch APIs are not enough.
+- P1-M14 knowledge review quality console refinements if the current review APIs are not enough.
+- P1-M15 final high-quality DataHub release verification; no new API surface is required by default.
 - Approval and RAG rebuild for Bad Case-generated drafts through existing review/RAG steps.
 - Future production retrieval hardening beyond local JSON plus mock retrieval.
 
@@ -102,6 +106,14 @@ Important P1-M11 boundary:
 - P1-M11 still uses local JSON plus keyword/mock retrieval.
 - P1-M11 does not modify the CustomerOpsAgent repository.
 - P1-M11 does not introduce embeddings, a vector database, database, ORM, real LLM, MCP, or P2/P3/P4 features.
+
+Important P1-M12 boundary:
+
+- P1-M12 does not add a new cleaning API.
+- P1-M12 enhances `POST /api/cleaning/run/{batch_id}`, `GET /api/cleaning/jobs/{job_id}`, and `GET /api/sanitized/{batch_id}`.
+- P1-M12 keeps all existing cleaning response fields and adds machine quality fields.
+- P1-M12 advanced cleaning remains deterministic Python logic with standard library helpers only.
+- P1-M12 does not implement manual cleaning UI, production data quality services, embeddings, vector database, database, ORM, real LLM, MCP, or P2/P3/P4 features.
 
 ## 0A. Canonical State Names
 
@@ -342,6 +354,13 @@ Response:
     "sanitized_message_count": 5,
     "dropped_message_count": 1,
     "pii_detected_count": 3,
+    "exact_duplicate_count": 1,
+    "near_duplicate_count": 1,
+    "low_quality_count": 2,
+    "noise_count": 1,
+    "review_recommended_count": 2,
+    "drop_recommended_count": 1,
+    "average_quality_score": 0.82,
     "status": "completed",
     "created_at": "2026-07-03T10:10:00+00:00",
     "completed_at": "2026-07-03T10:10:00+00:00"
@@ -365,6 +384,8 @@ Cleaning rules:
 - Standardize role into `customer`, `agent`, or `system`.
 - Apply safe fallback values for missing fields.
 - Count raw, sanitized, and dropped messages.
+- P1-M12 also detects exact duplicates, near duplicates, low-quality text, possible noise, weak questions, and weak answers.
+- P1-M12 adds message-level quality scores and suggested actions for later manual cleaning.
 
 PII masking rules:
 
@@ -373,6 +394,9 @@ PII masking rules:
 - Order id -> `[ORDER_ID]`
 - Tracking id -> `[TRACKING_ID]`
 - Obvious address text -> `[ADDRESS]`
+- Name-like text -> `[NAME]`
+- Postal or ZIP code -> `[ZIP_CODE]`
+- Payment-like long digit sequence -> `[PAYMENT_SENSITIVE]`
 
 ### 3.2 Get Cleaning Job Status
 
@@ -387,6 +411,13 @@ Response fields:
 - `sanitized_message_count`
 - `dropped_message_count`
 - `pii_detected_count`
+- `exact_duplicate_count`
+- `near_duplicate_count`
+- `low_quality_count`
+- `noise_count`
+- `review_recommended_count`
+- `drop_recommended_count`
+- `average_quality_score`
 - `status`
 - `created_at`
 - `completed_at`
@@ -412,6 +443,13 @@ Response:
     "sanitized_message_count": 5,
     "dropped_message_count": 1,
     "pii_detected_count": 3,
+    "exact_duplicate_count": 1,
+    "near_duplicate_count": 1,
+    "low_quality_count": 2,
+    "noise_count": 1,
+    "review_recommended_count": 2,
+    "drop_recommended_count": 1,
+    "average_quality_score": 0.82,
     "created_at": "2026-07-03T10:10:00+00:00",
     "messages": [
       {
@@ -423,7 +461,12 @@ Response:
         "content": "Please contact me at [EMAIL] or [PHONE]. My [ORDER_ID].",
         "pii_detected": true,
         "pii_types": ["EMAIL", "PHONE", "ORDER_ID"],
-        "cleaning_notes": ["pii_masked"]
+        "cleaning_notes": ["pii_masked"],
+        "cleaning_issues": [],
+        "risk_flags": ["contains_personal_data", "contains_business_identifier"],
+        "quality_score": 0.95,
+        "quality_level": "high",
+        "suggested_action": "keep"
       }
     ]
   },
@@ -442,6 +485,20 @@ Sanitized message fields:
 - `pii_detected`
 - `pii_types`
 - `cleaning_notes`
+- `cleaning_issues`
+- `risk_flags`
+- `quality_score`
+- `quality_level`
+- `suggested_action`
+
+P1-M12 backward compatibility:
+
+- Historical sanitized messages without the new fields should be treated as:
+  - `cleaning_issues: []`
+  - `risk_flags: []`
+  - `quality_score: 1.0`
+  - `quality_level: high`
+  - `suggested_action: keep`
 
 Possible errors:
 

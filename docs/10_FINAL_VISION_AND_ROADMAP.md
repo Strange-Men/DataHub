@@ -50,11 +50,34 @@ Phase 1 proves the governed knowledge lifecycle:
 
 Current status:
 
-- Implemented through P1-M11 unified DataHub RAG release.
+- Implemented through P1-M12 advanced machine cleaning and data quality scoring.
+- P1-M11 is the unified DataHub RAG release, not the final high-quality DataHub release.
+- P1-M15 is the planned final Phase 1 high-quality data platform release.
 - Current retrieval is CustomerOpsAgent restricted local mock retrieval over approved local RAG chunks.
 - Bad Case feedback and Bad Case to `pending_review` draft creation are implemented.
 - Public dataset evaluation and legacy RAG migration are implemented in P1.
 - Phase 2, Phase 3, and Phase 4 remain roadmap only.
+
+Phase 1 high-quality extension route:
+
+- P1-M12: Advanced Machine Cleaning & Data Quality Scoring.
+  - Detect exact duplicates and near duplicates.
+  - Detect low-quality text, possible noise, weak questions, and weak answers.
+  - Improve PII masking.
+  - Add quality score, quality level, risk flags, and suggested action for each sanitized message.
+- P1-M13: Chinese Admin Console & Manual Cleaning Workbench.
+  - Full Chinese admin experience.
+  - P1/P2/P3/P4 module entry reservation.
+  - Raw versus sanitized comparison.
+  - Manual sanitized content correction, keep/drop/review decisions, and cleaning notes.
+- P1-M14: Knowledge Review Quality Console.
+  - Chinese candidate review workbench.
+  - Candidate editing, approve, reject, and needs_revision.
+  - Source trace, quality_score, cleaning_issues, and risk_flags.
+  - Reviewer standards for FAQ, standard answer, business rule, human handoff rule, and forbidden answer rule.
+- P1-M15: High-quality DataHub P1 Final Release.
+  - Validate machine cleaning -> manual cleaning -> extraction -> human review -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case feedback.
+  - Publish the final P1 high-quality DataHub acceptance report.
 
 ### Phase 2: AI Material Center And Multimodal Knowledge
 
@@ -153,6 +176,19 @@ Current code development still only implements Phase 1.
 
 Phase 2, Phase 3, and Phase 4 are formal product roadmap phases, but they must not be implemented early.
 
+## 2A. Frontend Product Principles For P1-M13 And Later
+
+- The frontend should become Chinese-first.
+- The frontend should reserve entries and cards for the P1/P2/P3/P4 final product structure.
+- Backend capabilities are still connected stage by stage.
+- Unimplemented modules must be clearly marked as Roadmap / Not Connected.
+- The frontend must not falsely show P2/P3/P4 features as completed.
+- Before future frontend development, read and follow:
+
+```text
+C:\Users\16432\Desktop\AI_workflow\前端工作流.md
+```
+
 Current forbidden work remains:
 
 - No full multimodal implementation.
@@ -226,7 +262,7 @@ Designed and implemented a DataHub data asset center for cross-border e-commerce
 
 Important wording rules:
 
-- Current completed work should be described as Phase 1 text customer service knowledge governance through P1-M11 unified DataHub RAG release.
+- Current completed work should be described as Phase 1 text customer service knowledge governance through P1-M12 advanced data cleaning. P1-M11 remains the unified DataHub RAG release milestone, and P1-M15 is the planned high-quality DataHub P1 final release.
 - CustomerOpsAgent restricted retrieval is implemented locally from M7 onward.
 - Bad Case feedback is implemented from M8 onward.
 - Bad Case to pending-review draft creation is implemented from M8.5 onward.

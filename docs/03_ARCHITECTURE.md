@@ -113,6 +113,28 @@ Current Phase 1 modules already started or implemented locally:
 - P1-M9.5 Public Dataset Evaluation.
 - P1-M10 Legacy RAG Migration.
 - P1-M11 Unified DataHub RAG Release.
+- P1-M12 Advanced Machine Cleaning & Data Quality Scoring.
+
+Planned Phase 1 high-quality data platform extensions:
+
+- P1-M13 Chinese Admin Console & Manual Cleaning Workbench.
+- P1-M14 Knowledge Review Quality Console.
+- P1-M15 High-quality DataHub P1 Final Release.
+
+P1-M11 is the unified local RAG release. It is not the final high-quality DataHub release.
+P1-M15 is the planned final Phase 1 high-quality data platform checkpoint.
+
+P1-M12 adds a quality layer inside the Cleaning & Sanitization Module:
+
+```text
+raw messages
+-> deterministic machine cleaning
+-> PII masking
+-> duplicate / near-duplicate detection
+-> low-quality and noise flags
+-> quality_score / quality_level / suggested_action
+-> sanitized messages for extraction and later manual cleaning
+```
 
 Future modules not implemented yet:
 

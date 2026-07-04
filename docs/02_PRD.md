@@ -71,7 +71,7 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Provide CustomerOpsAgent retrieval.
 - Receive Bad Cases and feed corrections back into the knowledge workflow.
 
-### Currently Implemented Through P1-M11
+### Currently Implemented Through P1-M12
 
 - JSON customer service chat import.
 - Local raw batch storage.
@@ -100,16 +100,47 @@ This PRD describes the Phase 1 target scope, not only the currently completed im
 - Unified DataHub RAG release across approved `chat_logs`, `public_dataset`, `bad_case`, and `legacy_rag` sources.
 - CustomerOpsAgent DataHub-only integration guide and locked retrieval contract.
 - Chinese and English P1-M11 release README files.
+- P1-M12 advanced machine cleaning and data quality scoring.
+- Message-level `cleaning_issues`, `risk_flags`, `quality_score`, `quality_level`, and `suggested_action`.
+- Enhanced duplicate, near-duplicate, low-quality, noise, and PII risk detection.
+- Extraction skips sanitized messages marked `suggested_action: drop`.
 
 ### Pending In Phase 1
 
 - CSV import.
 - Manual text paste import.
-- More complete deduplication.
+- Manual cleaning workbench for reviewing and correcting sanitized data.
+- Chinese knowledge review quality console and reviewer rules.
 - Separate approved knowledge or knowledge asset version management.
 - Approval of Bad Case-generated drafts through the normal M5 review workflow.
 - RAG rebuild after approved Bad Case-generated drafts.
 - Production retrieval/indexing beyond local mock RAG chunks.
+
+### Phase 1 High-Quality DataHub Extension: P1-M12 To P1-M15
+
+P1-M11 is the unified DataHub RAG release, not the final high-quality DataHub release.
+The Phase 1 final high-quality data platform release is now planned as P1-M15.
+
+- P1-M12: Advanced Machine Cleaning & Data Quality Scoring.
+  - Enhance machine cleaning.
+  - Add data quality scores.
+  - Mark duplicates, low-quality content, possible noise, and privacy risk.
+  - Provide issue tags and suggested actions for the later manual cleaning workbench.
+- P1-M13: Chinese Admin Console & Manual Cleaning Workbench.
+  - Make the frontend Chinese-first.
+  - Add a Chinese dashboard and reserved P1/P2/P3/P4 module cards.
+  - Support raw versus sanitized comparison, manual sanitized content correction, keep/drop/review decisions, and cleaning notes.
+  - Add a cleaner operation guide.
+- P1-M14: Knowledge Review Quality Console.
+  - Improve the Chinese review workbench.
+  - Support candidate editing, approve, reject, and needs_revision operations with clearer rules.
+  - Show source trace, quality_score, and risk_flags.
+  - Add reviewer rules for FAQ, standard answers, business rules, human handoff rules, and forbidden answer rules.
+- P1-M15: High-quality DataHub P1 Final Release.
+  - Validate the full high-quality loop:
+    machine cleaning -> manual cleaning -> extraction -> human review -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case feedback.
+  - Publish the final P1 high-quality DataHub acceptance report.
+  - Prepare the boundary for Phase 2 multimodal material ingestion.
 
 ### Phase 1: Text Customer Service Knowledge Loop
 

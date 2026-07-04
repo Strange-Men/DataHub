@@ -95,6 +95,10 @@ P1:
 - `p1-m9.5-public-dataset-eval`
 - `p1-m10-legacy-rag-migration`
 - `p1-m11-unified-rag-release`
+- `p1-m12-advanced-data-cleaning`
+- `p1-m13-chinese-admin-manual-cleaning`
+- `p1-m14-knowledge-review-quality-console`
+- `p1-m15-high-quality-datahub-release`
 
 P2:
 
@@ -682,3 +686,62 @@ P1-M11 is complete when:
 - `backend/storage/` remains ignored by Git.
 - New tag uses the phase-prefixed name `p1-m11-unified-rag-release`.
 - Historical tags are not moved, deleted, or renamed.
+
+## 23. P1-M12 Advanced Data Cleaning Check
+
+P1-M12 is complete when:
+
+- `/health` reports `phase: P1-M12`.
+- The P1-M12 to P1-M15 roadmap is documented in README and core docs.
+- P1-M11 is described as the unified RAG release, not the final high-quality DataHub release.
+- P1-M15 is described as the final Phase 1 high-quality data platform release.
+- Cleaning keeps all existing M3 fields and adds:
+  - `exact_duplicate_count`
+  - `near_duplicate_count`
+  - `low_quality_count`
+  - `noise_count`
+  - `review_recommended_count`
+  - `drop_recommended_count`
+  - `average_quality_score`
+- Sanitized messages include:
+  - `cleaning_issues`
+  - `risk_flags`
+  - `quality_score`
+  - `quality_level`
+  - `suggested_action`
+- PII masking covers email, phone, order id, tracking id, address, name-like text, ZIP/postal code, and payment-like long digit strings.
+- Extraction skips messages with `suggested_action: drop`.
+- `backend/tests/test_advanced_cleaning.py` exists and passes.
+- Existing P1 tests still pass.
+- `docs/18_ADVANCED_CLEANING_RULES.md` exists.
+- No full manual cleaning frontend, P1-M14 review console, P1-M15 final release, P2/P3/P4, database, ORM, vector database, embedding model, real LLM, MCP, or CustomerOpsAgent repository change is introduced.
+- New tag uses the phase-prefixed name `p1-m12-advanced-data-cleaning`.
+- Historical tags are not moved, deleted, or renamed.
+
+## 24. P1-M13 Chinese Admin Console & Manual Cleaning Workbench Outline
+
+P1-M13 must not start unless explicitly requested.
+
+- Read and follow `C:\Users\16432\Desktop\AI_workflow\前端工作流.md` before frontend implementation.
+- Frontend is Chinese-first.
+- Dashboard reserves P1/P2/P3/P4 module entries.
+- Unimplemented modules are clearly marked as Roadmap / Not Connected.
+- Manual cleaning workbench supports raw versus sanitized comparison.
+- Operators can correct sanitized content, mark keep/drop/review, and write cleaning notes.
+
+## 25. P1-M14 Knowledge Review Quality Console Outline
+
+P1-M14 must not start unless explicitly requested.
+
+- Chinese knowledge review workbench supports candidate editing, approve, reject, and needs_revision.
+- Review UI displays source trace, quality_score, cleaning_issues, and risk_flags.
+- Reviewer guide defines standards for FAQ, standard answers, business rules, human handoff rules, and forbidden answer rules.
+
+## 26. P1-M15 High-quality DataHub P1 Final Release Outline
+
+P1-M15 must not start unless explicitly requested.
+
+- Validate the high-quality loop:
+  machine cleaning -> manual cleaning -> extraction -> human review -> unified RAG -> CustomerOpsAgent retrieval -> Bad Case feedback.
+- Publish the final P1 high-quality DataHub acceptance report.
+- P2 multimodal material ingestion remains out of scope unless explicitly started after P1-M15.
