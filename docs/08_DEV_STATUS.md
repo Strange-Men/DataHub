@@ -1283,22 +1283,53 @@ This is a global frontend visual system polish only. No business logic, database
 - Confirmed no real LLM, embedding, vector database, MCP, or CustomerOpsAgent repository change.
 - Confirmed no tag was created (commit only).
 
+## Completed In P1-M20.7
+
+- Added `scripts/run_p1_pipeline_harness.py` — one-command P1 full-chain verification.
+- Added `scripts/check_pgvector_support.py` — pgvector extension availability check.
+- Added `backend/tests/test_p1_pipeline_harness_script.py` — 24 harness logic tests.
+- Harness covers 10 steps: health_check → import → machine_cleaning → manual_cleaning → generate_candidates → approve_knowledge → sync_rag → customerops_retrieve → submit_bad_case → bad_case_to_draft.
+- Online harness run: **10/10 PASS** (Render backend, PostgreSQL).
+- pgvector check: DATABASE_URL not available locally (SKIP); must be verified on Render.
+- No pipeline trace tables added.
+- No business API or database schema changes.
+- No tag created (commit only).
+
+### P1-M20.7 Boundaries
+
+This is a harness and readiness check checkpoint only. No real RAG, embedding, or pgvector implementation was done.
+
+- Confirmed no pipeline_runs/steps/events tables.
+- Confirmed no business API changes.
+- Confirmed no database schema changes.
+- Confirmed no embedding, pgvector table, or real RAG implementation.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+- Confirmed no tag was created (commit only).
+
+### Harness Usage
+
+```powershell
+# Local
+python scripts/run_p1_pipeline_harness.py --base-url http://127.0.0.1:8000 --verbose
+
+# Online
+python scripts/run_p1_pipeline_harness.py --base-url https://datahub-jr8x.onrender.com --verbose --stop-on-fail
+
+# pgvector check
+python scripts/check_pgvector_support.py
+# or
+python scripts/run_p1_pipeline_harness.py --check-pgvector
+```
+
+### pgvector Availability Status
+
+- Local: SKIP (DATABASE_URL not set) — must verify on Render.
+- Render: TODO — run `SELECT * FROM pg_available_extensions WHERE name = 'vector';` on Render PostgreSQL.
+- If pgvector is NOT available, P1-M21 is BLOCKED until resolved.
+
 ## Next Suggested Stage
 
-P1 数据库持久化版 smoke test 已通过，前端视觉系统已统一。
-
-**下一阶段不是 P2，而是 P1-M20.7 Lightweight Pipeline Harness + RAG Readiness Check。**
-
-P1 还不能最终收版。当前 RAG 仍是 keyword/overlap mock retrieval，不是真正的语义 RAG 知识库。P1 最终目标必须包含 pgvector + embedding + CustomerOpsAgent 语义检索闭环。
-
-后续路线详见 `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`：
-
-```
-P1-M20.7  Lightweight Pipeline Harness + RAG Readiness Check
-P1-M21    Vector RAG Foundation + Eval Set
-P1-M22    Approved Knowledge Sync to Vector RAG
-P1-M23    CustomerOpsAgent Semantic Retrieval
-P1-M24    Real RAG Online Smoke Test + P1 Release Readiness
-```
+**P1-M21 Vector RAG Foundation + Eval Set** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
 
 P2 不应在 P1 真实 RAG 闭环完成前启动。

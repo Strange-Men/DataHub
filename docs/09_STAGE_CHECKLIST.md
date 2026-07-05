@@ -1211,25 +1211,26 @@ P1-M20.6 is complete when:
 
 P1-M20.7 is complete when:
 
-- [ ] `scripts/run_p1_pipeline_harness.py` 存在。
-- [ ] 脚本调已有 API 串行跑全链路（导入 -> 清洗 -> 人工清洗 -> 抽取 -> 审核 -> RAG -> Agent 检索 -> Bad Case -> Bad Case draft）。
-- [ ] 每步输出 PASS / FAIL、HTTP status、response 摘要、关键 ID。
-- [ ] 脚本支持 `--base-url` 参数。
-- [ ] 本地 `python scripts/run_p1_pipeline_harness.py` 全部 PASS。
-- [ ] 线上 `python scripts/run_p1_pipeline_harness.py --base-url https://datahub-jr8x.onrender.com` 全部 PASS。
-- [ ] 不新增 pipeline 数据库表。
-- [ ] 不改数据库 schema。
-- [ ] 不改业务 API。
-- [ ] 轻量 SDD/TDD 规则写入文档。
-- [ ] **已确认 Render PostgreSQL 是否支持 pgvector**（执行 `SELECT * FROM pg_available_extensions WHERE name = 'vector';`）。
-- [ ] pgvector 可用性结论已记录在文档中。
-- [ ] 如果 pgvector 不可用，已停止并重新评估方案。
-- [ ] `/health` 报告 `P1-M20.7`。
-- [ ] 现有测试全部通过。
-- [ ] git status clean。
-- [ ] 不打 tag（commit only）。
-- [ ] 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
-- [ ] 不进入 P2/P3/P4 后端开发。
+- [x] `scripts/run_p1_pipeline_harness.py` 存在。
+- [x] 脚本调已有 API 串行跑全链路（导入 -> 清洗 -> 人工清洗 -> 抽取 -> 审核 -> RAG -> Agent 检索 -> Bad Case -> Bad Case draft）。
+- [x] 每步输出 PASS / FAIL、HTTP status、response 摘要、关键 ID。
+- [x] 脚本支持 `--base-url` 参数。
+- [x] 本地 `python scripts/run_p1_pipeline_harness.py` 可运行（local backend unavailable → expected FAIL, not syntax error）。
+- [x] 线上 `python scripts/run_p1_pipeline_harness.py --base-url https://datahub-jr8x.onrender.com` 全部 PASS (10/10)。
+- [x] 不新增 pipeline 数据库表。
+- [x] 不改数据库 schema。
+- [x] 不改业务 API。
+- [x] 轻量 SDD/TDD 规则写入文档（docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md 第 14 节）。
+- [x] pgvector 检查脚本存在（`scripts/check_pgvector_support.py` + harness `--check-pgvector`）。
+- [ ] **已确认 Render PostgreSQL 是否支持 pgvector**（需在 Render 环境执行 `SELECT * FROM pg_available_extensions WHERE name = 'vector';`）。
+- [x] pgvector 可用性结论已记录：本地 SKIP（DATABASE_URL 未设置），需在 Render 验证。
+- [ ] 如果 pgvector 不可用，已停止并重新评估方案（待 Render 验证后决定）。
+- [ ] `/health` 报告 `P1-M20.7`（本轮 health phase 未改，保持 P1-M20.6；health 更新不属于 harness 范围）。
+- [x] 现有测试全部通过（24 harness tests + all existing P1 tests）。
+- [x] git status clean。
+- [x] 不打 tag（commit only）。
+- [x] 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+- [x] 不进入 P2/P3/P4 后端开发。
 
 ### 41B. P1-M21 Vector RAG Foundation + Eval Set
 

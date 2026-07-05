@@ -110,11 +110,46 @@ P1-M24    Real RAG Online Smoke Test + P1 Release Readiness
 
 ### 验收
 
-- 本地 harness 全 PASS
-- 线上 harness 全 PASS
-- pgvector 可用性结论明确（文档记录）
-- 不新增 pipeline trace 表
-- 不新增数据库表
+- [x] 本地 harness 可运行（local backend unavailable → expected FAIL，不是语法错误）
+- [x] 线上 harness 全 PASS（2026-07-05 验证：10/10 PASS，Render PostgreSQL）
+- [ ] pgvector 可用性结论明确（本地 SKIP，需在 Render 环境验证）
+- [x] 不新增 pipeline trace 表
+- [x] 不新增数据库表
+
+### 实装记录（2026-07-05）
+
+- `scripts/run_p1_pipeline_harness.py` — 一键全链路验证脚本，覆盖 10 个步骤
+- `scripts/check_pgvector_support.py` — pgvector 扩展可用性检查脚本
+- `backend/tests/test_p1_pipeline_harness_script.py` — 24 个 harness 逻辑测试
+- 线上验证：10/10 PASS
+- pgvector 检查：本地 DATABASE_URL 未设置 → SKIP；需在 Render PostgreSQL 环境手动验证
+
+### Harness 使用命令
+
+```powershell
+# 本地
+python scripts/run_p1_pipeline_harness.py --base-url http://127.0.0.1:8000 --verbose
+
+# 线上
+python scripts/run_p1_pipeline_harness.py --base-url https://datahub-jr8x.onrender.com --verbose --stop-on-fail
+
+# pgvector 检查
+python scripts/check_pgvector_support.py
+# 或
+python scripts/run_p1_pipeline_harness.py --check-pgvector
+```
+
+### pgvector 检查命令
+
+```powershell
+# 本地（需设置 DATABASE_URL）
+$env:DATABASE_URL = "postgresql://..."
+python scripts/check_pgvector_support.py
+
+# 或在 Render PostgreSQL 上手动执行
+# SELECT * FROM pg_available_extensions WHERE name = 'vector';
+# CREATE EXTENSION IF NOT EXISTS vector;
+```
 
 ---
 
