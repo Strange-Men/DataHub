@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import struct
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -70,8 +71,17 @@ class MockEmbeddingProvider(EmbeddingProvider):
     Same text always produces the same vector — useful for reproducible tests.
 
     Does NOT depend on any external API or network.
-    Uses SHA-256 hash of the input text to seed a deterministic
-    pseudo-random projection onto the unit hypersphere.
+
+    P1-M23.1: Uses a bag-of-words token-based approach.
+    Each alphanumeric token is independently hashed to a deterministic
+    vector; the text's embedding is the sum of all token vectors,
+    L2-normalized.  This gives:
+      - same text → same vector (deterministic, testable)
+      - texts sharing words → non-zero cosine similarity (keyword-aware)
+      - texts with no shared words → near-zero cosine similarity
+
+    This is NOT a semantic embedding — it only captures lexical overlap.
+    Real semantic retrieval requires a real embedding provider (OpenAI, etc.).
     """
 
     def __init__(self, dimension: int = 1536) -> None:
@@ -89,37 +99,52 @@ class MockEmbeddingProvider(EmbeddingProvider):
     def model_name(self) -> str:
         return "mock-deterministic"
 
-    def embed(self, text: str) -> list[float]:
-        """Return a deterministic mock embedding for the given text.
-
-        The algorithm:
-        1. Hash the UTF-8 bytes of `text` with SHA-256.
-        2. Use chunks of the hash as seeds for a simple pseudo-random sequence.
-        3. Normalize the resulting vector to unit length (cosine-ready).
-
-        Same text → same vector, every time.
-        """
-        if not text:
-            # Empty text gets a zero vector
-            return [0.0] * self._dimension
-
-        hash_bytes = hashlib.sha256(text.encode("utf-8")).digest()
-
-        # Generate `dimension` float values from the hash bytes
+    def _token_vector(self, token: str) -> list[float]:
+        """Generate a deterministic unit vector for a single token."""
+        hash_bytes = hashlib.sha256(token.encode("utf-8")).digest()
         values = []
         for i in range(self._dimension):
-            # Use 4 bytes of the hash (cycling) to create a float in [-1, 1]
             byte_idx = (i * 4) % len(hash_bytes)
             chunk = hash_bytes[byte_idx:byte_idx + 4]
             if len(chunk) < 4:
                 chunk = chunk + hash_bytes[:4 - len(chunk)]
-            # Interpret 4 bytes as a signed 32-bit integer
             raw = struct.unpack(">i", chunk)[0]
-            # Normalize to [-1, 1]
-            normalized = raw / 2147483648.0  # 2^31
-            values.append(normalized)
+            values.append(raw / 2147483648.0)
+        # L2 normalize token vector
+        norm_sq = sum(v * v for v in values)
+        if norm_sq > 0:
+            norm = norm_sq ** 0.5
+            values = [v / norm for v in values]
+        return values
 
-        # L2 normalize to unit vector
+    def embed(self, text: str) -> list[float]:
+        """Return a deterministic, keyword-aware mock embedding.
+
+        Algorithm (P1-M23.1):
+        1. Tokenize text into lowercase alphanumeric words.
+        2. Generate a deterministic unit vector for each unique token.
+        3. Sum all token vectors (bag-of-words).
+        4. L2-normalize the sum to unit length.
+
+        Same text → same vector.
+        Texts sharing words → non-zero cosine similarity.
+        """
+        if not text:
+            return [0.0] * self._dimension
+
+        # Tokenize: extract alphanumeric word tokens, lowercase, deduplicate
+        tokens = list(set(re.findall(r"[a-zA-Z0-9]+", text.lower())))
+        if not tokens:
+            return [0.0] * self._dimension
+
+        # Sum token vectors
+        values = [0.0] * self._dimension
+        for token in tokens:
+            tv = self._token_vector(token)
+            for i in range(self._dimension):
+                values[i] += tv[i]
+
+        # L2 normalize the summed vector
         norm_sq = sum(v * v for v in values)
         if norm_sq > 0:
             norm = norm_sq ** 0.5
@@ -266,7 +291,7 @@ def get_embedding_provider(
     - EMBEDDING_API_KEY   → api_key
     - EMBEDDING_DIMENSION → dimension
 
-    Default: MockEmbeddingProvider(dimension=64).
+    Default: MockEmbeddingProvider(dimension=1536).
     """
     provider = provider or os.getenv("EMBEDDING_PROVIDER", "mock").strip().lower()
     model = model or os.getenv("EMBEDDING_MODEL", "mock-deterministic").strip()

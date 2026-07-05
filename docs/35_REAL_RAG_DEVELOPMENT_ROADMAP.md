@@ -548,6 +548,76 @@ CustomerOpsAgent 真正调用语义 RAG 知识库。
 
 ---
 
+## 8A. P1-M23.1：Semantic Retrieval Quality Diagnosis & Eval Calibration
+
+### 目标
+
+诊断 P1-M23 语义检索已接入但 recall@5 偏低的问题，校准 eval set，优化最小必要逻辑。
+
+### M23 初始线上 eval 结果（2026-07-05）
+
+| 指标 | 值 |
+|------|-----|
+| **recall@5 (avg)** | 0.1389 |
+| **keyword_hit_rate@5** | 0.3333 |
+| **semantic_mode_count** | 12/12 |
+| **fallback_count** | 0 |
+| **avg_top1_score** | ~0.3 (volatile) |
+| **avg_top5_score** | ~0.1 (volatile) |
+
+### 低分根因分析
+
+1. **Mock embedding 语义能力为零**（主要根因）：P1-M23 的 `MockEmbeddingProvider` 使用 SHA-256 全文哈希，两条不同文本产生完全无关的向量。`cosine("return item", "get refund") ≈ 0`。这导致 semantic retrieval 本质上等同于随机排序。
+
+2. **Eval queries 与知识库内容严重不匹配**：eval set 询问 "warranty on electronics", "payment methods", "shipping to Germany" 等问题，但知识库只有退款/退货、订单追踪、人工升级三类知识。
+
+3. **线上知识库被 harness 测试数据污染**：多次 harness 运行产生大量 "Question: Manually verified content — harness automated cleaning." 这种无意义条目，占据大量 rag_embeddings 行。中文内容也混入英文测试环境。
+
+4. **chunk_text 质量良好但被数据污染抵消**：`_chunk_text` 格式正确（Question + Answer + Intent + Tags），但 harness manual_cleaning 步骤将 question 替换为 meaningless cleaning note。
+
+5. **expected_candidate_ids 为空**：无法计算正式的 candidate_recall@5，只能依赖 keyword proxy。
+
+### 本轮修复（P1-M23.1）
+
+1. **Mock embedding 升级为 bag-of-words token-based**：
+   - 每个字母数字 token 独立哈希生成确定性单位向量。
+   - 文本向量 = 所有 token 向量求和后 L2 归一化。
+   - 共享 token 的文本获得非零 cosine similarity。
+   - 仍保持确定性（同 text → 同 vector）。
+   - 注意：这仍只是 keyword-aware，不是语义理解。真正的语义检索需要真实 embedding provider。
+
+2. **Eval set 校准**：
+   - 重写 12 条 eval queries，匹配实际知识库内容（退款、订单追踪、人工升级）。
+   - 每个 query 的 expected_keywords 基于实际 chunk_text 中的词语。
+   - 保留同义表达 query 检验 keyword-aware 检索。
+   - 保留 bad case queries（noise / too short）。
+
+3. **Eval 脚本增强**：
+   - 分离 `keyword_hit_rate@5` 和 `candidate_recall@5` 指标。
+   - 当 expected_candidate_ids 为空时，明确说明是 keyword proxy。
+   - 新增 `missed_keywords` 输出、`avg_top1_score`、`avg_top5_score`。
+   - 新增 `low_score_queries` 列表。
+   - 新增 retrieval_mode 分布统计。
+   - Verbose 模式显示每条 query 的 top-5 匹配明细。
+
+### 新 eval 结果
+
+待 Render 部署后通过 `python scripts/run_rag_eval.py --base-url https://datahub-jr8x.onrender.com --top-k 5 --verbose` 运行获得。
+
+### M24 解锁条件
+
+- [ ] `keyword_hit_rate@5 >= 0.6`（建议阈值，表示 keyword-aware 检索已校准）
+- [ ] 线上 harness 10/10 PASS
+- [ ] retrieval_mode = customerops_vector_retrieval
+- [ ] fallback_count = 0（或明确合理原因）
+- [ ] eval 输出能解释每条 query 命中/未命中原因
+
+如果优化后仍低于阈值：
+- 不进入 M24。
+- 明确建议：P1-M24 前需要接入真实 embedding provider（OpenAI text-embedding-3-small），因为 mock embedding 无法提供语义泛化能力。
+
+---
+
 ## 9. P1-M24：Real RAG Online Smoke Test + P1 Release Readiness
 
 ### 目标

@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. Current checkpoint: P1-M23.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.1 Semantic Retrieval Quality Diagnosis & Eval Calibration completed. Current checkpoint: P1-M23.1.
 
 Current code remains Phase 1.
 
@@ -1567,16 +1567,61 @@ This is a CustomerOpsAgent semantic retrieval checkpoint. No frontend changes, n
 - Confirmed `rag_chunks` table preserved.
 - Confirmed no tag.
 
+## Completed In P1-M23.1
+
+- Diagnosed P1-M23 low recall@5 root causes:
+  1. **Mock embedding had zero semantic capability** — SHA-256 full-text hash produced unrelated vectors for semantically similar texts.
+  2. **Eval queries did not match knowledge base content** — queries asked about topics not in the DB (warranty, payment methods).
+  3. **Online knowledge base polluted by harness artifacts** — "Manually verified content" notes replaced real question text.
+  4. **expected_candidate_ids was empty** — keyword_hit_rate was the only measurable metric.
+- Improved `MockEmbeddingProvider` to use bag-of-words token-based hashing (P1-M23.1):
+  - Each alphanumeric token gets a deterministic unit vector via SHA-256 hash.
+  - Text vector = sum of token vectors, L2-normalized.
+  - Texts sharing tokens → non-zero cosine similarity (keyword-aware).
+  - Still fully deterministic (same text → same vector).
+  - This is NOT semantic — it only captures lexical overlap. Real semantics require a real embedding provider.
+- Calibrated `samples/rag_eval_queries.json`:
+  - Rewrote 12 queries to match actual harness knowledge base content (refund, order tracking, escalation).
+  - Each query's expected_keywords verified against actual chunk_text content.
+  - Retained synonym queries and bad case queries for robustness.
+- Enhanced `scripts/run_rag_eval.py`:
+  - Separated `keyword_hit_rate@5` and `candidate_recall@5` metrics.
+  - When expected_candidate_ids empty: reports "n/a (keyword proxy only)".
+  - Added `missed_keywords`, `avg_top1_score`, `avg_top5_score`, `low_score_queries` list.
+  - Added retrieval_mode distribution stats.
+  - Verbose mode shows per-result top-5 details with scores, candidate IDs, and chunk_text.
+- Updated health phase to `P1-M23.1`.
+- Updated phase assertions across all existing test files (15 files).
+- Updated `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
+- All 83 relevant tests pass.
+- Confirmed no frontend changes.
+- Confirmed no P2/P3/P4 development.
+- Confirmed keyword/JSON fallback preserved.
+- Confirmed no real LLM, no external embedding API.
+- Confirmed no tag was created (commit only).
+
+### P1-M23.1 Boundaries
+
+This is a quality diagnosis and eval calibration checkpoint. No frontend changes, no P2/P3/P4, no real LLM.
+
+- Confirmed no frontend changes.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed mock embedding remains fully deterministic (testable).
+- Confirmed keyword/JSON fallback preserved.
+- Confirmed no external API dependency added.
+- Confirmed no tag.
+
 ## Next Suggested Stage
 
 **P1-M24 Real RAG Online Smoke Test + P1 Release Readiness** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
 
-M24 is now UNLOCKED. All M23 prerequisites are satisfied:
-- ✅ CustomerOpsAgent prioritizes semantic retrieval from rag_embeddings
-- ✅ pgvector cosine similarity search working
-- ✅ Keyword fallback preserved with clear fallback_reason
+M24 prerequisites:
+- ✅ CustomerOpsAgent semantic retrieval working (vector mode)
+- ✅ pgvector cosine similarity search operational
+- ✅ Keyword fallback preserved
 - ✅ retrieval_logs record semantic metadata
-- ✅ Eval script can compute recall@5 and keyword_hit_rate@5
-- ✅ source trace preserved in response
+- ✅ Eval script calibrated and enhanced
+- ⚠️ keyword_hit_rate@5 pending online re-measurement after Render deploy
+- ⚠️ If keyword_hit_rate@5 still < 0.6: real embedding provider (OpenAI) may be required before M24
 
 P2 不应在 P1 真实 RAG 闭环完成前启动。

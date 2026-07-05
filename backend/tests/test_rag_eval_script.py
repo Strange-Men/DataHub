@@ -1,4 +1,4 @@
-"""Tests for P1-M23 RAG Eval Script (scripts/run_rag_eval.py).
+"""Tests for P1-M23.1 RAG Eval Script (scripts/run_rag_eval.py).
 
 Verifies:
 - eval script can load rag_eval_queries.json.
@@ -57,17 +57,19 @@ class RagEvalScriptTest(unittest.TestCase):
             self.assertIsInstance(eq["query"], str)
             self.assertTrue(len(eq["query"]) > 0, f"Query {i} has empty query string")
 
-    def test_03_compute_keyword_hit_rate_no_keywords(self):
-        """Empty expected_keywords should return (0, False)."""
-        from run_rag_eval import compute_keyword_hit_rate
+    def test_03_compute_keyword_match_no_keywords(self):
+        """Empty expected_keywords should return (0, 0, [], [])."""
+        from run_rag_eval import compute_keyword_match
         results = [{"chunk_text": "refund policy details", "intent": "refund", "tags": []}]
-        matched, any_hit = compute_keyword_hit_rate(results, [])
+        matched, total, matched_list, missed_list = compute_keyword_match(results, [])
         self.assertEqual(matched, 0)
-        self.assertFalse(any_hit)
+        self.assertEqual(total, 0)
+        self.assertEqual(matched_list, [])
+        self.assertEqual(missed_list, [])
 
-    def test_04_compute_keyword_hit_rate_found(self):
+    def test_04_compute_keyword_match_found(self):
         """Keywords found in chunk_text should match."""
-        from run_rag_eval import compute_keyword_hit_rate
+        from run_rag_eval import compute_keyword_match
         results = [
             {
                 "chunk_text": "You can return items within 30 days for a refund.",
@@ -76,29 +78,57 @@ class RagEvalScriptTest(unittest.TestCase):
             }
         ]
         expected = ["return", "refund", "money back"]
-        matched, any_hit = compute_keyword_hit_rate(results, expected)
-        self.assertEqual(matched, 2)  # "return" and "refund" found, "money back" not
-        self.assertTrue(any_hit)
+        matched, total, matched_list, missed_list = compute_keyword_match(results, expected)
+        self.assertEqual(matched, 2)  # "return" and "refund" found
+        self.assertEqual(total, 3)
+        self.assertEqual(set(matched_list), {"return", "refund"})
+        self.assertEqual(set(missed_list), {"money back"})
 
-    def test_05_compute_keyword_hit_rate_not_found(self):
-        """Keywords not in results should return (0, False)."""
-        from run_rag_eval import compute_keyword_hit_rate
+    def test_05_compute_keyword_match_not_found(self):
+        """Keywords not in results should return (0, total, [], all_missed)."""
+        from run_rag_eval import compute_keyword_match
         results = [{"chunk_text": "shipping options to Germany", "intent": "shipping", "tags": []}]
         expected = ["refund", "money back", "return"]
-        matched, any_hit = compute_keyword_hit_rate(results, expected)
+        matched, total, matched_list, missed_list = compute_keyword_match(results, expected)
         self.assertEqual(matched, 0)
-        self.assertFalse(any_hit)
+        self.assertEqual(total, 3)
+        self.assertEqual(set(missed_list), {"refund", "money back", "return"})
 
-    def test_06_compute_keyword_recall_at_k(self):
-        """recall@k should be fraction of keywords found."""
-        from run_rag_eval import compute_keyword_recall_at_k
+    def test_06_keyword_hit_rate_from_match(self):
+        """keyword_hit_rate = matched / total from compute_keyword_match."""
+        from run_rag_eval import compute_keyword_match
         results = [
             {"chunk_text": "refund and return policy", "intent": "refund", "tags": ["refund"]},
             {"chunk_text": "shipping options", "intent": "shipping", "tags": ["shipping"]},
         ]
         expected = ["refund", "return", "shipping", "money", "warranty"]
-        recall = compute_keyword_recall_at_k(results, expected, k=5)
-        self.assertEqual(recall, 0.6)  # refund, return, shipping found = 3/5
+        matched, total, _, _ = compute_keyword_match(results, expected)
+        hit_rate = matched / total
+        self.assertEqual(hit_rate, 0.6)  # refund, return, shipping found = 3/5
+
+    def test_06b_candidate_recall_at_k(self):
+        """candidate_recall@k should find expected_candidate_ids in results."""
+        from run_rag_eval import compute_candidate_recall_at_k
+        results = [
+            {"candidate_id": "kc_aaa", "score": 0.9},
+            {"candidate_id": "kc_bbb", "score": 0.5},
+            {"candidate_id": "kc_ccc", "score": 0.3},
+        ]
+        recall, hits, found = compute_candidate_recall_at_k(
+            results, ["kc_aaa", "kc_xxx"], k=5
+        )
+        self.assertEqual(recall, 0.5)  # 1 of 2 found
+        self.assertEqual(hits, 1)
+        self.assertEqual(found, ["kc_aaa"])
+
+    def test_06c_candidate_recall_empty_ids(self):
+        """Empty expected_candidate_ids should return (0.0, 0, [])."""
+        from run_rag_eval import compute_candidate_recall_at_k
+        results = [{"candidate_id": "kc_aaa", "score": 0.9}]
+        recall, hits, found = compute_candidate_recall_at_k(results, [], k=5)
+        self.assertEqual(recall, 0.0)
+        self.assertEqual(hits, 0)
+        self.assertEqual(found, [])
 
     def test_07_load_eval_queries_loads_all(self):
         """load_eval_queries should load all queries from a valid JSON file."""
@@ -120,11 +150,13 @@ class RagEvalScriptTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("error", result)
 
-    def test_10_keyword_recall_at_k_empty_results(self):
-        """Empty results should give recall=0."""
-        from run_rag_eval import compute_keyword_recall_at_k
-        recall = compute_keyword_recall_at_k([], ["refund", "return"], k=5)
-        self.assertEqual(recall, 0.0)
+    def test_10_keyword_match_empty_results(self):
+        """Empty results with keywords should return all missed."""
+        from run_rag_eval import compute_keyword_match
+        matched, total, matched_list, missed_list = compute_keyword_match([], ["refund", "return"])
+        self.assertEqual(matched, 0)
+        self.assertEqual(total, 2)
+        self.assertEqual(missed_list, ["refund", "return"])
 
     def test_11_intent_coverage_in_eval_set(self):
         """Eval set should cover multiple intents."""

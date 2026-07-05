@@ -665,7 +665,7 @@ class RagAgentBadCaseDbPersistenceTest(unittest.TestCase):
         resp = self.client.get("/api/health")
         self.assertEqual(resp.status_code, 200)
         health = resp.json()
-        self.assertEqual(health["phase"], "P1-M23")
+        self.assertEqual(health["phase"], "P1-M23.1")
         self.assertIn("database_status", health)
 
     # ── 16. No real PostgreSQL required ────────────────────────────

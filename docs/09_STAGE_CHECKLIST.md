@@ -1437,6 +1437,34 @@ P1-M23 is complete when:
 - [x] 不接真实 LLM
 - [x] 不打 tag
 
+### 41D2. P1-M23.1 Semantic Retrieval Quality Diagnosis & Eval Calibration
+
+P1-M23.1 is complete when:
+
+- [x] 诊断 M23 低 recall@5 根因（mock embedding 零语义能力 + eval set 不匹配 + 知识库污染）。
+- [x] MockEmbeddingProvider 升级为 bag-of-words token-based（keyword-aware，仍确定性）。
+- [x] Eval set 校准为匹配实际知识库内容（12 queries covering refund/shipping/escalation）。
+- [x] Eval 脚本增强：分离 keyword_hit_rate@5 和 candidate_recall@5；新增 missed_keywords、avg_top1_score、avg_top5_score、low_score_queries。
+- [x] 测试更新以覆盖新函数签名（compute_keyword_match, compute_candidate_recall_at_k）。
+- [x] health phase = P1-M23.1。
+- [x] 文档更新（08, 09, 35）。
+- [x] 不改前端、不进入 P2/P3/P4、不接真实 LLM、不打 tag。
+- [x] git status clean。
+
+本轮已完成 (2026-07-05)：
+
+- [x] MockEmbeddingProvider 改为 token-based bag-of-words（SHA-256 per-token + sum + L2 norm）
+- [x] `samples/rag_eval_queries.json` 校准（12 queries matching harness knowledge）
+- [x] `scripts/run_rag_eval.py` 增强版诊断输出
+- [x] `backend/tests/test_rag_eval_script.py` 更新（14 tests with new API）
+- [x] 15 个测试文件 phase 断言更新至 P1-M23.1
+- [x] 83 个相关测试通过
+- [x] 不改前端
+- [x] 不进入 P2/P3/P4
+- [x] 保留 keyword / JSON fallback
+- [x] 不接真实 LLM / external embedding API
+- [x] 不打 tag
+
 ### 41E. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness
 
 P1-M24 is complete when:

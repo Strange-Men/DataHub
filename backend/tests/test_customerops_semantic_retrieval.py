@@ -1,4 +1,4 @@
-"""Tests for P1-M23 CustomerOpsAgent Semantic Retrieval.
+"""Tests for P1-M23.1 CustomerOpsAgent Semantic Retrieval.
 
 Verifies:
 - semantic retrieval from rag_embeddings when available.
@@ -343,12 +343,12 @@ class CustomerOpsSemanticRetrievalTest(unittest.TestCase):
             self.assertIsInstance(data.get("results"), list)
 
     def test_10_health_reports_p1_m23(self):
-        """Health check should report P1-M23 phase."""
+        """Health check should report P1-M23.1 phase."""
         resp = self.client.get("/api/health")
         self.assertEqual(resp.status_code, 200)
         # health endpoint returns dict directly (not wrapped in ApiResponse)
         phase = resp.json().get("phase", "")
-        self.assertEqual(phase, "P1-M23", f"Expected P1-M23, got {phase}")
+        self.assertEqual(phase, "P1-M23.1", f"Expected P1-M23.1, got {phase}")
 
 
 if __name__ == "__main__":
