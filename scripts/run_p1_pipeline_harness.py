@@ -403,6 +403,16 @@ class PipelineHarness:
             emb_provider = data.get("embedding_provider")
             if emb_provider:
                 ids["embedding_provider"] = str(emb_provider)
+            emb_dim = data.get("embedding_dimension")
+            if emb_dim is not None:
+                ids["embedding_dimension"] = str(emb_dim)
+            # P1-M22.2: error observability
+            failed = data.get("failed_embedding_count")
+            if failed:
+                ids["failed_embedding_count"] = str(failed)
+            err = data.get("vector_sync_error")
+            if err:
+                ids["vector_sync_error"] = str(err)[:100]
             return ids
         return self._call_and_record(
             "sync_rag", "POST", "/api/rag/build",

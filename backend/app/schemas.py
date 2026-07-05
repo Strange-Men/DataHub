@@ -265,6 +265,9 @@ class RagBuildResult(BaseModel):
     embedding_dimension: int | None = None
     approved_candidate_count: int = 0
     skipped_candidate_count: int = 0
+    # P1-M22.2: error observability
+    failed_embedding_count: int = 0
+    vector_sync_error: str | None = None
 
 
 class RagSearchRequest(BaseModel):

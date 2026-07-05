@@ -43,7 +43,7 @@ class ApprovedKnowledgeVectorSyncTest(unittest.TestCase):
         os.environ["DATABASE_URL"] = f"sqlite:///{cls._db_path}"
         # Ensure mock embedding provider (no external API)
         os.environ["EMBEDDING_PROVIDER"] = "mock"
-        os.environ["EMBEDDING_DIMENSION"] = "64"
+        os.environ["EMBEDDING_DIMENSION"] = "1536"
 
         # Force re-import so the app uses the temp DB
         import importlib
@@ -172,7 +172,7 @@ class ApprovedKnowledgeVectorSyncTest(unittest.TestCase):
                        "vector_sync_enabled should be True")
         self.assertEqual(data.get("embedding_provider"), "mock")
         self.assertEqual(data.get("embedding_model"), "mock-deterministic")
-        self.assertEqual(data.get("embedding_dimension"), 64)
+        self.assertEqual(data.get("embedding_dimension"), 1536)
         self.assertGreater(data.get("approved_candidate_count", 0), 0)
 
         # Verify rag_embeddings table has rows
@@ -312,7 +312,7 @@ class ApprovedKnowledgeVectorSyncTest(unittest.TestCase):
             db.close()
 
     def test_07_embedding_dimension_matches_mock_provider(self):
-        """rag_embeddings embedding_dimension should be 64 (mock default)."""
+        """rag_embeddings embedding_dimension should match mock provider (1536)."""
         self._import_clean_extract("sync07")
         cid = self._get_first_candidate_id()
         self._approve_candidate(cid)
@@ -326,8 +326,8 @@ class ApprovedKnowledgeVectorSyncTest(unittest.TestCase):
             rows = db.query(RagEmbedding).all()
             self.assertGreater(len(rows), 0)
             for row in rows:
-                self.assertEqual(row.embedding_dimension, 64,
-                               f"Expected embedding_dimension=64, got {row.embedding_dimension}")
+                self.assertEqual(row.embedding_dimension, 1536,
+                               f"Expected embedding_dimension=1536, got {row.embedding_dimension}")
                 self.assertEqual(row.embedding_provider, "mock")
                 self.assertEqual(row.embedding_model, "mock-deterministic")
         finally:
@@ -582,7 +582,7 @@ class TestRagEmbeddingsRepositoryFunctions(unittest.TestCase):
         from app.database import SessionLocal
         from app.embedding import MockEmbeddingProvider
 
-        provider = MockEmbeddingProvider(dimension=64)
+        provider = MockEmbeddingProvider(dimension=1536)
         emb_vector = provider.embed("test chunk text for saving")
 
         embedding_data = [
@@ -635,7 +635,7 @@ class TestRagEmbeddingsRepositoryFunctions(unittest.TestCase):
         from app.database import SessionLocal
         from app.embedding import MockEmbeddingProvider
 
-        provider = MockEmbeddingProvider(dimension=64)
+        provider = MockEmbeddingProvider(dimension=1536)
         emb_vector = provider.embed("idempotent test")
 
         embedding_data = [
@@ -682,7 +682,7 @@ class TestRagEmbeddingsRepositoryFunctions(unittest.TestCase):
         from app.database import SessionLocal
         from app.embedding import MockEmbeddingProvider
 
-        provider = MockEmbeddingProvider(dimension=64)
+        provider = MockEmbeddingProvider(dimension=1536)
 
         db = SessionLocal()
         try:
@@ -752,12 +752,12 @@ class TestHealthPhaseUpdated(unittest.TestCase):
             pass
 
     def test_health_reports_p1_m22(self):
-        """Health endpoint should report phase P1-M22."""
+        """Health endpoint should report phase P1-M22.2."""
         resp = self.client.get("/health")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data.get("phase"), "P1-M22",
-                        f"Expected phase P1-M22, got {data.get('phase')}")
+        self.assertEqual(data.get("phase"), "P1-M22.2",
+                        f"Expected phase P1-M22.2, got {data.get('phase')}")
 
 
 if __name__ == "__main__":

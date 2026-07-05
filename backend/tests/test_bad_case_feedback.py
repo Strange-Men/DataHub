@@ -135,7 +135,7 @@ class BadCaseFeedbackTest(unittest.TestCase):
     def test_bad_case_feedback_queue_does_not_mutate_knowledge_or_rag(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M22")
+        self.assertEqual(health.json()["phase"], "P1-M22.2")
 
         retrieval_id, linked_chunk_ids = self._create_retrieval()
         payload = self._valid_bad_case_payload(retrieval_id)

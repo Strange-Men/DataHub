@@ -8,7 +8,7 @@ Configuration (environment variables):
 - EMBEDDING_PROVIDER  — default "mock"
 - EMBEDDING_MODEL     — default "mock-deterministic"
 - EMBEDDING_API_KEY   — optional, for real providers
-- EMBEDDING_DIMENSION — optional, default 64
+- EMBEDDING_DIMENSION — optional, default 1536
 
 Never logs or exposes API keys.
 """
@@ -74,7 +74,7 @@ class MockEmbeddingProvider(EmbeddingProvider):
     pseudo-random projection onto the unit hypersphere.
     """
 
-    def __init__(self, dimension: int = 64) -> None:
+    def __init__(self, dimension: int = 1536) -> None:
         self._dimension = dimension
 
     @property
@@ -281,7 +281,7 @@ def get_embedding_provider(
                 dimension = None
 
     if provider == "mock":
-        dim = dimension or 64
+        dim = dimension or 1536
         return MockEmbeddingProvider(dimension=dim)
 
     if provider == "openai":
@@ -299,4 +299,4 @@ def get_embedding_provider(
         f"Unknown embedding provider '{provider}'. Falling back to mock. "
         f"Set EMBEDDING_PROVIDER to 'mock' or 'openai'."
     )
-    return MockEmbeddingProvider(dimension=dimension or 64)
+    return MockEmbeddingProvider(dimension=dimension or 1536)

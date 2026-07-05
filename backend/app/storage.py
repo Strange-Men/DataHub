@@ -44,6 +44,16 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
+def _safe_error_message(exc: Exception) -> str:
+    """Return a safe error summary — never leaks DATABASE_URL or API keys."""
+    msg = str(exc)[:300]
+    # Scrub any URL-looking patterns
+    import re as _re
+    msg = _re.sub(r"postgres(?:ql)?://[^\s]+", "[REDACTED_DB_URL]", msg)
+    msg = _re.sub(r"sqlite:///[^\s]+", "[REDACTED_SQLITE_PATH]", msg)
+    return msg
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 STORAGE_DIR = BASE_DIR / "storage"
 RAW_BATCH_DIR = STORAGE_DIR / "raw_batches"
@@ -1318,7 +1328,9 @@ def build_rag_chunks() -> RagBuildResult:
 
     # ── P1-M22: Sync approved knowledge to vector RAG ──────────────────────
     embedding_count = 0
+    failed_embedding_count = 0
     vector_sync_enabled = False
+    vector_sync_error: str | None = None
     embedding_provider_name: str | None = None
     embedding_model_name: str | None = None
     embedding_dim_val: int | None = None
@@ -1400,6 +1412,7 @@ def build_rag_chunks() -> RagBuildResult:
                 )
 
             # Write to rag_embeddings table via DB (delete-rebuild strategy)
+            expected_count = len(embedding_rows)
             try:
                 db2 = SessionLocal()
                 try:
@@ -1408,10 +1421,24 @@ def build_rag_chunks() -> RagBuildResult:
                     )
                 finally:
                     db2.close()
-            except Exception:
+            except Exception as exc:
+                # P1-M22.2: do NOT silently swallow — report error
                 _logger.exception("Failed to save RAG embeddings to database")
-        except Exception:
+                failed_embedding_count = expected_count
+                vector_sync_error = _safe_error_message(exc)
+
+            # Detect partial failure: repo returned fewer rows than expected
+            if embedding_count < expected_count and failed_embedding_count == 0:
+                failed_embedding_count = expected_count - embedding_count
+                vector_sync_error = (
+                    f"Partial write: {embedding_count}/{expected_count} embeddings saved; "
+                    f"{failed_embedding_count} failed."
+                )
+        except Exception as exc:
             _logger.exception("Failed to generate RAG embeddings")
+            vector_sync_enabled = False
+            failed_embedding_count = approved_candidate_count
+            vector_sync_error = _safe_error_message(exc)
 
     return RagBuildResult(
         built_count=built_count,
@@ -1429,6 +1456,8 @@ def build_rag_chunks() -> RagBuildResult:
         embedding_dimension=embedding_dim_val,
         approved_candidate_count=approved_candidate_count,
         skipped_candidate_count=skipped_candidate_count,
+        failed_embedding_count=failed_embedding_count,
+        vector_sync_error=vector_sync_error,
     )
 
 

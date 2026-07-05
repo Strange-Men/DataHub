@@ -25,9 +25,9 @@ class TestMockEmbeddingProvider(unittest.TestCase):
     def setUp(self):
         self.provider = MockEmbeddingProvider(dimension=64)
 
-    def test_default_dimension_is_64(self):
+    def test_default_dimension_is_1536(self):
         p = MockEmbeddingProvider()
-        self.assertEqual(p.dimension, 64)
+        self.assertEqual(p.dimension, 1536)
 
     def test_custom_dimension(self):
         p = MockEmbeddingProvider(dimension=32)
@@ -124,9 +124,9 @@ class TestEmbeddingProviderFactory(unittest.TestCase):
         provider = get_embedding_provider(provider="mock")
         self.assertIsInstance(provider, MockEmbeddingProvider)
 
-    def test_default_mock_dimension_is_64(self):
+    def test_default_mock_dimension_is_1536(self):
         provider = get_embedding_provider(provider="mock")
-        self.assertEqual(provider.dimension, 64)
+        self.assertEqual(provider.dimension, 1536)
 
     def test_mock_with_custom_dimension(self):
         provider = get_embedding_provider(provider="mock", dimension=128)
