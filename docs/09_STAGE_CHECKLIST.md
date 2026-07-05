@@ -1363,6 +1363,39 @@ P1-M22.1 is complete when:
 
 **M23 未解锁** — 需要先修复 Vector 维度不匹配问题（`Vector(1536)` → 动态维度）。
 
+### 41C3. P1-M22.2 Vector Dimension Fix & Online Re-verify
+
+P1-M22.2 is complete when:
+
+- [x] 默认 mock embedding 维度 = 1536（与 pgvector Vector(1536) 对齐）。
+- [x] 显式 `dimension=64` 仍可用于本地单元测试。
+- [x] vector sync 不再静默失败：`failed_embedding_count` / `vector_sync_error` 正确返回。
+- [x] 线上 `sync_rag` `embedding_count > 0`（验证通过：9）。
+- [x] 线上 `sync_rag` `embedding_dimension = 1536`。
+- [x] 线上 `sync_rag` `vector_sync_enabled = true`。
+- [x] 线上 `sync_rag` `failed_embedding_count = 0`。
+- [x] 线上 harness 10/10 PASS。
+- [x] `/api/health` phase = P1-M22.2。
+- [x] 未修改 schema / 未做线上 migration。
+- [x] 未修改前端。
+- [x] 未进入 P2/P3/P4。
+- [x] 所有测试通过（75 tests）。
+- [x] 不打 tag（commit only）。
+- [x] git status clean。
+- [x] **M23 UNLOCKED** ✅。
+
+本轮已完成 (2026-07-05)：
+
+- [x] `MockEmbeddingProvider` 默认维度 64 → 1536
+- [x] `get_embedding_provider()` factory 默认 mock dim 1536
+- [x] `RagBuildResult` 新增 `failed_embedding_count`、`vector_sync_error`
+- [x] `build_rag_chunks()` 错误不再静默吞掉
+- [x] `_safe_error_message()` 擦除敏感信息
+- [x] harness 提取 `embedding_dimension`、`failed_embedding_count`、`vector_sync_error`
+- [x] 线上验证：embedding_count=9, vector_sync_enabled=true, embedding_dimension=1536, chunk_count=9
+- [x] chunk_count == embedding_count（9==9）
+- [x] M23 unlocked
+
 ### 41D. P1-M23 CustomerOpsAgent Semantic Retrieval
 
 P1-M23 is complete when:
