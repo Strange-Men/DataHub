@@ -1331,6 +1331,38 @@ P1-M22 is complete when:
 - [x] 不打 tag
 - [x] git status clean
 
+### 41C2. P1-M22.1 Online Vector Sync Verification
+
+P1-M22.1 is complete when:
+
+- [x] Render 已部署 M22 新代码（`/api/health` 返回 `phase=P1-M22`）。
+- [x] `/api/health` 正常（`database_status.backend=postgresql, status=ok`）。
+- [x] pgvector 正常（`pgvector_available=true, extension_create_ok=true`）。
+- [x] 线上 harness 10/10 PASS。
+- [x] `sync_rag` 返回 `vector_sync_enabled=true`（向量同步代码路径已激活）。
+- [x] `sync_rag` 返回 `embedding_provider=mock, embedding_model=mock-deterministic, embedding_dimension=64`。
+- [x] `sync_rag` 返回 `approved_candidate_count>0`（approved candidates 存在）。
+- [ ] `sync_rag` 返回 `embedding_count>0`（**BLOCKED — Vector 维度不匹配**）。
+- [x] 未泄露 DATABASE_URL / API Key。
+- [x] 未修改业务代码。
+- [x] 未修改前端。
+- [x] 未进入 P2/P3/P4。
+- [x] 不打 tag（commit only）。
+- [x] git status clean。
+
+本轮已完成 (2026-07-05)：
+
+- [x] `/api/health` 线上验证：`phase=P1-M22`, `pgvector_available=true`, `extension_create_ok=true`
+- [x] 线上 harness 10/10 PASS
+- [x] `sync_rag` 响应验证：`vector_sync_enabled=true, embedding_provider=mock, embedding_model=mock-deterministic, embedding_dimension=64, approved_candidate_count=8`
+- [ ] **`embedding_count=0` — 根因：`db_models.py` `_embedding_column()` 硬编码 `Vector(1536)`，mock provider 生成 64 维向量，pgvector 维度约束导致 insert 失败**
+- [x] 本地测试全部通过（SQLite Text fallback 无维度问题）
+- [x] 文档已更新（08_DEV_STATUS.md, 09_STAGE_CHECKLIST.md, 35_REAL_RAG_DEVELOPMENT_ROADMAP.md）
+- [x] 不打 tag
+- [x] git status clean
+
+**M23 未解锁** — 需要先修复 Vector 维度不匹配问题（`Vector(1536)` → 动态维度）。
+
 ### 41D. P1-M23 CustomerOpsAgent Semantic Retrieval
 
 P1-M23 is complete when:

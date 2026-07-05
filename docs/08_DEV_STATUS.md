@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. Current checkpoint: P1-M22.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. Current checkpoint: P1-M22.1.
 
 Current code remains Phase 1.
 
@@ -1463,8 +1463,27 @@ This is an approved knowledge to vector RAG sync checkpoint. CustomerOpsAgent se
 - Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
 - Confirmed no tag was created (commit only).
 
+## Completed In P1-M22.1
+
+- Verified Render online deployment of P1-M22 code via `/api/health` and harness.
+- `/api/health` confirms: `phase=P1-M22`, `database_status.backend=postgresql`, `pgvector_available=true`, `extension_create_ok=true`.
+- Online harness: **10/10 PASS**.
+- `sync_rag` API response confirms:
+  - `vector_sync_enabled: true` — vector sync code path is active on Render.
+  - `embedding_provider: "mock"`, `embedding_model: "mock-deterministic"`, `embedding_dimension: 64` — mock provider correctly configured.
+  - `approved_candidate_count: 8` — approved candidates exist and are counted.
+  - `embedding_count: 0` — **DB write is blocked by Vector dimension mismatch.**
+- **Root cause identified**: `db_models.py` `_embedding_column()` hardcodes `Vector(1536)` (OpenAI text-embedding-3-small dimension), but the mock provider generates 64-dimensional vectors. PostgreSQL pgvector `vector(1536)` type enforces exactly 1536 dimensions, rejecting 64-dim vectors. The `save_rag_embeddings_to_db` function catches this exception silently, resulting in `embedding_count=0`.
+- **Fix required before M23**: Change `Vector(1536)` to use dynamic dimension from `EMBEDDING_DIMENSION` env var (default 64 for mock), OR use `Vector()` without dimension constraint. Also requires altering or recreating the existing `rag_embeddings` table on Render PostgreSQL.
+- **Local tests pass**: All 18 vector sync tests pass on SQLite (Text fallback, no dimension issue).
+- **M23 not yet unlocked**: `embedding_count=0` must be resolved before CustomerOpsAgent semantic retrieval can be verified.
+- Confirmed no business code changes in this round (documentation and verification only).
+- Confirmed no tag was created (commit only).
+
 ## Next Suggested Stage
 
-**P1-M23 CustomerOpsAgent Semantic Retrieval** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
+**P1-M22 Fix: Vector dimension mismatch** — before M23 can start, the `Vector(1536)` hardcoded dimension in `db_models.py` must be fixed to match the actual embedding provider dimension, and the Render `rag_embeddings` table must be altered or recreated.
+
+Then **P1-M23 CustomerOpsAgent Semantic Retrieval** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
 
 P2 不应在 P1 真实 RAG 闭环完成前启动。

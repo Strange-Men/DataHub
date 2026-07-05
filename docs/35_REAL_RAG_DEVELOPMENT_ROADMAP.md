@@ -365,6 +365,68 @@ M22 可立即启动：Approved Knowledge Sync to Vector RAG。
 
 ---
 
+## 7A. P1-M22.1：Online Vector Sync Verification
+
+### 目标
+
+验证 Render 线上已部署 P1-M22 新代码，确认 `POST /api/rag/build` 真正执行 approved knowledge → `rag_embeddings` 向量同步。
+
+### 验证时间
+
+2026-07-05
+
+### 验证结果
+
+| 验证项 | 结果 |
+|--------|------|
+| **Render 已部署 M22 代码** | ✅ `phase=P1-M22` |
+| **database_status** | ✅ postgresql / ok |
+| **pgvector_available** | ✅ true |
+| **extension_create_ok** | ✅ true |
+| **线上 harness** | ✅ 10/10 PASS |
+| **vector_sync_enabled** | ✅ true（代码路径已激活） |
+| **embedding_provider** | ✅ mock |
+| **embedding_model** | ✅ mock-deterministic |
+| **embedding_dimension** | ✅ 64 |
+| **approved_candidate_count** | ✅ 8（approved candidates 存在） |
+| **embedding_count** | ❌ **0 — Vector 维度不匹配** |
+| **DATABASE_URL 泄露** | ✅ 无 |
+| **API Key 泄露** | ✅ 无 |
+
+### embedding_count=0 根因分析
+
+`db_models.py` 的 `_embedding_column()` 函数在 PostgreSQL + pgvector 环境下硬编码使用 `Vector(1536)`：
+
+```python
+if _HAS_PGVECTOR and _is_postgresql():
+    return Column("embedding", Vector(1536), nullable=True)
+```
+
+pgvector 的 `vector(1536)` 类型在 PostgreSQL 中**强制要求恰好 1536 维**。但默认 mock embedding provider 只生成 64 维向量。因此 `save_rag_embeddings_to_db()` 在 `db.commit()` 时因维度不匹配失败，异常被静默捕获，`embedding_count` 保持 0。
+
+本地 SQLite 测试全部通过（Text JSON fallback 无维度约束）。
+
+### 修复方案
+
+需要在下轮（M23 前或 M23 内）执行：
+
+1. 修改 `_embedding_column()` 使用动态维度：
+   ```python
+   dim = int(os.getenv("EMBEDDING_DIMENSION", "1536"))
+   return Column("embedding", Vector(dim), nullable=True)
+   ```
+   或使用 `Vector()` 无维度约束。
+
+2. 修改 Render 上已存在的 `rag_embeddings` 表：
+   - 方案 A：DROP TABLE rag_embeddings; 让 init_database_tables() 重建。
+   - 方案 B：ALTER COLUMN embedding TYPE vector;
+
+### M23 解锁条件
+
+修复后重新验证，`embedding_count > 0` 且 `embedding_count = approved_candidate_count`，M23 才能解锁。
+
+---
+
 ## 8. P1-M23：CustomerOpsAgent Semantic Retrieval
 
 ### 目标
