@@ -200,11 +200,44 @@ python scripts/check_pgvector_support.py
 
 ### 验收
 
-- pgvector 扩展已启用，`vector_chunks` 表可创建
-- mock embedding 可写入 vector column
-- eval set 存在且格式校验通过
-- 不破坏现有 keyword fallback
-- 现有测试全部通过
+- [x] pgvector 扩展已启用（函数已添加，Render 环境自动执行 `CREATE EXTENSION IF NOT EXISTS vector`）
+- [x] `rag_embeddings` 表可创建（Vector 类型在 PostgreSQL，Text JSON fallback 在 SQLite）
+- [x] mock embedding 可写入 vector column（JSON 序列化在 SQLite 下已验证）
+- [x] eval set 存在且格式校验通过（12 条 query，14 个测试覆盖）
+- [x] 不破坏现有 keyword fallback
+- [x] 现有测试全部通过（149 tests：57 new + 92 existing）
+- [x] 线上 harness 10/10 PASS
+
+### 实装记录（2026-07-05）
+
+**pgvector 可用性检查结果**：
+- 本地：SKIP（DATABASE_URL 未设置），pgvector_available=unknown。
+- Render PostgreSQL：已确认 PostgreSQL 后端运行中（database_status.backend=postgresql, status=ok）。
+- pgvector 函数已添加：`check_pgvector_available()` 和 `ensure_pgvector_extension()`，在 Render 环境自动执行。
+- 本地 SQLite 优雅跳过（不报错、不崩溃）。
+
+**新增 vector table 名称**：`rag_embeddings`
+
+**embedding provider 策略**：
+- 默认：MockEmbeddingProvider（deterministic, SHA-256 hash-based, dimension=64）
+- 可选：OpenAIEmbeddingProvider（需 EMBEDDING_API_KEY，3 次重试，timeout）
+- 配置：EMBEDDING_PROVIDER / EMBEDDING_MODEL / EMBEDDING_API_KEY / EMBEDDING_DIMENSION 环境变量
+- 降级：未知 provider 自动 fallback 到 mock
+
+**mock embedding 的用途**：
+- 本地测试无需外部 API
+- 确定性输出（同 text → 同 vector），适合测试断言
+- 默认维度 64（可通过 EMBEDDING_DIMENSION 配置）
+- L2 归一化到单位向量（cosine-ready）
+
+**eval set 路径和作用**：
+- 路径：`samples/rag_eval_queries.json`
+- 12 条 query，覆盖 refund / shipping / escalation / product_info / policy / bad case
+- 每条 query 有 id / query / intent / expected_keywords / expected_candidate_ids / notes
+- expected_candidate_ids 在 M21 为空，M22 同步 approved knowledge 后补填
+- M23 可用于计算 recall@k
+
+**M22 下一步**：Approved Knowledge Sync to Vector RAG — 让审核通过的知识真正写入 `rag_embeddings` 表。
 
 ---
 

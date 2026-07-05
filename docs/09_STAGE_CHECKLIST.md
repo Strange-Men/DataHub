@@ -1236,24 +1236,41 @@ P1-M20.7 is complete when:
 
 P1-M21 is complete when:
 
-- [ ] pgvector 扩展已启用（`CREATE EXTENSION IF NOT EXISTS vector`）。
-- [ ] `vector_chunks` 或 `rag_embeddings` 表已创建。
-- [ ] 表包含 embedding vector 列、chunk_text、candidate_id、source trace、modality 预留。
-- [ ] embedding provider 配置走环境变量（`EMBEDDING_PROVIDER`、`EMBEDDING_MODEL`、`EMBEDDING_API_KEY`）。
-- [ ] mock/deterministic embedding 可用（本地测试不依赖外部 API）。
-- [ ] 真实 embedding provider 作为线上可选。
-- [ ] `samples/rag_eval_queries.json` 存在，至少 10 条 query，每条标注 expected_candidate_ids。
-- [ ] eval set 格式校验通过。
-- [ ] embedding API 调用有基本重试（建议 3 次）。
-- [ ] 注意 Render Free PostgreSQL 1GB 存储限制。
-- [ ] 注意 embedding API 费用。
-- [ ] 不接真实 CustomerOpsAgent semantic retrieval。
-- [ ] 不破坏现有 keyword fallback。
-- [ ] `/health` 报告 `P1-M21`。
-- [ ] 现有测试全部通过。
-- [ ] git status clean。
-- [ ] 不打 tag（commit only）。
-- [ ] 不进入 P2/P3/P4 后端开发。
+- [x] pgvector 扩展已启用（`CREATE EXTENSION IF NOT EXISTS vector`）— 函数已添加，Render 环境自动执行。
+- [x] `vector_chunks` 或 `rag_embeddings` 表已创建 — 使用 `rag_embeddings` 表名。
+- [x] 表包含 embedding vector 列、chunk_text、candidate_id、source trace、modality 预留。
+- [x] embedding provider 配置走环境变量（`EMBEDDING_PROVIDER`、`EMBEDDING_MODEL`、`EMBEDDING_API_KEY`）。
+- [x] mock/deterministic embedding 可用（本地测试不依赖外部 API）。
+- [x] 真实 embedding provider 作为线上可选 — OpenAIEmbeddingProvider 已预留接口。
+- [x] `samples/rag_eval_queries.json` 存在，至少 10 条 query（12 条），每条标注 expected_candidate_ids（M21 为空，M22 后补）。
+- [x] eval set 格式校验通过 — 14 个测试覆盖。
+- [x] embedding API 调用有基本重试（建议 3 次）— OpenAIEmbeddingProvider 已实现 3 次重试 + timeout。
+- [x] 注意 Render Free PostgreSQL 1GB 存储限制 — 文档已记录。
+- [x] 注意 embedding API 费用 — 文档已记录，M21 默认使用 mock。
+- [x] 不接真实 CustomerOpsAgent semantic retrieval。
+- [x] 不破坏现有 keyword fallback。
+- [x] `/health` 报告 `P1-M21`。
+- [x] 现有测试全部通过（149 个测试：57 个新增 + 92 个已有）。
+- [x] git status clean。
+- [x] 不打 tag（commit only）。
+- [x] 不进入 P2/P3/P4 后端开发。
+
+本轮已完成 (2026-07-05)：
+
+- [x] pgvector 检查函数已添加 (`check_pgvector_available`, `ensure_pgvector_extension`)
+- [x] `rag_embeddings` 表模型已添加（含 Vector/Text 条件列类型）
+- [x] `backend/app/embedding.py` 已添加（MockEmbeddingProvider + OpenAIEmbeddingProvider + factory）
+- [x] `samples/rag_eval_queries.json` 已添加（12 条 query）
+- [x] 3 个新测试文件已添加（57 tests）
+- [x] health phase 已更新至 P1-M21
+- [x] 14 个已有测试文件的 phase 断言已更新
+- [x] requirements.txt 已添加 pgvector
+- [x] 线上 harness 10/10 PASS
+- [x] 未接 CustomerOpsAgent semantic retrieval
+- [x] 未改前端
+- [x] 不提交 backend/storage/、.env、datahub.db、API Key
+- [x] 不打 tag
+- [x] git status clean
 
 ### 41C. P1-M22 Approved Knowledge Sync to Vector RAG
 

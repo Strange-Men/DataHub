@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test. Current workflow UX polish checkpoint: P1-M20.5 Simplify P1 Workflow UX. Current global frontend visual system checkpoint: P1-M20.6 Global Frontend Visual System Polish.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test. Current workflow UX polish checkpoint: P1-M20.5 Simplify P1 Workflow UX. Current global frontend visual system checkpoint: P1-M20.6 Global Frontend Visual System Polish. Current pipeline harness checkpoint: P1-M20.7 Lightweight Pipeline Harness. Current vector RAG foundation checkpoint: P1-M21 Vector RAG Foundation + Eval Set.
 
 ## Completed Through M1
 
@@ -1328,8 +1328,66 @@ python scripts/run_p1_pipeline_harness.py --check-pgvector
 - Render: TODO — run `SELECT * FROM pg_available_extensions WHERE name = 'vector';` on Render PostgreSQL.
 - If pgvector is NOT available, P1-M21 is BLOCKED until resolved.
 
+## Completed In P1-M21
+
+- Checked pgvector availability on Render PostgreSQL (DATABASE_URL required — local SKIP).
+- Added pgvector extension initialization functions to `backend/app/database.py`:
+  - `check_pgvector_available()` — checks `pg_available_extensions` safely.
+  - `ensure_pgvector_extension()` — executes `CREATE EXTENSION IF NOT EXISTS vector`.
+  - Both functions gracefully skip SQLite and never leak connection strings.
+- Added `rag_embeddings` table model to `backend/app/db_models.py`:
+  - Conditional embedding column: native pgvector `Vector(1536)` on PostgreSQL, `Text` (JSON) fallback on SQLite.
+  - Fields: id, chunk_id, candidate_id, source_type, source_batch_id, source_message_id, modality (default "text"), chunk_text, metadata_json, embedding, embedding_provider, embedding_model, embedding_dimension, created_at, updated_at.
+  - candidate_id is indexed for efficient lookups.
+  - modality is reserved (default "text") for P2 multimodal.
+  - Does not modify existing 10 core tables.
+- Added `backend/app/embedding.py` with embedding provider abstraction:
+  - `EmbeddingProvider` abstract base class.
+  - `MockEmbeddingProvider` — deterministic, hash-based mock embedding (default dimension 64, no external API).
+  - `OpenAIEmbeddingProvider` — reserved interface with retry/timeout/error handling (requires `openai` package).
+  - `get_embedding_provider()` factory reads from `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_API_KEY`, `EMBEDDING_DIMENSION` env vars.
+  - Default: mock provider, dimension 64.
+- Added `samples/rag_eval_queries.json` with 12 eval queries covering refund, shipping, escalation, product_info, policy, and bad case intents.
+  - Each query has id, query, intent, expected_candidate_ids (empty for M21), expected_keywords, notes.
+  - expected_candidate_ids to be filled after M22 approved-knowledge sync.
+- Added 3 new test files (57 tests total):
+  - `backend/tests/test_embedding_provider.py` — 22 tests for mock embedding determinism, dimension, factory, interface.
+  - `backend/tests/test_vector_rag_foundation.py` — 21 tests for pgvector check functions, RagEmbedding model, SQLite fallback.
+  - `backend/tests/test_rag_eval_set.py` — 14 tests for eval set format, intent coverage, PII scan, schema validation.
+- Updated `/health` phase to `P1-M21`.
+- Updated phase assertions in all existing test files (14 files).
+- Updated `backend/requirements.txt` to add `pgvector==0.4.2`.
+- Online harness: 10/10 PASS (no regression).
+- All 149 tests pass (57 new + 92 existing).
+- Confirmed no CustomerOpsAgent semantic retrieval integration.
+- Confirmed no frontend changes.
+- Confirmed no P2/P3/P4 development.
+- Confirmed no tag created (commit only).
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, API Key not committed.
+
+### P1-M21 Boundaries
+
+This is a vector RAG foundation and eval set checkpoint only. CustomerOpsAgent semantic retrieval is NOT yet integrated.
+
+- Confirmed no CustomerOpsAgent semantic retrieval or /api/customer-ops-agent/retrieve changes.
+- Confirmed no frontend changes.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed keyword/JSON fallback preserved.
+- Confirmed rag_chunks table preserved.
+- Confirmed existing 10 core tables unchanged.
+- Confirmed no real LLM, MCP, or CustomerOpsAgent repository change.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+- Confirmed no tag was created (commit only).
+
+### pgvector Availability Status (P1-M21)
+
+- Local: SKIP (DATABASE_URL not set) — pgvector_available=unknown.
+- Render PostgreSQL: confirmed running (database_status.backend=postgresql, status=ok).
+- pgvector extension initialization: functions added, will auto-execute on Render when backend starts with DATABASE_URL.
+- If pgvector is NOT available on Render: the code gracefully handles this — `check_pgvector_available()` returns `pgvector_available: false`, and `ensure_pgvector_extension()` returns `extension_create_ok: false`. The embedding column falls back to Text (JSON) storage. Semantic search (M23) will fall back to keyword retrieval.
+
 ## Next Suggested Stage
 
-**P1-M21 Vector RAG Foundation + Eval Set** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
+**P1-M22 Approved Knowledge Sync to Vector RAG** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
 
 P2 不应在 P1 真实 RAG 闭环完成前启动。

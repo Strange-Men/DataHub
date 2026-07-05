@@ -121,7 +121,7 @@ class AdvancedCleaningTest(unittest.TestCase):
     def test_advanced_cleaning_flags_scores_and_extraction_boundary(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M20.6")
+        self.assertEqual(health.json()["phase"], "P1-M21")
 
         batch_id = self._import_dirty_sample()
         cleaned = self.client.post(f"/api/cleaning/run/{batch_id}")

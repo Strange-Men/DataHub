@@ -113,3 +113,82 @@ def check_database_connection() -> dict[str, object]:
     except Exception:
         result["status"] = "error"
     return result
+
+
+# ── pgvector helpers (P1-M21) ────────────────────────────────────────────────
+
+
+def check_pgvector_available() -> dict[str, object]:
+    """Check whether the pgvector extension is available on the connected database.
+
+    Safe for all backends:
+    - SQLite: returns available=false gracefully (no error).
+    - PostgreSQL without pgvector: returns available=false.
+    - PostgreSQL with pgvector: returns available=true.
+
+    Never leaks the DATABASE_URL, username, password, or host.
+    Never raises — errors are captured and returned in the dict.
+    """
+    result: dict[str, object] = {
+        "pgvector_available": False,
+        "backend": _backend_label(),
+    }
+
+    if _backend_label() != "postgresql":
+        result["pgvector_available"] = False
+        result["reason"] = "pgvector is only relevant for PostgreSQL."
+        return result
+
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(
+                text("SELECT * FROM pg_available_extensions WHERE name = 'vector';")
+            ).fetchall()
+            available = len(rows) > 0
+            result["pgvector_available"] = available
+            if available and rows:
+                row = rows[0]
+                version = row._mapping.get("default_version", "unknown")
+                result["default_version"] = str(version)
+    except Exception as exc:
+        result["pgvector_available"] = False
+        result["error"] = str(exc)[:200]
+
+    return result
+
+
+def ensure_pgvector_extension() -> dict[str, object]:
+    """Try to enable the pgvector extension on the connected database.
+
+    Safe for all backends:
+    - SQLite: skip gracefully.
+    - PostgreSQL: execute CREATE EXTENSION IF NOT EXISTS vector.
+    - Errors are captured and returned — never raised to the caller.
+
+    Returns a dict with:
+    - extension_create_ok: bool
+    - backend: str
+    - error: str (only on failure)
+
+    Never leaks the DATABASE_URL, username, password, or host.
+    """
+    result: dict[str, object] = {
+        "extension_create_ok": False,
+        "backend": _backend_label(),
+    }
+
+    if _backend_label() != "postgresql":
+        result["extension_create_ok"] = False
+        result["reason"] = "pgvector extension is only relevant for PostgreSQL."
+        return result
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
+        result["extension_create_ok"] = True
+    except Exception as exc:
+        result["extension_create_ok"] = False
+        result["error"] = str(exc)[:200]
+
+    return result

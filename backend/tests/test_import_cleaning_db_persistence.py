@@ -456,7 +456,7 @@ class ImportCleaningDbPersistenceTest(unittest.TestCase):
     def test_11_health_reports_p1_m18(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M20.6")
+        self.assertEqual(health.json()["phase"], "P1-M21")
         db_status = health.json()["database_status"]
         self.assertTrue(db_status["enabled"])
         self.assertEqual(db_status["status"], "ok")

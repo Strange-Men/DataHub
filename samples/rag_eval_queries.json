@@ -1,0 +1,98 @@
+[
+  {
+    "id": "eval_refund_001",
+    "query": "How can I return an item and get a refund?",
+    "intent": "refund",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["return", "refund", "money back"],
+    "notes": "Core refund policy query. Expected candidate IDs to be filled after M22 approved-knowledge sync."
+  },
+  {
+    "id": "eval_shipping_001",
+    "query": "What are the shipping options to Germany?",
+    "intent": "shipping",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["shipping", "Germany", "delivery", "international"],
+    "notes": "International shipping query. Tests region-specific retrieval."
+  },
+  {
+    "id": "eval_shipping_002",
+    "query": "Where is my order? I haven't received any updates.",
+    "intent": "shipping",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["order", "tracking", "status", "update"],
+    "notes": "Order tracking status query. Common customer frustration scenario."
+  },
+  {
+    "id": "eval_escalation_001",
+    "query": "I need to speak to a human agent, the chatbot isn't helping.",
+    "intent": "escalation",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["human", "agent", "escalate", "transfer", "speak to"],
+    "notes": "Escalation request. Tests handoff-related knowledge retrieval."
+  },
+  {
+    "id": "eval_product_001",
+    "query": "What is the warranty on electronics products?",
+    "intent": "product_info",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["warranty", "electronics", "coverage", "period"],
+    "notes": "Product warranty info query. Tests structured product knowledge."
+  },
+  {
+    "id": "eval_policy_001",
+    "query": "Can I cancel my order after it has been shipped?",
+    "intent": "refund",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["cancel", "order", "shipped", "policy"],
+    "notes": "Cancellation policy edge case — order already shipped."
+  },
+  {
+    "id": "eval_badcase_noise_001",
+    "query": "lol asdf random gibberish ???",
+    "intent": "general",
+    "expected_candidate_ids": [],
+    "expected_keywords": [],
+    "notes": "Bad case: noisy/low-quality input. Should return zero or very low relevance results."
+  },
+  {
+    "id": "eval_badcase_ambiguous_001",
+    "query": "help",
+    "intent": "general",
+    "expected_candidate_ids": [],
+    "expected_keywords": [],
+    "notes": "Bad case: overly short/ambiguous query. Tests retrieval robustness."
+  },
+  {
+    "id": "eval_refund_002",
+    "query": "Do I need the original packaging to return a product?",
+    "intent": "refund",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["original", "packaging", "return", "box", "condition"],
+    "notes": "Refund condition query — tests specific policy detail retrieval."
+  },
+  {
+    "id": "eval_shipping_003",
+    "query": "How long does express shipping take?",
+    "intent": "shipping",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["express", "shipping", "time", "delivery", "days"],
+    "notes": "Shipping speed query. Tests time-related knowledge retrieval."
+  },
+  {
+    "id": "eval_escalation_002",
+    "query": "My refund has been pending for 2 weeks, what should I do?",
+    "intent": "escalation",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["refund", "pending", "weeks", "delay", "escalate"],
+    "notes": "Escalation due to delayed refund. Tests compound intent (refund + escalation)."
+  },
+  {
+    "id": "eval_policy_002",
+    "query": "What payment methods do you accept?",
+    "intent": "product_info",
+    "expected_candidate_ids": [],
+    "expected_keywords": ["payment", "methods", "credit card", "paypal", "accept"],
+    "notes": "Payment policy query. Tests factual business info retrieval."
+  }
+]
