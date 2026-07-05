@@ -13,7 +13,7 @@ POST /api/customer-ops-agent/retrieve for each query, and computes:
                          (only meaningful when expected_candidate_ids is non-empty;
                           otherwise reports "n/a (keyword proxy only)")
 
-  keyword_hit_rate@5  — fraction of queries where ≥1 expected_keyword was found
+  keyword_hit_rate@5  — fraction of queries where >=1 expected_keyword was found
                          in the top-5 results (keyword-proxy metric)
 
   avg_top1_score      — average similarity score of the top-1 result
@@ -297,11 +297,11 @@ def run_eval(
     print(f"  failed_queries:            {failed}")
     print(f"  ---")
     print(f"  keyword_hit_rate@5:        {avg_kw_hit_rate:.4f}  (avg fraction of keywords found)")
-    print(f"  keyword_query_hit_rate@5:  {kw_query_hit_rate:.4f}  (fraction of queries with ≥1 keyword)")
+    print(f"  keyword_query_hit_rate@5:  {kw_query_hit_rate:.4f}  (fraction of queries with >=1 keyword)")
     if has_candidate_ids and candidate_recalls:
         print(f"  candidate_recall@5:        {avg_cand_recall:.4f}  (fraction of expected_candidate_ids found)")
     else:
-        print(f"  candidate_recall@5:        n/a (expected_candidate_ids empty — keyword proxy only)")
+        print(f"  candidate_recall@5:        n/a (expected_candidate_ids empty -- keyword proxy only)")
     print(f"  ---")
     print(f"  avg_top1_score:            {avg_top1:.4f}")
     print(f"  avg_top5_score:            {avg_topk:.4f}")
