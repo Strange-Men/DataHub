@@ -190,6 +190,10 @@ def seed_corpus(
         print(f"[FAIL] machine_cleaning: {exc}")
         return {"status": "failed", "step": "machine_cleaning", "error": str(exc)[:200]}
 
+    # Helper for PATCH requests (defined before use)
+    def _patch(path: str, json_data: dict[str, Any]) -> requests.Response:
+        return session.patch(f"{base}{path}", json=json_data, timeout=timeout)
+
     # Step 3: Manual cleaning — mark first message as keep (no content change)
     try:
         resp = _patch(
@@ -206,9 +210,6 @@ def seed_corpus(
     except Exception as exc:
         print(f"[WARN] manual_cleaning: {exc} (continuing)")
         results.append({"step": "manual_cleaning", "status": "WARN"})
-
-    def _patch(path: str, json_data: dict[str, Any]) -> requests.Response:
-        return session.patch(f"{base}{path}", json=json_data, timeout=timeout)
 
     # Step 4: Extract knowledge candidates
     try:
