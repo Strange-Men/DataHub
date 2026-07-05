@@ -213,7 +213,12 @@ def run_eval(
                   f"fallback={fallback_used}  reason={fallback_reason or '—'}  "
                   f"results={len(results)}")
             for r in results[:3]:
-                print(f"    [{r.get('score', 0):.4f}] {r.get('chunk_text', '')[:60]}...")
+                txt = str(r.get('chunk_text', '')[:60])
+                # Safely handle characters that can't be encoded in the current terminal
+                try:
+                    print(f"    [{r.get('score', 0):.4f}] {txt}...")
+                except UnicodeEncodeError:
+                    print(f"    [{r.get('score', 0):.4f}] {txt.encode('ascii', errors='replace').decode('ascii')}...")
         else:
             status = "OK" if recall5 > 0 or any_hit else "MISS"
             print(f"  -> {status}  recall@5={recall5:.3f}  mode={retrieval_mode}  "
