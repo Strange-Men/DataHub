@@ -241,6 +241,58 @@ python scripts/check_pgvector_support.py
 
 ---
 
+## 6A. P1-M21.1：pgvector Readiness Verification Gate
+
+### 目标
+
+真正确认 Render PostgreSQL 是否支持 pgvector，为 M22 解锁。
+
+### 验证方式
+
+**方式 A**：通过 Render 后端 health endpoint 间接验证。
+
+在 `backend/app/database.py` 的 `init_database_tables()` 中调用 `ensure_pgvector_extension()`，并在 `/api/health` 中暴露 `pgvector_status` 字段。
+
+验证命令：
+```bash
+curl -s https://datahub-jr8x.onrender.com/api/health
+```
+
+### 验证结果（2026-07-05）
+
+| 检查项 | 结果 |
+|--------|------|
+| **验证时间** | 2026-07-05 |
+| **DATABASE_URL 是否拿到** | 是（Render 环境变量，未在本地暴露） |
+| **database_backend** | postgresql |
+| **pgvector_available** | **true** |
+| **pgvector default_version** | 0.8.1 |
+| **extension_create_ok** | **true** |
+| **验证方式** | Render 后端 health endpoint 间接验证 |
+| **连接串是否泄露** | 否（health endpoint 不返回 DATABASE_URL） |
+| **是否允许进入 M22** | **是 ✅ — M22 已解锁** |
+
+### 结论
+
+Render PostgreSQL (Free tier) 支持 pgvector 扩展（version 0.8.1）。`CREATE EXTENSION IF NOT EXISTS vector` 执行成功。所有 M22 前置条件已满足：
+
+1. ✅ pgvector_available = true
+2. ✅ extension_create_ok = true
+3. ✅ database_backend = postgresql
+4. ✅ 验证方式、验证时间、验证结果已记录
+5. ✅ 没有泄露连接串
+
+M22 可立即启动：Approved Knowledge Sync to Vector RAG。
+
+### 实装记录（2026-07-05）
+
+- `backend/app/database.py`：`init_database_tables()` 中新增 `ensure_pgvector_extension()` 调用（safe no-op on SQLite）
+- `backend/app/main.py`：`/api/health` 新增 `pgvector_status` 字段（含 pgvector_available + extension_create_ok + backend）
+- 线上验证：`pgvector_available=true, extension_create_ok=true, backend=postgresql`
+- pgvector version: 0.8.1
+
+---
+
 ## 7. P1-M22：Approved Knowledge Sync to Vector RAG
 
 ### 目标

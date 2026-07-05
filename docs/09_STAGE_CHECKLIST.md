@@ -1272,6 +1272,30 @@ P1-M21 is complete when:
 - [x] 不打 tag
 - [x] git status clean
 
+### 41B2. P1-M21.1 pgvector Readiness Verification Gate
+
+P1-M21.1 is complete when:
+
+- [x] pgvector_available 已真实验证（`true` — Render PostgreSQL, version 0.8.1）。
+- [x] extension_create_ok 已真实验证（`true` — `CREATE EXTENSION IF NOT EXISTS vector` 成功）。
+- [x] database_backend 已确认（`postgresql`）。
+- [x] 验证方式已记录（Render 后端 health endpoint 间接验证）。
+- [x] DATABASE_URL 未泄露。
+- [x] M22 已解锁 ✅。
+- [x] 未写 M22 同步逻辑。
+- [x] 未改业务 API / schema。
+- [x] 未打 tag（commit only）。
+- [x] git status clean。
+
+本轮已完成 (2026-07-05)：
+
+- [x] `init_database_tables()` 中新增 `ensure_pgvector_extension()` 调用
+- [x] `/api/health` 新增 `pgvector_status` 字段
+- [x] 线上验证：pgvector_available=true, extension_create_ok=true, backend=postgresql
+- [x] pgvector version: 0.8.1
+- [x] 文档已更新（35_REAL_RAG_DEVELOPMENT_ROADMAP.md, 08_DEV_STATUS.md, 09_STAGE_CHECKLIST.md）
+- [x] 不提交 DATABASE_URL / .env / API Key
+
 ### 41C. P1-M22 Approved Knowledge Sync to Vector RAG
 
 P1-M22 is complete when:

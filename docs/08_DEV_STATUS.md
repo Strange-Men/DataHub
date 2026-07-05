@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test. Current workflow UX polish checkpoint: P1-M20.5 Simplify P1 Workflow UX. Current global frontend visual system checkpoint: P1-M20.6 Global Frontend Visual System Polish. Current pipeline harness checkpoint: P1-M20.7 Lightweight Pipeline Harness. Current vector RAG foundation checkpoint: P1-M21 Vector RAG Foundation + Eval Set.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test. Current workflow UX polish checkpoint: P1-M20.5 Simplify P1 Workflow UX. Current global frontend visual system checkpoint: P1-M20.6 Global Frontend Visual System Polish. Current pipeline harness checkpoint: P1-M20.7 Lightweight Pipeline Harness. Current vector RAG foundation checkpoint: P1-M21 Vector RAG Foundation + Eval Set. Current pgvector readiness gate checkpoint: P1-M21.1 pgvector Readiness Verification Gate.
 
 ## Completed Through M1
 
@@ -1385,6 +1385,33 @@ This is a vector RAG foundation and eval set checkpoint only. CustomerOpsAgent s
 - Render PostgreSQL: confirmed running (database_status.backend=postgresql, status=ok).
 - pgvector extension initialization: functions added, will auto-execute on Render when backend starts with DATABASE_URL.
 - If pgvector is NOT available on Render: the code gracefully handles this — `check_pgvector_available()` returns `pgvector_available: false`, and `ensure_pgvector_extension()` returns `extension_create_ok: false`. The embedding column falls back to Text (JSON) storage. Semantic search (M23) will fall back to keyword retrieval.
+
+## Completed In P1-M21.1
+
+- Verified pgvector readiness on Render PostgreSQL via enhanced health endpoint.
+- Added `ensure_pgvector_extension()` call to `init_database_tables()` (silent no-op on SQLite, executes `CREATE EXTENSION IF NOT EXISTS vector` on PostgreSQL).
+- Extended `/api/health` `pgvector_status` field with `pgvector_available`, `extension_create_ok`, and `backend`.
+- Online verification result (2026-07-05):
+  - **pgvector_available: true** (version 0.8.1)
+  - **extension_create_ok: true**
+  - **backend: postgresql**
+  - **M22 is UNLOCKED** ✅
+- Confirmed no DATABASE_URL leak in health response.
+- Confirmed no business API or schema changes.
+- Confirmed no M22 sync logic written.
+- Confirmed no tag created (commit only).
+
+### P1-M21.1 Boundaries
+
+This is a pgvector readiness verification gate only. No RAG sync, no schema changes, no business API changes.
+
+- Confirmed no M22 Approved Knowledge Sync logic.
+- Confirmed no CustomerOpsAgent semantic retrieval changes.
+- Confirmed no frontend changes.
+- Confirmed no new database tables or schema changes.
+- Confirmed no DATABASE_URL / .env / API Key committed.
+- Confirmed no P2/P3/P4 development.
+- Confirmed no tag.
 
 ## Next Suggested Stage
 
