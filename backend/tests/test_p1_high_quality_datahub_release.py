@@ -165,7 +165,7 @@ class P1HighQualityDataHubReleaseTest(unittest.TestCase):
     def test_p1_high_quality_datahub_release_flow(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M22.2")
+        self.assertEqual(health.json()["phase"], "P1-M23")
 
         batch_id = self._import_high_quality_sample()
         raw_path = ROOT_DIR / "backend" / "storage" / "raw_batches" / f"{batch_id}.json"
@@ -294,7 +294,12 @@ class P1HighQualityDataHubReleaseTest(unittest.TestCase):
         )
         self.assertEqual(retrieval.status_code, 200, retrieval.text)
         retrieval_data = retrieval.json()["data"]
-        self.assertEqual(retrieval_data["retrieval_mode"], "customerops_local_mock_retrieval")
+        self.assertIn(retrieval_data["retrieval_mode"], [
+            "customerops_vector_retrieval",
+            "customerops_vector_with_keyword_fallback",
+            "customerops_keyword_fallback",
+            "customerops_local_mock_retrieval",
+        ])
         matched = [
             result
             for result in retrieval_data["results"]

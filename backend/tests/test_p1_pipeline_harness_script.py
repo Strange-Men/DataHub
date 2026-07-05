@@ -73,11 +73,11 @@ class TestStepResult(unittest.TestCase):
     def test_pass_result(self):
         from run_p1_pipeline_harness import StepResult
 
-        r = StepResult("health_check", "PASS", 200, key_ids={"phase": "P1-M22.2"})
+        r = StepResult("health_check", "PASS", 200, key_ids={"phase": "P1-M23"})
         self.assertTrue(r.is_pass())
         self.assertEqual(r.status, "PASS")
         self.assertEqual(r.http_status, 200)
-        self.assertEqual(r.key_ids["phase"], "P1-M22.2")
+        self.assertEqual(r.key_ids["phase"], "P1-M23")
 
     def test_fail_result(self):
         from run_p1_pipeline_harness import StepResult

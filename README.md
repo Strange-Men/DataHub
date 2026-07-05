@@ -18,7 +18,7 @@ English version: [README.en.md](./README.en.md)
 
 > 说明：Render 免费实例可能冷启动，首次访问需等待 30-60 秒。前端通过 `VITE_API_BASE_URL` 环境变量连接后端。如果后端未连接，前端会显示友好的状态提示而非红色错误。
 
-当前线上 Demo 已支持 P1 主流程演示。P1 数据库持久化链路已完成线上 smoke test，覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。Approved knowledge can now be synced into the vector RAG table; semantic retrieval integration is planned next. 最终收版前还将补齐真实向量 RAG 与 CustomerOpsAgent 语义检索闭环。
+当前线上 Demo 已支持 P1 主流程演示。P1 数据库持久化链路已完成线上 smoke test，覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。Approved knowledge can now be synced into the vector RAG table. CustomerOpsAgent can now retrieve from the vector RAG table with keyword fallback. 最终收版前还将完成线上真实 RAG smoke test 与 P1 收版。
 
 DataHub 是一个面向 AI Agent 集群的数据资产中心，用来把客服聊天记录、历史知识库、公开评测样本、Bad Case 修正和后续多模态素材统一纳入治理流程，经过清洗、脱敏、人工修正、知识抽取、审核和 RAG 构建后，提供给 CustomerOpsAgent 等 Agent 以受限 API 调用。
 
@@ -213,7 +213,7 @@ Invoke-RestMethod `
 - 前端：React + TypeScript + Vite。
 - 后端：FastAPI + Python。
 - 当前存储：本地 JSON 文件。
-- 当前检索：本地关键词 / mock retrieval。
+- 当前检索：语义向量检索优先（pgvector cosine similarity），关键词检索为 fallback。
 - 当前测试：Python unittest + FastAPI TestClient。
 
 数据库、ORM、真实向量库、embedding、真实 LLM、生产鉴权和云部署仍保留为后续技术决策，不在当前实现中强行绑定。

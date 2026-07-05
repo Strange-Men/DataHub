@@ -327,12 +327,22 @@ class CustomerOpsRetrievalResult(RagSearchResult):
     answer: str
 
 
+CUSTOMEROPS_RETRIEVAL_MODES = Literal[
+    "customerops_vector_retrieval",
+    "customerops_vector_with_keyword_fallback",
+    "customerops_keyword_fallback",
+    "customerops_local_mock_retrieval",
+]
+
+
 class CustomerOpsRetrievalResponse(BaseModel):
     retrieval_id: str
     query: str
     top_k: int
-    retrieval_mode: Literal["customerops_local_mock_retrieval"]
+    retrieval_mode: CUSTOMEROPS_RETRIEVAL_MODES
     results: list[CustomerOpsRetrievalResult]
+    fallback_used: bool = False
+    fallback_reason: str | None = None
     created_at: str
 
 
@@ -346,7 +356,12 @@ class CustomerOpsRetrievalTrace(BaseModel):
     conversation_id: str | None = None
     agent_session_id: str | None = None
     created_at: str
-    retrieval_mode: Literal["customerops_local_mock_retrieval"]
+    retrieval_mode: CUSTOMEROPS_RETRIEVAL_MODES
+    fallback_used: bool = False
+    fallback_reason: str | None = None
+    matched_chunk_scores: list[float] = Field(default_factory=list)
+    embedding_provider: str | None = None
+    embedding_model: str | None = None
 
 
 class BadCaseSubmitRequest(BaseModel):

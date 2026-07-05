@@ -1287,3 +1287,151 @@ def _db_bad_case_to_dict(row: BadCase) -> dict[str, Any]:
         "created_at": row.created_at.isoformat() if row.created_at else "",
         "updated_at": row.updated_at.isoformat() if row.updated_at else "",
     }
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Semantic RAG embeddings search  (P1-M23)
+# ──────────────────────────────────────────────────────────────────
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two equal-length vectors.
+
+    Returns a value in [-1, 1]. Handles zero vectors gracefully.
+    """
+    if len(a) != len(b):
+        return 0.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
+def search_rag_embeddings_semantic(
+    db: Session,
+    query_embedding: list[float],
+    top_k: int = 5,
+) -> list[dict[str, Any]]:
+    """Search rag_embeddings by vector similarity.
+
+    PostgreSQL + pgvector:
+      Uses native pgvector cosine distance operator (<=>) for efficient
+      index-aware similarity search. Similarity = 1 - distance.
+
+    SQLite (no pgvector):
+      Fetches all rag_embeddings, deserializes the JSON-encoded embedding,
+      computes cosine similarity in Python, and returns top_k results.
+      This is safe for local testing but NOT efficient for production.
+
+    Returns list of dicts with keys:
+      chunk_id, candidate_id, chunk_text, similarity_score,
+      source_type, source_batch_id, source_message_id, modality,
+      metadata_json, embedding_provider, embedding_model, embedding_dimension
+
+    Returns empty list if no embeddings exist or the database backend
+    cannot perform vector search.
+    """
+    query_dim = len(query_embedding)
+    if query_dim == 0:
+        return []
+
+    from app.database import DATABASE_URL
+    from app.db_models import _HAS_PGVECTOR, _is_postgresql
+
+    is_pg = _is_postgresql() and _HAS_PGVECTOR
+
+    if is_pg:
+        # ── PostgreSQL + pgvector: native cosine distance ──────────────
+        try:
+            from sqlalchemy import text
+
+            # pgvector cosine distance operator: <=>
+            # similarity = 1 - distance
+            embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
+            sql = text("""
+                SELECT
+                    id, chunk_id, candidate_id, chunk_text,
+                    1 - (embedding <=> :query_vec) AS similarity_score,
+                    source_type, source_batch_id, source_message_id, modality,
+                    metadata_json, embedding_provider, embedding_model, embedding_dimension
+                FROM rag_embeddings
+                WHERE embedding IS NOT NULL
+                ORDER BY embedding <=> :query_vec
+                LIMIT :top_k
+            """)
+            result = db.execute(
+                sql,
+                {"query_vec": embedding_str, "top_k": top_k},
+            )
+            rows = result.fetchall()
+
+            results: list[dict[str, Any]] = []
+            for row in rows:
+                results.append({
+                    "id": row[0],
+                    "chunk_id": row[1],
+                    "candidate_id": row[2],
+                    "chunk_text": row[3],
+                    "similarity_score": round(float(row[4]), 6) if row[4] is not None else 0.0,
+                    "source_type": row[5],
+                    "source_batch_id": row[6],
+                    "source_message_id": row[7],
+                    "modality": row[8],
+                    "metadata_json": row[9] if isinstance(row[9], dict) else {},
+                    "embedding_provider": row[10],
+                    "embedding_model": row[11],
+                    "embedding_dimension": row[12],
+                })
+            return results
+        except Exception:
+            # pgvector query failed — caller should fall back to keyword
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.exception("pgvector semantic search failed, returning empty")
+            return []
+    else:
+        # ── SQLite: Python-side cosine similarity ─────────────────────
+        rows = db.query(RagEmbedding).filter(RagEmbedding.embedding.isnot(None)).all()
+        if not rows:
+            return []
+
+        scored: list[tuple[float, dict[str, Any]]] = []
+        for row in rows:
+            emb = row.embedding
+            vec: list[float] = []
+            if isinstance(emb, str):
+                try:
+                    vec = json.loads(emb)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+            elif isinstance(emb, list):
+                vec = emb
+            else:
+                continue
+
+            if len(vec) != query_dim:
+                # dimension mismatch — skip this row
+                continue
+
+            sim = _cosine_similarity(query_embedding, vec)
+            meta = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+            scored.append((sim, {
+                "id": row.id,
+                "chunk_id": row.chunk_id,
+                "candidate_id": row.candidate_id,
+                "chunk_text": row.chunk_text,
+                "similarity_score": round(sim, 6),
+                "source_type": row.source_type,
+                "source_batch_id": row.source_batch_id,
+                "source_message_id": row.source_message_id,
+                "modality": row.modality,
+                "metadata_json": meta,
+                "embedding_provider": row.embedding_provider,
+                "embedding_model": row.embedding_model,
+                "embedding_dimension": row.embedding_dimension,
+            }))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [item for _, item in scored[:top_k]]

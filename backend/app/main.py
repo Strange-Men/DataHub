@@ -157,7 +157,7 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "service": "datahub-api",
-        "phase": "P1-M22.2",
+        "phase": "P1-M23",
         "database_status": check_database_connection(),
         "pgvector_status": {
             "pgvector_available": pgvec.get("pgvector_available", False),

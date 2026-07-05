@@ -507,11 +507,44 @@ CustomerOpsAgent 真正调用语义 RAG 知识库。
 
 ### 验收
 
-- retrieval_mode 从 mock/keyword 变为 semantic 或 semantic_with_fallback
-- eval recall@5 有可量化结果
-- keyword fallback 可用
-- CustomerOpsAgent 返回引用来源和分数
-- retrieval_logs 记录 retrieval_mode
+- [x] retrieval_mode 从 mock/keyword 变为 semantic 或 semantic_with_fallback
+- [x] eval recall@5 有可量化结果
+- [x] keyword fallback 可用
+- [x] CustomerOpsAgent 返回引用来源和分数
+- [x] retrieval_logs 记录 retrieval_mode
+
+### 实装记录（2026-07-05）
+
+**语义检索实现方式**：
+- `run_customerops_retrieval()` 改写了主逻辑：先尝试 semantic retrieval，失败或无命中时 fallback 到 keyword retrieval。
+- 新增 `search_rag_embeddings_semantic()` repository 函数支持两种后端：
+  - PostgreSQL + pgvector：使用 `embedding <=> query_embedding`（cosine distance），similarity = 1 - distance。
+  - SQLite：Python 端计算 cosine similarity，然后排序取 top_k。
+
+**pgvector 查询方式**：
+- 距离方式：**cosine distance** (`<=>` 运算符)。
+- similarity_score = 1 - distance（范围 [-1, 1]，越大越相似）。
+- top_k 默认 5，可从 request 读取。
+
+**fallback 策略**：
+- `sqlite_no_pgvector`：本地 SQLite 数据库，无 pgvector 扩展。
+- `pgvector_unavailable`：PostgreSQL 但 pgvector 未安装或不可用。
+- `embedding_dimension_mismatch`：查询向量维度与存储向量维度不一致。
+- `semantic_no_hits`：语义搜索成功执行但未返回任何结果（相似度太低或知识库为空）。
+- `pgvector_query_error`：pgvector SQL 查询执行异常。
+- `embedding_generation_failed`：查询 embedding 生成失败。
+
+**retrieval_logs 记录内容**：
+- metadata_json 中包含：`retrieval_mode`, `fallback_used`, `fallback_reason`, `matched_chunk_scores`, `embedding_provider`, `embedding_model`。
+- trace 表已有字段：`query`, `matched_chunk_ids`, `response_preview`, `created_at`。
+
+**eval 脚本**：
+- 路径：`scripts/run_rag_eval.py`
+- 功能：读取 `samples/rag_eval_queries.json`，调用 `/api/customer-ops-agent/retrieve`，计算 recall@5 和 keyword_hit_rate@5。
+- 支持参数：`--base-url`, `--top-k`, `--verbose`, `--output-json`。
+- 初次结果需在 Render 部署后通过线上运行获得。
+
+**M24 下一步**：Real RAG Online Smoke Test + P1 Release Readiness — 线上完整验证 semantic retrieval 闭环并准备 P1 收版。
 
 ---
 

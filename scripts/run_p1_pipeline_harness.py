@@ -420,11 +420,27 @@ class PipelineHarness:
         )
 
     def step_customerops_retrieve(self) -> StepResult:
+        def _extract(j: dict[str, Any]) -> dict[str, str]:
+            data = j.get("data") or {}
+            ids: dict[str, str] = {
+                "retrieval_id": str(data.get("retrieval_id", "")),
+            }
+            # P1-M23: extract retrieval mode and fallback info
+            mode = data.get("retrieval_mode")
+            if mode:
+                ids["retrieval_mode"] = str(mode)
+            fb = data.get("fallback_used")
+            if fb is not None:
+                ids["fallback_used"] = str(fb)
+            reason = data.get("fallback_reason")
+            if reason:
+                ids["fallback_reason"] = str(reason)[:100]
+            return ids
         result = self._call_and_record(
             "customerops_retrieve", "POST", "/api/customer-ops-agent/retrieve",
             json_data={"query": "How do I return shoes and get a refund?", "top_k": 3},
             extra_headers={"X-DataHub-Client": "CustomerOpsAgent"},
-            key_extractor=lambda j: {"retrieval_id": str((j.get("data") or {}).get("retrieval_id", ""))},
+            key_extractor=_extract,
         )
         rid = result.key_ids.get("retrieval_id", "")
         if rid:

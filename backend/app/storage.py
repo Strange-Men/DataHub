@@ -1669,16 +1669,143 @@ def run_customerops_retrieval(
 ) -> CustomerOpsRetrievalResponse:
     created_at = datetime.now(UTC).isoformat()
     retrieval_id = f"retrieval_{uuid4().hex[:12]}"
-    results: list[CustomerOpsRetrievalResult] = []
 
-    for chunk in list_rag_chunks():
-        if not _matches_customerops_filters(chunk, payload.filters):
-            continue
-        result = _customerops_score_chunk(query, chunk)
-        if result is not None:
-            results.append(result)
+    # ── P1-M23: semantic retrieval attempt ──────────────────────────
+    retrieval_mode: str = "customerops_local_mock_retrieval"
+    fallback_used = False
+    fallback_reason: str | None = None
+    semantic_results: list[dict[str, Any]] = []
+    semantic_scores: list[float] = []
+    embedding_provider_name: str | None = None
+    embedding_model_name: str | None = None
 
-    results = sorted(results, key=lambda item: item.score, reverse=True)[:top_k]
+    # Check if we can attempt semantic retrieval
+    db = None
+    semantic_attempted = False
+    try:
+        from app.database import DATABASE_URL
+        from app.db_models import _HAS_PGVECTOR, _is_postgresql
+
+        is_pg = _is_postgresql()
+        has_pgv = _HAS_PGVECTOR
+
+        db = SessionLocal()
+        emb_provider = get_embedding_provider()
+        query_emb = emb_provider.embed(query)
+        embedding_provider_name = emb_provider.provider_name
+        embedding_model_name = emb_provider.model_name
+        query_dim = len(query_emb)
+
+        if is_pg and has_pgv:
+            # Check stored embedding dimension matches query embedding dimension
+            # by sampling one rag_embedding row
+            try:
+                from app.db_models import RagEmbedding
+                sample = db.query(RagEmbedding).filter(
+                    RagEmbedding.embedding_dimension.isnot(None)
+                ).first()
+                stored_dim = sample.embedding_dimension if sample else None
+
+                if stored_dim is not None and stored_dim != query_dim:
+                    fallback_used = True
+                    fallback_reason = f"embedding_dimension_mismatch(query={query_dim}!=stored={stored_dim})"
+                    retrieval_mode = "customerops_keyword_fallback"
+                else:
+                    # Try semantic search
+                    semantic_attempted = True
+                    semantic_results = db_repo.search_rag_embeddings_semantic(
+                        db, query_emb, top_k
+                    )
+                    if semantic_results:
+                        retrieval_mode = "customerops_vector_retrieval"
+                        semantic_scores = [
+                            r.get("similarity_score", 0.0) for r in semantic_results
+                        ]
+                    else:
+                        fallback_used = True
+                        fallback_reason = "semantic_no_hits"
+                        retrieval_mode = "customerops_vector_with_keyword_fallback"
+            except Exception as exc:
+                fallback_used = True
+                fallback_reason = f"pgvector_query_error:{_safe_error_message(exc)}"
+                retrieval_mode = "customerops_keyword_fallback"
+        else:
+            # SQLite or no pgvector — cannot do semantic
+            fallback_used = True
+            if not is_pg:
+                fallback_reason = "sqlite_no_pgvector"
+            else:
+                fallback_reason = "pgvector_unavailable"
+            retrieval_mode = "customerops_keyword_fallback"
+    except Exception as exc:
+        # Embedding generation failed
+        fallback_used = True
+        fallback_reason = f"embedding_generation_failed:{_safe_error_message(exc)}"
+        retrieval_mode = "customerops_keyword_fallback"
+    finally:
+        if db is not None:
+            try:
+                db.close()
+            except Exception:
+                pass
+
+    # ── Build results from semantic hits ────────────────────────────
+    if semantic_results and not fallback_used:
+        results: list[CustomerOpsRetrievalResult] = []
+        for hit in semantic_results:
+            meta = hit.get("metadata_json", {})
+            chunk_id_val = hit.get("chunk_id", "") or ""
+            candidate_id_val = hit.get("candidate_id", "") or ""
+            chunk_text_val = hit.get("chunk_text", "") or ""
+            source_type_val = hit.get("source_type", "sanitized_batch") or "sanitized_batch"
+            source_batch_id_val = hit.get("source_batch_id")
+            source_message_id_val = hit.get("source_message_id")
+            intent_val = meta.get("intent", "general") or "general"
+            tags_val = meta.get("tags", []) or []
+            risk_level_val = meta.get("risk_level", "medium") or "medium"
+            quality_score_val = float(meta.get("quality_score", 0.5) or 0.5)
+            knowledge_type_val = meta.get("knowledge_type", "faq") or "faq"
+            score_val = hit.get("similarity_score", 0.0)
+
+            results.append(
+                CustomerOpsRetrievalResult(
+                    score=round(score_val, 4),
+                    matched_terms=[],
+                    chunk_id=chunk_id_val,
+                    candidate_id=candidate_id_val,
+                    source_type=source_type_val,
+                    source_batch_id=source_batch_id_val,
+                    source_conversation_id=meta.get("source_conversation_id"),
+                    source_message_ids=list(meta.get("source_message_ids", [])),
+                    source_bad_case_id=meta.get("source_bad_case_id"),
+                    source_retrieval_id=meta.get("source_retrieval_id"),
+                    source_chunk_ids=list(meta.get("source_chunk_ids", [])),
+                    source_legacy_id=meta.get("source_legacy_id"),
+                    source_import_id=meta.get("source_import_id"),
+                    migration_mode=meta.get("migration_mode"),
+                    source_note=meta.get("source_note"),
+                    knowledge_type=knowledge_type_val,
+                    intent=intent_val,
+                    tags=tags_val,
+                    risk_level=risk_level_val,
+                    quality_score=quality_score_val,
+                    review_status="approved",
+                    chunk_text=chunk_text_val,
+                    build_method="vector_semantic_retrieval",
+                    answer=_answer_from_chunk_text(chunk_text_val),
+                )
+            )
+    else:
+        # ── Fallback: keyword / overlap retrieval from rag_chunks ───
+        results = []
+        for chunk in list_rag_chunks():
+            if not _matches_customerops_filters(chunk, payload.filters):
+                continue
+            result = _customerops_score_chunk(query, chunk)
+            if result is not None:
+                results.append(result)
+        results = sorted(results, key=lambda item: item.score, reverse=True)[:top_k]
+
     trace = CustomerOpsRetrievalTrace(
         retrieval_id=retrieval_id,
         query=query,
@@ -1689,37 +1816,58 @@ def run_customerops_retrieval(
         conversation_id=payload.conversation_id,
         agent_session_id=payload.agent_session_id,
         created_at=created_at,
-        retrieval_mode="customerops_local_mock_retrieval",
+        retrieval_mode=retrieval_mode,  # type: ignore[arg-type]
+        fallback_used=fallback_used,
+        fallback_reason=fallback_reason,
+        matched_chunk_scores=semantic_scores if semantic_scores else [r.score for r in results],
+        embedding_provider=embedding_provider_name,
+        embedding_model=embedding_model_name,
     )
     _write_retrieval_trace(trace)
     return CustomerOpsRetrievalResponse(
         retrieval_id=retrieval_id,
         query=query,
         top_k=top_k,
-        retrieval_mode="customerops_local_mock_retrieval",
+        retrieval_mode=retrieval_mode,  # type: ignore[arg-type]
         results=results,
+        fallback_used=fallback_used,
+        fallback_reason=fallback_reason,
         created_at=created_at,
     )
 
 
 def _write_retrieval_trace(trace: CustomerOpsRetrievalTrace) -> None:
     _ensure_storage()
+    trace_dict = trace.model_dump()
     (RETRIEVAL_LOG_DIR / f"{trace.retrieval_id}.json").write_text(
-        json.dumps(trace.model_dump(), ensure_ascii=False, indent=2),
+        json.dumps(trace_dict, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
     items = [
         item for item in _read_json_list(RETRIEVAL_LOG_INDEX_FILE)
         if item.get("retrieval_id") != trace.retrieval_id
     ]
-    items.append(trace.model_dump())
+    items.append(trace_dict)
     _write_json_list(RETRIEVAL_LOG_INDEX_FILE, items)
 
     # Dual-write retrieval log to database (P1-M19)
+    # P1-M23: enrich metadata_json with semantic retrieval details
     try:
         db = SessionLocal()
         try:
-            db_repo.save_retrieval_log_to_db(db, trace.model_dump())
+            db_trace = trace_dict.copy()
+            # Ensure metadata_json captures semantic trace
+            if "metadata" not in db_trace:
+                db_trace["metadata"] = {}
+            if isinstance(db_trace.get("metadata"), dict):
+                db_trace["metadata"] = dict(db_trace["metadata"])
+                db_trace["metadata"]["retrieval_mode"] = trace.retrieval_mode
+                db_trace["metadata"]["fallback_used"] = trace.fallback_used
+                db_trace["metadata"]["fallback_reason"] = trace.fallback_reason
+                db_trace["metadata"]["matched_chunk_scores"] = trace.matched_chunk_scores
+                db_trace["metadata"]["embedding_provider"] = trace.embedding_provider
+                db_trace["metadata"]["embedding_model"] = trace.embedding_model
+            db_repo.save_retrieval_log_to_db(db, db_trace)
         finally:
             db.close()
     except Exception:

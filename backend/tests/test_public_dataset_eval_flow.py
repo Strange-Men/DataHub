@@ -112,7 +112,12 @@ class PublicDatasetEvalFlowTest(unittest.TestCase):
         self.assertEqual(retrieved.status_code, 200, retrieved.text)
         retrieval = retrieved.json()["data"]
         self.assertTrue(retrieval["retrieval_id"].startswith("retrieval_"))
-        self.assertEqual(retrieval["retrieval_mode"], "customerops_local_mock_retrieval")
+        self.assertIn(retrieval["retrieval_mode"], [
+            "customerops_vector_retrieval",
+            "customerops_vector_with_keyword_fallback",
+            "customerops_keyword_fallback",
+            "customerops_local_mock_retrieval",
+        ])
         self.assertGreaterEqual(len(retrieval["results"]), 1)
         self.assertTrue(
             all(result["review_status"] == "approved" for result in retrieval["results"])

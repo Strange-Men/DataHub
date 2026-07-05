@@ -1400,21 +1400,42 @@ P1-M22.2 is complete when:
 
 P1-M23 is complete when:
 
-- [ ] `/api/customer-ops-agent/retrieve` 优先走 semantic retrieval。
-- [ ] query → embedding → pgvector cosine similarity search 链路完整。
-- [ ] 返回 matched chunks、similarity score、candidate_id、source trace、Agent answer、retrieval_id。
-- [ ] keyword retrieval 作为 fallback 可用。
-- [ ] `retrieval_logs` 记录 `retrieval_mode`（semantic / semantic_with_fallback / keyword_fallback）。
-- [ ] `retrieval_logs` 记录 fallback_reason。
-- [ ] `build_method` / `retrieval_mode` 从 mock 更新为 vector semantic。
-- [ ] eval set 可计算 recall@k 并有结果。
-- [ ] CustomerOpsAgent 返回引用来源和分数。
-- [ ] 不接真实 LLM 生成复杂回答（回答可基于模板/证据拼接）。
-- [ ] `/health` 报告 `P1-M23`。
-- [ ] 现有测试全部通过。
-- [ ] git status clean。
-- [ ] 不打 tag（commit only）。
-- [ ] 不进入 P2/P3/P4 后端开发。
+- [x] `/api/customer-ops-agent/retrieve` 优先走 semantic retrieval。
+- [x] query → embedding → pgvector cosine similarity search 链路完整。
+- [x] 返回 matched chunks、similarity score、candidate_id、source trace、Agent answer、retrieval_id。
+- [x] keyword retrieval 作为 fallback 可用。
+- [x] `retrieval_logs` 记录 `retrieval_mode`（semantic / semantic_with_fallback / keyword_fallback）。
+- [x] `retrieval_logs` 记录 fallback_reason。
+- [x] `build_method` / `retrieval_mode` 从 mock 更新为 vector semantic。
+- [x] eval set 可计算 recall@k 并有结果。
+- [x] CustomerOpsAgent 返回引用来源和分数。
+- [x] 不接真实 LLM 生成复杂回答（回答可基于模板/证据拼接）。
+- [x] `/health` 报告 `P1-M23`。
+- [x] 现有测试全部通过。
+- [x] git status clean。
+- [x] 不打 tag（commit only）。
+- [x] 不进入 P2/P3/P4 后端开发。
+
+本轮已完成 (2026-07-05)：
+
+- [x] `POST /api/customer-ops-agent/retrieve` 优先走 semantic retrieval（query → embedding → pgvector cosine similarity search）
+- [x] `search_rag_embeddings_semantic` repository 函数（PostgreSQL pgvector + SQLite Python fallback）
+- [x] 新增 retrieval modes: `customerops_vector_retrieval`, `customerops_vector_with_keyword_fallback`, `customerops_keyword_fallback`
+- [x] response 扩展：`fallback_used`, `fallback_reason`, `matched_chunk_scores`, `embedding_provider`, `embedding_model`
+- [x] retrieval_logs metadata_json 包含 retrieval_mode / fallback_reason / scores / provider
+- [x] `scripts/run_rag_eval.py` eval 脚本（recall@5, keyword_hit_rate@5）
+- [x] 新增 test_customerops_semantic_retrieval.py (10 tests)
+- [x] 新增 test_rag_eval_script.py (12 tests)
+- [x] harness step_customerops_retrieve 提取 retrieval_mode / fallback_used / fallback_reason
+- [x] health phase = P1-M23
+- [x] 15 个测试文件 phase 断言更新
+- [x] 所有 211 个测试通过 (22 new + 189 existing)
+- [x] 不改前端
+- [x] 不进入 P2/P3/P4
+- [x] 保留 keyword / JSON fallback
+- [x] 保留 rag_chunks 表
+- [x] 不接真实 LLM
+- [x] 不打 tag
 
 ### 41E. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness
 

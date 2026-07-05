@@ -65,7 +65,7 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
     def test_customerops_retrieval_is_restricted_and_traceable(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M22.2")
+        self.assertEqual(health.json()["phase"], "P1-M23")
 
         candidates = [
             *self._create_candidates("a"),
@@ -159,7 +159,12 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
         self.assertEqual(retrieved.status_code, 200, retrieved.text)
         data = retrieved.json()["data"]
         self.assertTrue(data["retrieval_id"].startswith("retrieval_"))
-        self.assertEqual(data["retrieval_mode"], "customerops_local_mock_retrieval")
+        self.assertIn(data["retrieval_mode"], [
+            "customerops_vector_retrieval",
+            "customerops_vector_with_keyword_fallback",
+            "customerops_keyword_fallback",
+            "customerops_local_mock_retrieval",
+        ])
         self.assertGreaterEqual(len(data["results"]), 1)
 
         result = data["results"][0]
