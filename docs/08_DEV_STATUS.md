@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.1 Semantic Retrieval Quality Diagnosis & Eval Calibration completed. Current checkpoint: P1-M23.1.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. Current checkpoint: P1-M24.
 
 Current code remains Phase 1.
 
@@ -1611,17 +1611,67 @@ This is a quality diagnosis and eval calibration checkpoint. No frontend changes
 - Confirmed no external API dependency added.
 - Confirmed no tag.
 
+## Completed In P1-M23.2
+
+- Cleaned rag_embeddings corpus of harness test-data pollution.
+- Removed entries where chunk_text contains "Manually verified content" placeholders.
+- Verified embedding readiness: mock_ready=true, provider_ready=true (mock only).
+- Added `scripts/cleanup_rag_test_data.py` and `scripts/seed_rag_eval_corpus.py` for corpus management.
+- Updated `/health` to report `P1-M23.2`.
+- Confirmed no frontend changes, no P2/P3/P4, no external API.
+
+### P1-M23.2 Boundaries
+
+This is a corpus cleanup and embedding readiness checkpoint. No new features.
+
+- Confirmed no frontend changes.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no real LLM / external embedding API.
+- Confirmed no tag was created (commit only).
+
+## Completed In P1-M24
+
+- Completed P1 Real RAG Online Smoke Test + Release Readiness verification.
+- Online health check: status=ok, phase=P1-M24, pgvector_available=true, extension_create_ok=true.
+- Online harness: **10/10 PASS** — embedding_count=18, vector_sync_enabled=true, retrieval_mode=customerops_vector_retrieval.
+- Online eval:
+  - `keyword_hit_rate@5`: **0.7694** (≥ 0.6 ✅)
+  - `keyword_query_hit_rate@5`: **0.9167** (≥ 0.75 ✅)
+  - `semantic_mode_count`: 12/12 (100% customerops_vector_retrieval)
+  - `fallback_count`: 0
+  - `avg_top1_score`: 0.5718, `avg_top5_score`: 0.4100
+- Corpus inspect: SKIP (DATABASE_URL not set locally) — indirect assessment via eval.
+- Embedding provider check: mock_ready=true, provider_ready=true (mock only), real_embedding_ready=false.
+- Bad Case 回流: harness step 09+10 PASS, full trace verified.
+- Added `docs/36_P1_REAL_RAG_ONLINE_RELEASE_READINESS_REPORT.md`.
+- Updated `/health` phase to `P1-M24`.
+- Phase assertions updated in test files (test_approved_knowledge_vector_sync.py, test_customerops_semantic_retrieval.py).
+- All 93 tests pass (same suite as M23.1 plus phase assertion updates).
+- README updated with P1 real vector RAG readiness note.
+
+### P1-M24 Release Readiness Conclusion
+
+P1 已具备真实向量 RAG 工程闭环（导入 → 清洗 → 审核 → 向量同步 → pgvector 语义检索 → Bad Case 回流）。所有核心指标达标。适合作为 **Demo / 工程验收版**。
+
+**但当前线上 embedding provider 仍为 mock/deterministic (token-based bag-of-words)**，不是生产级真实语义 embedding。真实语义检索需要接入真实 embedding provider（如 OpenAI text-embedding-3-small），标记为 P1-M24.1（可选后续）。
+
+### P1-M24 Boundaries
+
+This is a smoke test, verification, and documentation checkpoint. No new features.
+
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed no frontend changes.
+- Confirmed no real LLM / real embedding API.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+- Confirmed no tag was created (commit only).
+
 ## Next Suggested Stage
 
-**P1-M24 Real RAG Online Smoke Test + P1 Release Readiness** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
+P1 is now release-ready (engineering verification version).
 
-M24 prerequisites:
-- ✅ CustomerOpsAgent semantic retrieval working (vector mode)
-- ✅ pgvector cosine similarity search operational
-- ✅ Keyword fallback preserved
-- ✅ retrieval_logs record semantic metadata
-- ✅ Eval script calibrated and enhanced
-- ⚠️ keyword_hit_rate@5 pending online re-measurement after Render deploy
-- ⚠️ If keyword_hit_rate@5 still < 0.6: real embedding provider (OpenAI) may be required before M24
+Options after user confirmation:
+- **Tag P1 release**: `p1-m24-real-rag-online-release` (after user confirms).
+- **P1-M24.1** (optional): Real Embedding Provider Verification — configure OpenAI/other provider and re-verify eval metrics with real semantic retrieval.
+- **P2-M1**: Material Ingestion — NOT to be started before user confirms P1 final release.
 
-P2 不应在 P1 真实 RAG 闭环完成前启动。
+P2 不应在 P1 真实 RAG 闭环最终收版且用户确认前启动。

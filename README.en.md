@@ -18,7 +18,7 @@
 
 > Note: Render free instances may experience cold starts (30-60 seconds on first access). The frontend connects to the backend via the `VITE_API_BASE_URL` environment variable. If the backend is not connected, the frontend displays a friendly status hint instead of a red error.
 
-Current online demo uses the P1 workflow. P1 database-backed persistence has passed online smoke testing, covering import, cleaning, review, RAG, retrieval, and Bad Case workflows. Approved knowledge can now be synced into the vector RAG table. CustomerOpsAgent can now retrieve from the vector RAG table with keyword fallback. Real RAG online smoke test and P1 release readiness are the final step.
+Current online demo uses the P1 workflow. P1 database-backed persistence has passed online smoke testing, covering import, cleaning, review, RAG, retrieval, and Bad Case workflows. Approved knowledge can now be synced into the vector RAG table. CustomerOpsAgent can now retrieve from the vector RAG table with keyword fallback. P1 real vector RAG online readiness has been verified; final release depends on the documented readiness report.
 
 DataHub is a data asset center for AI agent systems. It turns customer chat logs, legacy knowledge assets, public evaluation samples, Bad Case corrections, and future multimodal materials into governed, traceable knowledge that can be consumed by agents through restricted APIs.
 

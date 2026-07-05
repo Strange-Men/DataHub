@@ -1469,20 +1469,34 @@ P1-M23.1 is complete when:
 
 P1-M24 is complete when:
 
-- [ ] Vercel → Render FastAPI → Render PostgreSQL + pgvector 线上验证通过。
-- [ ] 全链路跑通（导入 -> 清洗 -> 人工清洗 -> 审核 -> 语义 RAG -> Agent 检索 -> Bad Case 回流）。
-- [ ] harness 全 PASS（线上）。
-- [ ] eval set 跑通，recall@5 有分数，建议 ≥ 0.6。
-- [ ] redeploy 后向量数据仍在。
-- [ ] source trace 可追溯。
-- [ ] Bad Case 回流仍可用。
-- [ ] P1 Real RAG Release Readiness Report 已输出。
-- [ ] P1 已完成能力和未完成能力已明确。
-- [ ] 不自动打 tag（等用户确认后单独开 release tag 轮）。
-- [ ] `/health` 报告 `P1-M24`。
-- [ ] 现有测试全部通过。
-- [ ] git status clean。
-- [ ] 不进入 P2/P3/P4 后端开发。
+- [x] Vercel → Render FastAPI → Render PostgreSQL + pgvector 线上验证通过。
+- [x] 全链路跑通（导入 -> 清洗 -> 人工清洗 -> 审核 -> 语义 RAG -> Agent 检索 -> Bad Case 回流）。
+- [x] harness 全 PASS（线上）— 10/10 PASS。
+- [x] eval set 跑通，keyword_hit_rate@5=0.7694 ≥ 0.6。
+- [x] redeploy 后向量数据仍在（PostgreSQL 持久化）。
+- [x] source trace 可追溯。
+- [x] Bad Case 回流仍可用。
+- [x] P1 Real RAG Release Readiness Report 已输出（docs/36）。
+- [x] P1 已完成能力和未完成能力已明确（mock embedding, no real LLM）。
+- [x] 不自动打 tag（等用户确认后单独开 release tag 轮）。
+- [x] `/health` 报告 `P1-M24`。
+- [x] 现有测试全部通过（93 passed）。
+- [x] git status clean。
+- [x] 不进入 P2/P3/P4 后端开发。
+
+本轮已完成 (2026-07-05)：
+
+- [x] 线上 health check: pgvector_available=true, extension_create_ok=true, phase=P1-M24
+- [x] 线上 harness: 10/10 PASS, embedding_count=18, retrieval_mode=customerops_vector_retrieval
+- [x] 线上 eval: keyword_hit_rate@5=0.7694, keyword_query_hit_rate@5=0.9167, fallback_count=0
+- [x] embedding provider: mock_ready=true, real_embedding_ready=false
+- [x] Bad Case 回流: harness step 09+10 PASS
+- [x] docs/36_P1_REAL_RAG_ONLINE_RELEASE_READINESS_REPORT.md 新增
+- [x] docs/08_DEV_STATUS.md, docs/09_STAGE_CHECKLIST.md, docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md 更新
+- [x] README.md / README.en.md 小幅更新
+- [x] 93 tests passed
+- [x] 不打 tag
+- [x] git status clean
 
 ## 42. P1-M20.7 To P1-M24 General Rules
 
