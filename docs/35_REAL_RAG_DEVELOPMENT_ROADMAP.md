@@ -1,0 +1,381 @@
+# DataHub P1 Real RAG Development Roadmap
+
+## 1. 当前 P1 状态
+
+P1 已完成以下能力：
+
+- Vercel 前端 + Render FastAPI + Render PostgreSQL 线上部署
+- 客服数据 JSON 导入
+- 机器清洗（PII 脱敏、去重、质量评分）
+- 人工清洗工作台
+- 知识候选抽取（rule_based_mock）
+- 知识审核工作台（通过、驳回、打回）
+- RAG 知识块构建（approved-only）
+- CustomerOpsAgent 受限检索
+- Bad Case 回流与 draft 生成
+- Legacy RAG 迁移
+- 10 张核心表数据库持久化（SQLAlchemy + SQLite 本地 + PostgreSQL 线上）
+- 线上 DB smoke test 通过（页面刷新 / Redeploy 后数据仍在）
+- P1 四流程前端 UX
+- 全站暗黑风视觉统一
+
+P1 数据库持久化版已可定义为：
+
+> **可部署、可持久化、可支撑 P2/P3/P4 的高质量数据中台底座**
+
+---
+
+## 2. 为什么 P1 还不能最终收版
+
+当前 RAG 检索仍然是：
+
+```
+approved candidate -> rag_chunks 表 -> keyword / overlap 检索
+```
+
+`build_method` 仍为 `"local_json_mock_retrieval"`。
+`retrieval_mode` 仍为 `"customerops_local_mock_retrieval"`。
+
+这只能算 **RAG 数据准备层 / mock retrieval**，不是真正的语义 RAG 知识库。
+
+P1 的最终目标必须是：
+
+```
+多来源客服数据
+-> 多规则机器清洗
+-> 人工清洗与审核
+-> 高质量数据进入数据库
+-> 已审核知识进入真实语义 RAG 知识库
+-> CustomerOpsAgent 能调用语义检索结果
+-> Bad Case 能回流继续优化知识库
+```
+
+没有真实语义 RAG 的 P1，即使数据库已持久化，仍然只是一个治理流程 demo，不是可被 Agent 真正使用的知识底座。
+
+---
+
+## 3. P1 最终收版标准
+
+以下 6 条**全部满足**，P1 才能最终收版：
+
+1. **向量底座可工作**：pgvector 扩展已启用，`vector_chunks` 表存在，可通过 SQL 查询
+2. **语义检索上线**：对同一查询，语义检索能返回 keyword 匹配不到的但语义相关的结果
+3. **source trace 不丢**：每条向量检索结果可追溯到 `candidate_id -> source_batch_id -> source_type`
+4. **eval set 有分数**：至少 10 条 eval query，recall@5 ≥ 0.6（语义明显优于 keyword）
+5. **approved-only 边界不破**：pending / rejected / needs_revision 不进入向量库，有测试覆盖
+6. **线上持久化**：Render PostgreSQL + pgvector 在 redeploy 后数据仍在，检索可用
+
+---
+
+## 4. 收拢后的 P1 后续路线
+
+```
+P1-M20.7  Lightweight Pipeline Harness + RAG Readiness Check
+P1-M21    Vector RAG Foundation + Eval Set
+P1-M22    Approved Knowledge Sync to Vector RAG
+P1-M23    CustomerOpsAgent Semantic Retrieval
+P1-M24    Real RAG Online Smoke Test + P1 Release Readiness
+```
+
+共 5 个阶段。不拆 M20.7a/b，不单独开 M21.5，不设 M25。
+
+---
+
+## 5. P1-M20.7：Lightweight Pipeline Harness + RAG Readiness Check
+
+### 目标
+
+在投入真实 RAG 开发前，建立轻量一键验证能力，并确认 pgvector 可用。
+
+### 范围
+
+1. 新增 `scripts/run_p1_pipeline_harness.py`
+2. 脚本调已有 API 串行跑：
+   导入 -> 机器清洗 -> 人工清洗 -> 生成待审核知识 -> 审核通过 -> RAG Build -> Agent 检索 -> Bad Case -> Bad Case draft
+3. 每一步输出：PASS / FAIL、HTTP status、response 摘要、关键 ID、失败原因
+4. 脚本支持 `--base-url` 参数：
+   - `http://127.0.0.1:8000`
+   - `https://datahub-jr8x.onrender.com`
+5. 不新增 pipeline 数据库表
+6. 不改数据库 schema
+7. 不改业务 API
+8. 轻量 SDD/TDD 规则写入文档：
+   后续每轮必须先写/更新测试，必须通过 harness 或对应 eval
+9. **确认 Render PostgreSQL 是否支持 pgvector**：
+   ```sql
+   SELECT * FROM pg_available_extensions WHERE name = 'vector';
+   ```
+   或 `CREATE EXTENSION IF NOT EXISTS vector;`
+10. **如果 pgvector 不可用，停止 M21 路线并重新评估向量库方案**
+
+### 验收
+
+- 本地 harness 全 PASS
+- 线上 harness 全 PASS
+- pgvector 可用性结论明确（文档记录）
+- 不新增 pipeline trace 表
+- 不新增数据库表
+
+---
+
+## 6. P1-M21：Vector RAG Foundation + Eval Set
+
+### 目标
+
+建立真实 RAG 的最小底座，并提前建立检索评估集。
+
+### 范围
+
+1. 启用 pgvector 扩展（`CREATE EXTENSION IF NOT EXISTS vector`）
+2. 新增 `vector_chunks` 或 `rag_embeddings` 表：
+   - `id`、`candidate_id`、`chunk_text`、`embedding`（vector 列）
+   - `source_type`、`source_batch_id`、`source_conversation_id`、`source_message_ids`
+   - `knowledge_type`、`intent`、`tags`、`risk_level`、`quality_score`
+   - `modality`（预留，默认 "text"，为 P2 多模态做准备）
+   - `created_at`、`updated_at`
+3. 新增 embedding provider 配置（走环境变量）：
+   - `EMBEDDING_PROVIDER`（例如 `openai`）
+   - `EMBEDDING_MODEL`（例如 `text-embedding-3-small`）
+   - `EMBEDDING_API_KEY`
+4. **必须支持 mock/deterministic embedding** 用于本地测试：
+   - 不依赖真实外部 API 即可跑通测试
+   - mock embedding 基于 text hash 生成固定维度向量
+5. 支持真实 embedding provider 作为线上可选
+6. 新增 `samples/rag_eval_queries.json`：
+   - 至少 10 条 query
+   - 每条标注 `expected_candidate_id` / `expected_chunk_id` / `intent`
+   - 格式约定：
+     ```json
+     [
+       {
+         "query": "How do I return an item?",
+         "expected_candidate_ids": ["kc_abc123"],
+         "intent": "refund"
+       }
+     ]
+     ```
+7. 不接真实 CustomerOpsAgent semantic retrieval（留在 M23）
+
+### 注意事项
+
+- embedding API 调用应有基本重试（建议 3 次）
+- 注意 Render Free PostgreSQL 1GB 存储限制（vector 维度 × 行数 影响存储）
+- 注意 embedding API 费用（OpenAI text-embedding-3-small 约 $0.02/1M tokens）
+- 本地 SQLite 不支持 pgvector，本地测试使用 mock embedding
+
+### 验收
+
+- pgvector 扩展已启用，`vector_chunks` 表可创建
+- mock embedding 可写入 vector column
+- eval set 存在且格式校验通过
+- 不破坏现有 keyword fallback
+- 现有测试全部通过
+
+---
+
+## 7. P1-M22：Approved Knowledge Sync to Vector RAG
+
+### 目标
+
+让审核通过的高质量知识真正同步进向量 RAG 知识库。
+
+### 范围
+
+1. "同步已审核知识到 RAG 知识库" 不再只写 `rag_chunks`
+2. approved knowledge_candidates → chunk text + metadata + embedding + source trace → `vector_chunks`
+3. **pending_review / rejected / needs_revision 绝对不能进入向量知识库**
+4. 重复同步幂等：同一 candidate_id 不产生重复行（upsert by candidate_id）
+5. 保留 `rag_chunks` / keyword fallback 兼容
+6. 预留 `source_type` / `modality` 字段，为 P2 多模态接入做准备
+7. 新增 sync 测试和 approved-only 边界测试
+
+### 验收
+
+- approved candidate 数量和 vector_chunks 数量可对应
+- 重复 sync 不产生重复行
+- rejected / pending 不进入向量知识库
+- source trace 不丢
+- keyword fallback 仍可用
+
+---
+
+## 8. P1-M23：CustomerOpsAgent Semantic Retrieval
+
+### 目标
+
+CustomerOpsAgent 真正调用语义 RAG 知识库。
+
+### 范围
+
+1. `POST /api/customer-ops-agent/retrieve` 优先走 semantic retrieval
+2. query → embedding → pgvector cosine similarity search
+3. 返回：
+   - matched chunks
+   - similarity score
+   - candidate_id
+   - source trace
+   - Agent answer（模板/证据拼接，不需要真实 LLM 生成）
+   - retrieval_id
+4. keyword retrieval 作为 fallback（pgvector 不可用时）
+5. `retrieval_logs` 记录：
+   - `retrieval_mode`：`"semantic"` / `"semantic_with_fallback"` / `"keyword_fallback"`
+   - `matched_chunk_ids`
+   - `scores`
+   - `fallback_reason`（如果走了 fallback）
+6. eval set 可用于计算 recall@k
+7. `build_method` 相关字段从 `"local_json_mock_retrieval"` 改为 `"vector_semantic_retrieval"`
+
+### 验收
+
+- retrieval_mode 从 mock/keyword 变为 semantic 或 semantic_with_fallback
+- eval recall@5 有可量化结果
+- keyword fallback 可用
+- CustomerOpsAgent 返回引用来源和分数
+- retrieval_logs 记录 retrieval_mode
+
+---
+
+## 9. P1-M24：Real RAG Online Smoke Test + P1 Release Readiness
+
+### 目标
+
+线上验证真实 RAG 闭环，并准备 P1 最终收版。
+
+### 范围
+
+1. Vercel → Render FastAPI → Render PostgreSQL + pgvector 线上验证
+2. 完整跑：
+   导入 -> 清洗 -> 人工清洗 -> 生成待审核知识 -> 审核通过 -> 同步向量 RAG -> CustomerOpsAgent 语义检索 -> Bad Case 回流
+3. 跑 harness（`python scripts/run_p1_pipeline_harness.py --base-url https://datahub-jr8x.onrender.com`）
+4. 跑 eval set，记录 recall@5
+5. 验证 redeploy 后向量数据仍在
+6. 输出 P1 Real RAG Release Readiness Report
+7. 明确 P1 已完成能力和未完成能力
+8. 不自动打 tag，等用户确认后再单独开 release tag 轮
+
+### 验收
+
+- 线上 semantic retrieval 可用
+- eval recall@5 ≥ 0.6（建议最低阈值）
+- source trace 可追溯
+- Bad Case 回流仍可用
+- harness 全 PASS
+- 文档边界清晰
+- 用户确认后，才允许后续单独打 P1 release tag
+
+---
+
+## 10. 为什么不做 pipeline_runs / pipeline_steps / pipeline_events 表
+
+这三张表是数据管道可观测性模式，适用于：
+
+- 有定时调度需求的 pipeline
+- 有 SLA 监控需求的生产系统
+- 有失败重试和部分重跑需求的复杂场景
+- 有多个 pipeline 并行运行的平台
+
+DataHub P1 全链路是**单用户、串行、手动触发**的。一个 `run_p1_pipeline_harness.py` 脚本打印到 stdout 的日志已经足够定位问题。
+
+等 P2 有多模态 pipeline、P4 有 Agent 集群并发调用时，再考虑 pipeline trace 表。
+
+当前替代方案：
+- 利用现有 `requestId`（每个 API 响应已有）
+- 利用 `metadata_json` 字段加可选 `_pipeline_run_id`
+- harness 脚本的 stdout 日志
+
+---
+
+## 11. 为什么 eval set 必须前置
+
+eval set 是衡量"RAG 做完了没有"的唯一客观尺度。
+
+- 没有 eval set → M23 做完了也说不清检索质量好不好
+- 没有 eval set → semantic vs keyword 无法量化对比
+- 没有 eval set → M24 smoke test 只能验证"跑通了"，不能验证"跑得好"
+
+在 M21 就建好 eval set，M22 和 M23 就有了一把尺子，每一步进展都可以量化。
+
+---
+
+## 12. 为什么 CustomerOpsAgent semantic retrieval 必须属于 P1
+
+P1 的定义是"文本客服知识闭环"。语义检索是这个闭环的核心交付物，不是可选的 P2 功能。
+
+- 如果检索仍是 keyword/overlap，P1 的 RAG 就是 mock
+- 如果 semantic retrieval 拖到 P2，P1 就不能称为"RAG 知识平台"
+- Architecture 文档早已预留："Vector store and embedding provider remain candidates" 是 P1 内的候选决策，不是 P2 的工作
+
+---
+
+## 13. Render pgvector 可用性检查要求
+
+**在 M20.7 必须执行，这是 M21-M24 的前置条件。**
+
+```sql
+-- 检查 pgvector 扩展是否可用
+SELECT * FROM pg_available_extensions WHERE name = 'vector';
+
+-- 尝试创建扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+如果 Render Free PostgreSQL 不支持 pgvector：
+- 停止 M21-M24 原路线
+- 评估替代方案：ChromaDB（Render 磁盘不持久但可通过别的方式）、Pinecone 免费层、升级 Render PostgreSQL 计划、或其他向量库
+
+如果支持：
+- 记录 pgvector 版本
+- 继续 M21
+
+---
+
+## 14. 防跑偏规则
+
+### 每轮必须验证
+
+1. 相关测试全部通过（`pytest backend/tests/`）
+2. 新功能有对应的测试文件
+3. `/health` 的 `phase` 字段更新为当前版本号
+4. `docs/08_DEV_STATUS.md` 更新完成记录
+5. harness 脚本仍能跑通（如果涉及 API 改动）
+6. M21 起：eval set 格式校验通过
+7. M23 起：eval recall@5 可计算
+
+### 每轮不能做
+
+- 不能跨阶段开发（例如在 M20.7 就开始写 pgvector 代码）
+- 不能在 M21 建表时顺手改 M23 的检索 API
+- 不能引入新的外部服务而不记录在文档中
+- 不能删除或破坏 JSON fallback 路径（保持 DB-first + JSON-fallback 模式）
+- 不能修改 CustomerOpsAgent 仓库
+- 不能进入 P2/P3/P4 后端开发
+
+### 每轮完成标准
+
+- `git status` clean
+- Commit message 使用 `[P1-Mxx]` 前缀
+- 不打 tag（除非明确 release）
+- 不提交 `.env`、`datahub.db`、`backend/storage/`、API Key
+
+---
+
+## 15. 路线总览
+
+```text
+P1-M20.7  Harness + pgvector 确认
+   |
+   v
+P1-M21    pgvector 底座 + eval set
+   |
+   v
+P1-M22    已审核知识同步向量库
+   |
+   v
+P1-M23    CustomerOpsAgent 语义检索
+   |
+   v
+P1-M24    线上 Smoke Test + Release Readiness
+   |
+   v
+用户确认后 → P1 Release Tag → 再决定是否进入 P2
+```

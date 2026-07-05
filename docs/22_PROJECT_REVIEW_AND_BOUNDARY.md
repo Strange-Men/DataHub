@@ -122,12 +122,12 @@ Do not claim that multimodal ingestion, dataset export, fine-tuning export, MCP 
 
 Current boundaries:
 
-- Local JSON storage（当前 P1 仍未数据库化）。
-- Local keyword/mock retrieval.
-- No real vector database.
-- No embedding model.
-- No database（数据库持久化已列入 P1-M16 至 P1-M20 补强计划，详见 `docs/26_DATABASE_PERSISTENCE_ROADMAP.md`）。
-- No ORM（计划在 P1-M16 引入 SQLAlchemy）。
+- Local JSON storage（JSON fallback 保留，但线上已切换为 PostgreSQL 优先读取）。
+- Local keyword/mock retrieval（当前 RAG 仍为 keyword/overlap 检索，不是真实语义 RAG）。
+- No real vector database（pgvector 计划在 P1-M21 引入，详见 `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`）。
+- No embedding model（计划在 P1-M21 引入）。
+- Database persistence completed（P1-M16 至 P1-M20 已完成 SQLAlchemy + PostgreSQL 持久化）。
+- ORM: SQLAlchemy 2.0.36（P1-M16 已引入）。
 - No real LLM.
 - No real multimodal ingestion.
 - No OCR / Caption / SKU binding implementation.
@@ -135,7 +135,7 @@ Current boundaries:
 - No CustomerOpsAgent repository modification.
 - No production authentication.
 
-These are intentional P1 boundaries, not accidental omissions. Database persistence is the next planned P1 hardening step (P1-M16 through P1-M20), after which P1 can be defined as a deployable, persistent data platform capable of supporting P2/P3/P4.
+These are intentional P1 boundaries, not accidental omissions. Database persistence has been completed (P1-M16 through P1-M20). Real vector RAG and CustomerOpsAgent semantic retrieval are planned as P1-M21 through P1-M24 before final P1 release.
 
 ## 8. Demo-Friendly Flow
 

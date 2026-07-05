@@ -1285,10 +1285,20 @@ This is a global frontend visual system polish only. No business logic, database
 
 ## Next Suggested Stage
 
-P1 数据库持久化版 smoke test 已通过，前端视觉系统已统一。后续建议：
+P1 数据库持久化版 smoke test 已通过，前端视觉系统已统一。
 
-1. **P1 数据库版正式 release**：单独开一轮，打 tag `p1-m20-db-release`。
-2. **P2-M0 数据模型与素材中心规划**：进入 P2 前先明确 P2 表结构、素材上传 schema、OCR/Caption 策略、SKU 绑定模型、多模态审核状态模型。
-3. **P2-M1 之后**：在 P2 数据模型和素材中心规划完成后再启动 P2 后端开发。
+**下一阶段不是 P2，而是 P1-M20.7 Lightweight Pipeline Harness + RAG Readiness Check。**
 
-不建议 P1-M20 之后直接盲目进入 P2，应先做 P2-M0 规划。
+P1 还不能最终收版。当前 RAG 仍是 keyword/overlap mock retrieval，不是真正的语义 RAG 知识库。P1 最终目标必须包含 pgvector + embedding + CustomerOpsAgent 语义检索闭环。
+
+后续路线详见 `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`：
+
+```
+P1-M20.7  Lightweight Pipeline Harness + RAG Readiness Check
+P1-M21    Vector RAG Foundation + Eval Set
+P1-M22    Approved Knowledge Sync to Vector RAG
+P1-M23    CustomerOpsAgent Semantic Retrieval
+P1-M24    Real RAG Online Smoke Test + P1 Release Readiness
+```
+
+P2 不应在 P1 真实 RAG 闭环完成前启动。

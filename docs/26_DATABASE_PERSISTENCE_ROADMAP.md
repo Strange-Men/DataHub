@@ -324,7 +324,8 @@ P1 数据库持久化版已通过线上 smoke test。P1 可正式定义为：
 后续建议：
 
 1. 单独开一轮 P1 数据库版 release（打 tag `p1-m20-db-release`）。
-2. 进入 P2 前先完成 P2-M0 数据模型与素材中心规划。
+2. P1 数据库持久化已完成，但 P1 最终收版还需要真实向量 RAG 与 CustomerOpsAgent 语义检索闭环。详见 `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`。
+3. 进入 P2 前先完成 P2-M0 数据模型与素材中心规划。
 
 ---
 

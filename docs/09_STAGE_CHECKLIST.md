@@ -1200,3 +1200,129 @@ P1-M20.6 is complete when:
 - [x] 未改数据库/API 逻辑
 - [x] 无 tag
 - [x] git status clean
+
+---
+
+## 41. P1-M20.7 to P1-M24 Real RAG Development Roadmap
+
+完整路线见 `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`。
+
+### 41A. P1-M20.7 Lightweight Pipeline Harness + RAG Readiness Check
+
+P1-M20.7 is complete when:
+
+- [ ] `scripts/run_p1_pipeline_harness.py` 存在。
+- [ ] 脚本调已有 API 串行跑全链路（导入 -> 清洗 -> 人工清洗 -> 抽取 -> 审核 -> RAG -> Agent 检索 -> Bad Case -> Bad Case draft）。
+- [ ] 每步输出 PASS / FAIL、HTTP status、response 摘要、关键 ID。
+- [ ] 脚本支持 `--base-url` 参数。
+- [ ] 本地 `python scripts/run_p1_pipeline_harness.py` 全部 PASS。
+- [ ] 线上 `python scripts/run_p1_pipeline_harness.py --base-url https://datahub-jr8x.onrender.com` 全部 PASS。
+- [ ] 不新增 pipeline 数据库表。
+- [ ] 不改数据库 schema。
+- [ ] 不改业务 API。
+- [ ] 轻量 SDD/TDD 规则写入文档。
+- [ ] **已确认 Render PostgreSQL 是否支持 pgvector**（执行 `SELECT * FROM pg_available_extensions WHERE name = 'vector';`）。
+- [ ] pgvector 可用性结论已记录在文档中。
+- [ ] 如果 pgvector 不可用，已停止并重新评估方案。
+- [ ] `/health` 报告 `P1-M20.7`。
+- [ ] 现有测试全部通过。
+- [ ] git status clean。
+- [ ] 不打 tag（commit only）。
+- [ ] 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key。
+- [ ] 不进入 P2/P3/P4 后端开发。
+
+### 41B. P1-M21 Vector RAG Foundation + Eval Set
+
+P1-M21 is complete when:
+
+- [ ] pgvector 扩展已启用（`CREATE EXTENSION IF NOT EXISTS vector`）。
+- [ ] `vector_chunks` 或 `rag_embeddings` 表已创建。
+- [ ] 表包含 embedding vector 列、chunk_text、candidate_id、source trace、modality 预留。
+- [ ] embedding provider 配置走环境变量（`EMBEDDING_PROVIDER`、`EMBEDDING_MODEL`、`EMBEDDING_API_KEY`）。
+- [ ] mock/deterministic embedding 可用（本地测试不依赖外部 API）。
+- [ ] 真实 embedding provider 作为线上可选。
+- [ ] `samples/rag_eval_queries.json` 存在，至少 10 条 query，每条标注 expected_candidate_ids。
+- [ ] eval set 格式校验通过。
+- [ ] embedding API 调用有基本重试（建议 3 次）。
+- [ ] 注意 Render Free PostgreSQL 1GB 存储限制。
+- [ ] 注意 embedding API 费用。
+- [ ] 不接真实 CustomerOpsAgent semantic retrieval。
+- [ ] 不破坏现有 keyword fallback。
+- [ ] `/health` 报告 `P1-M21`。
+- [ ] 现有测试全部通过。
+- [ ] git status clean。
+- [ ] 不打 tag（commit only）。
+- [ ] 不进入 P2/P3/P4 后端开发。
+
+### 41C. P1-M22 Approved Knowledge Sync to Vector RAG
+
+P1-M22 is complete when:
+
+- [ ] approved knowledge_candidates 可同步到 `vector_chunks`。
+- [ ] chunk text + metadata + embedding + source trace 完整写入。
+- [ ] pending_review / rejected / needs_revision 不进入向量知识库。
+- [ ] 重复同步幂等（同 candidate_id upsert，不重复行）。
+- [ ] 保留 `rag_chunks` / keyword fallback 兼容。
+- [ ] 预留 `source_type` / `modality` 字段，为 P2 多模态做准备。
+- [ ] sync 测试和 approved-only 边界测试通过。
+- [ ] approved candidate 数量和 vector_chunks 数量可对应。
+- [ ] source trace 不丢。
+- [ ] `/health` 报告 `P1-M22`。
+- [ ] 现有测试全部通过。
+- [ ] git status clean。
+- [ ] 不打 tag（commit only）。
+- [ ] 不进入 P2/P3/P4 后端开发。
+
+### 41D. P1-M23 CustomerOpsAgent Semantic Retrieval
+
+P1-M23 is complete when:
+
+- [ ] `/api/customer-ops-agent/retrieve` 优先走 semantic retrieval。
+- [ ] query → embedding → pgvector cosine similarity search 链路完整。
+- [ ] 返回 matched chunks、similarity score、candidate_id、source trace、Agent answer、retrieval_id。
+- [ ] keyword retrieval 作为 fallback 可用。
+- [ ] `retrieval_logs` 记录 `retrieval_mode`（semantic / semantic_with_fallback / keyword_fallback）。
+- [ ] `retrieval_logs` 记录 fallback_reason。
+- [ ] `build_method` / `retrieval_mode` 从 mock 更新为 vector semantic。
+- [ ] eval set 可计算 recall@k 并有结果。
+- [ ] CustomerOpsAgent 返回引用来源和分数。
+- [ ] 不接真实 LLM 生成复杂回答（回答可基于模板/证据拼接）。
+- [ ] `/health` 报告 `P1-M23`。
+- [ ] 现有测试全部通过。
+- [ ] git status clean。
+- [ ] 不打 tag（commit only）。
+- [ ] 不进入 P2/P3/P4 后端开发。
+
+### 41E. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness
+
+P1-M24 is complete when:
+
+- [ ] Vercel → Render FastAPI → Render PostgreSQL + pgvector 线上验证通过。
+- [ ] 全链路跑通（导入 -> 清洗 -> 人工清洗 -> 审核 -> 语义 RAG -> Agent 检索 -> Bad Case 回流）。
+- [ ] harness 全 PASS（线上）。
+- [ ] eval set 跑通，recall@5 有分数，建议 ≥ 0.6。
+- [ ] redeploy 后向量数据仍在。
+- [ ] source trace 可追溯。
+- [ ] Bad Case 回流仍可用。
+- [ ] P1 Real RAG Release Readiness Report 已输出。
+- [ ] P1 已完成能力和未完成能力已明确。
+- [ ] 不自动打 tag（等用户确认后单独开 release tag 轮）。
+- [ ] `/health` 报告 `P1-M24`。
+- [ ] 现有测试全部通过。
+- [ ] git status clean。
+- [ ] 不进入 P2/P3/P4 后端开发。
+
+## 42. P1-M20.7 To P1-M24 General Rules
+
+所有 P1-M20.7 到 P1-M24 阶段：
+
+- git status 必须 clean 才能开始。
+- 每个阶段 commit message 使用 `[P1-Mxx]` 前缀。
+- 不打 tag，除非明确标注 release。
+- 不提交 `backend/storage/`、`.env`、`datahub.db`、API Key、真实客服数据。
+- 现有测试必须通过后再 push。
+- 不进入 P2/P3/P4 后端开发。
+- 不修改 CustomerOpsAgent 仓库。
+- 不删除或破坏 JSON fallback 路径。
+- M21 起：mock embedding 本地测试必须可用。
+- M23 起：eval recall@5 必须可计算。
