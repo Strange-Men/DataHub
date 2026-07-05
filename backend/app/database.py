@@ -90,10 +90,20 @@ def init_database_tables() -> None:
     Safe to call multiple times — uses create_all(checkfirst equivalent).
     Does NOT drop existing data.
     Does NOT print DATABASE_URL.
+
+    Also attempts to enable pgvector extension when on PostgreSQL (P1-M21.1).
+    Failure is silent — the extension may not be available on all deployments.
     """
     # Import models so they register on Base.metadata
     import app.db_models as _models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+
+    # Try to enable pgvector — safe no-op on SQLite, graceful failure on
+    # PostgreSQL without the extension available (P1-M21.1).
+    try:
+        ensure_pgvector_extension()
+    except Exception:
+        pass
 
 
 def check_database_connection() -> dict[str, object]:

@@ -17,7 +17,7 @@ from app.schemas import (
     RagSearchRequest,
     ReviewDecisionRequest,
 )
-from app.database import check_database_connection, init_database_tables
+from app.database import check_database_connection, check_pgvector_available, init_database_tables
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -157,6 +157,7 @@ def health() -> dict[str, object]:
         "service": "datahub-api",
         "phase": "P1-M21",
         "database_status": check_database_connection(),
+        "pgvector_status": check_pgvector_available(),
     }
 
 
