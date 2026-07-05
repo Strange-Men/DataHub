@@ -168,6 +168,14 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 Render deployment guide: [docs/23_RENDER_DEPLOYMENT_GUIDE.md](./docs/23_RENDER_DEPLOYMENT_GUIDE.md)
 
+Local environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and fill in your API keys (e.g. DeepSeek LLM key). `.env` is never committed to Git.
+
 ## API Examples
 
 Import customer chat JSON:

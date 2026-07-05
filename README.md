@@ -166,6 +166,14 @@ Invoke-RestMethod http://127.0.0.1:8000/health
 
 Render 部署指南：[docs/23_RENDER_DEPLOYMENT_GUIDE.md](./docs/23_RENDER_DEPLOYMENT_GUIDE.md)
 
+本地环境变量：
+
+```bash
+cp .env.example .env
+```
+
+然后编辑 `.env`，填入你的 API Key（如 DeepSeek LLM Key）。`.env` 不会被提交到 Git。
+
 ## API 示例
 
 导入客服聊天 JSON：

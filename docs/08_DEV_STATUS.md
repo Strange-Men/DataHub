@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. Current checkpoint: P1-M24.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. Current checkpoint: P1-M24.1.
 
 Current code remains Phase 1.
 
@@ -1664,6 +1664,34 @@ This is a smoke test, verification, and documentation checkpoint. No new feature
 - Confirmed no real LLM / real embedding API.
 - Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
 - Confirmed no tag was created (commit only).
+
+## Completed In P1-M24.1
+
+- Added comprehensive `.env.example` with LLM and embedding provider configuration.
+- LLM provider: DeepSeek (OpenAI-compatible) with `LLM_PROVIDER`, `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT_SECONDS`, `LLM_MAX_RETRIES`, `LLM_TEMPERATURE`, `LLM_MAX_TOKENS`.
+- Embedding provider: mock as safe default with `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION`, `EMBEDDING_API_KEY`, `EMBEDDING_BASE_URL`, `EMBEDDING_TIMEOUT_SECONDS`, `EMBEDDING_MAX_RETRIES`.
+- Reserved embedding options: SiliconFlow (BAAI/bge-large-zh-v1.5, 1024 dim) and Jina (jina-embeddings-v4, 2048 dim) — both commented out with dimension compatibility warnings.
+- Added `.env.local.example` for personal secret overrides.
+- Created local `.env` from template with placeholders only (no real API keys).
+- Updated `.gitignore` to ignore `.env`, `.env.local`, `.env.*.local`, `*.env` while allowing `.env.example` and `.env.local.example`.
+- Added local environment variable setup instructions to `README.md` and `README.en.md`.
+- Confirmed no business code, no LLM integration, no embedding integration, no API, no database schema, no frontend changes.
+- Confirmed no real API keys committed.
+- Confirmed no tag was created (commit only).
+
+### P1-M24.1 Boundaries
+
+This is an env template and configuration checkpoint only. No business logic changes.
+
+- Confirmed no `backend/app/llm.py` created.
+- Confirmed no `backend/app/embedding.py` modified.
+- Confirmed no CustomerOpsAgent retrieve logic changes.
+- Confirmed no frontend changes.
+- Confirmed no database schema changes.
+- Confirmed no new dependencies.
+- Confirmed no real API keys committed.
+- Confirmed no P2/P3/P4 development.
+- Confirmed no tag.
 
 ## Next Suggested Stage
 

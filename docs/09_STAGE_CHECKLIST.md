@@ -1498,6 +1498,38 @@ P1-M24 is complete when:
 - [x] 不打 tag
 - [x] git status clean
 
+### 41F. P1-M24.1 Env Template for DeepSeek LLM + Embedding API
+
+P1-M24.1 is complete when:
+
+- [x] `.env.example` 包含完整 LLM + Embedding provider 配置。
+- [x] DeepSeek 标记为 LLM provider（非 embedding provider）。
+- [x] Embedding provider 独立配置，默认 mock。
+- [x] 预留 SiliconFlow 和 Jina embedding 选项（已注释，含维度兼容警告）。
+- [x] 所有值为 placeholder，无真实 API Key。
+- [x] `.env.local.example` 新增，记录本地覆盖模式。
+- [x] 本地 `.env` 已创建，仅含 placeholder。
+- [x] `.gitignore` 正确忽略 `.env`、`.env.local`、`.env.*.local`、`*.env`，不忽略 `.env.example` 和 `.env.local.example`。
+- [x] `README.md` / `README.en.md` 补充本地环境变量说明。
+- [x] `docs/08_DEV_STATUS.md` / `docs/09_STAGE_CHECKLIST.md` 更新。
+- [x] 不写业务代码（不创建 llm.py、不改 embedding.py、不改 retrieve 逻辑）。
+- [x] 不改前端、不改 API、不改数据库 schema、不新增依赖。
+- [x] 不提交真实 `.env` 或 API Key。
+- [x] 不打 tag（commit only）。
+- [x] git status clean。
+
+本轮已完成 (2026-07-05)：
+
+- [x] `.env.example` 已重写（LLM DeepSeek + Embedding mock/SiliconFlow/Jina）
+- [x] `.env.local.example` 已新增
+- [x] `.env` 已从模板创建（placeholder only）
+- [x] `.gitignore` 已更新（.env / .env.local / .env.*.local / *.env 忽略，示例文件放行）
+- [x] README 已更新
+- [x] docs 已更新
+- [x] 无业务代码变更
+- [x] 无真实 key 提交
+- [x] 不打 tag
+
 ## 42. P1-M20.7 To P1-M24 General Rules
 
 所有 P1-M20.7 到 P1-M24 阶段：
