@@ -257,6 +257,14 @@ class RagBuildResult(BaseModel):
     status: Literal["completed"]
     build_method: Literal["local_json_mock_retrieval"]
     created_at: str
+    # P1-M22: vector sync fields
+    embedding_count: int = 0
+    vector_sync_enabled: bool = False
+    embedding_provider: str | None = None
+    embedding_model: str | None = None
+    embedding_dimension: int | None = None
+    approved_candidate_count: int = 0
+    skipped_candidate_count: int = 0
 
 
 class RagSearchRequest(BaseModel):

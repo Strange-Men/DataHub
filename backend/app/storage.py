@@ -38,6 +38,7 @@ from app.schemas import (
 )
 from app.database import SessionLocal
 import app.db_repositories as db_repo
+from app.embedding import get_embedding_provider
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -1315,6 +1316,103 @@ def build_rag_chunks() -> RagBuildResult:
     except Exception:
         _logger.exception("Failed to save RAG chunks to database")
 
+    # ── P1-M22: Sync approved knowledge to vector RAG ──────────────────────
+    embedding_count = 0
+    vector_sync_enabled = False
+    embedding_provider_name: str | None = None
+    embedding_model_name: str | None = None
+    embedding_dim_val: int | None = None
+    approved_candidate_count = 0
+    skipped_candidate_count = 0
+
+    # Count approved vs not-approved candidates
+    for candidate in candidates:
+        if candidate.review_status == "approved":
+            approved_candidate_count += 1
+        else:
+            skipped_candidate_count += 1
+
+    # Generate embeddings for approved candidates
+    if approved_candidate_count > 0:
+        try:
+            emb_provider = get_embedding_provider()
+            embedding_provider_name = emb_provider.provider_name
+            embedding_model_name = emb_provider.model_name
+            embedding_dim_val = emb_provider.dimension
+            vector_sync_enabled = True
+
+            # Build lookup from candidate_id -> chunk for chunk_text
+            chunk_by_candidate: dict[str, RagChunk] = {}
+            for chunk in chunks:
+                chunk_by_candidate[chunk.candidate_id] = chunk
+
+            embedding_rows: list[dict[str, Any]] = []
+            for candidate in candidates:
+                if candidate.review_status != "approved":
+                    continue
+                chunk = chunk_by_candidate.get(candidate.candidate_id)
+                if chunk is None:
+                    continue
+
+                chunk_text_val = chunk.chunk_text
+                embedding_vector = emb_provider.embed(chunk_text_val)
+
+                emb_id = f"ragemb_{candidate.candidate_id}"
+
+                # Build metadata_json with full source trace
+                meta: dict[str, Any] = {
+                    "candidate_id": candidate.candidate_id,
+                    "source_type": candidate.source_type,
+                    "source_batch_id": candidate.source_batch_id,
+                    "source_conversation_id": candidate.source_conversation_id,
+                    "source_message_ids": candidate.source_message_ids,
+                    "source_bad_case_id": candidate.source_bad_case_id,
+                    "source_retrieval_id": candidate.source_retrieval_id,
+                    "source_chunk_ids": candidate.source_chunk_ids,
+                    "source_legacy_id": candidate.source_legacy_id,
+                    "source_import_id": candidate.source_import_id,
+                    "intent": candidate.intent,
+                    "quality_score": candidate.quality_score,
+                    "modality": "text",
+                    "sync_method": "approved_knowledge_vector_sync",
+                }
+
+                embedding_rows.append(
+                    {
+                        "id": emb_id,
+                        "chunk_id": chunk.chunk_id,
+                        "candidate_id": candidate.candidate_id,
+                        "source_type": candidate.source_type,
+                        "source_batch_id": candidate.source_batch_id,
+                        "source_message_id": (
+                            candidate.source_message_ids[0]
+                            if candidate.source_message_ids
+                            else None
+                        ),
+                        "modality": "text",
+                        "chunk_text": chunk_text_val,
+                        "metadata_json": meta,
+                        "embedding": embedding_vector,
+                        "embedding_provider": embedding_provider_name,
+                        "embedding_model": embedding_model_name,
+                        "embedding_dimension": embedding_dim_val,
+                    }
+                )
+
+            # Write to rag_embeddings table via DB (delete-rebuild strategy)
+            try:
+                db2 = SessionLocal()
+                try:
+                    embedding_count = db_repo.save_rag_embeddings_to_db(
+                        db2, embedding_rows
+                    )
+                finally:
+                    db2.close()
+            except Exception:
+                _logger.exception("Failed to save RAG embeddings to database")
+        except Exception:
+            _logger.exception("Failed to generate RAG embeddings")
+
     return RagBuildResult(
         built_count=built_count,
         updated_count=updated_count,
@@ -1324,6 +1422,13 @@ def build_rag_chunks() -> RagBuildResult:
         status="completed",
         build_method="local_json_mock_retrieval",
         created_at=created_at,
+        embedding_count=embedding_count,
+        vector_sync_enabled=vector_sync_enabled,
+        embedding_provider=embedding_provider_name,
+        embedding_model=embedding_model_name,
+        embedding_dimension=embedding_dim_val,
+        approved_candidate_count=approved_candidate_count,
+        skipped_candidate_count=skipped_candidate_count,
     )
 
 

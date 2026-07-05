@@ -42,7 +42,7 @@ class LegacyRagMigrationTest(unittest.TestCase):
     def test_legacy_rag_import_is_idempotent_and_retrievable(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M21")
+        self.assertEqual(health.json()["phase"], "P1-M22")
 
         imported = self.client.post("/api/legacy-rag/import", json=self.sample)
         self.assertEqual(imported.status_code, 200, imported.text)

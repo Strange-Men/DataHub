@@ -18,7 +18,7 @@ English version: [README.en.md](./README.en.md)
 
 > 说明：Render 免费实例可能冷启动，首次访问需等待 30-60 秒。前端通过 `VITE_API_BASE_URL` 环境变量连接后端。如果后端未连接，前端会显示友好的状态提示而非红色错误。
 
-当前线上 Demo 已支持 P1 主流程演示。P1 数据库持久化链路已完成线上 smoke test，覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。Vector RAG foundation and eval set have been added; semantic retrieval integration is planned next. 最终收版前还将补齐真实向量 RAG 与 CustomerOpsAgent 语义检索闭环。
+当前线上 Demo 已支持 P1 主流程演示。P1 数据库持久化链路已完成线上 smoke test，覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。Approved knowledge can now be synced into the vector RAG table; semantic retrieval integration is planned next. 最终收版前还将补齐真实向量 RAG 与 CustomerOpsAgent 语义检索闭环。
 
 DataHub 是一个面向 AI Agent 集群的数据资产中心，用来把客服聊天记录、历史知识库、公开评测样本、Bad Case 修正和后续多模态素材统一纳入治理流程，经过清洗、脱敏、人工修正、知识抽取、审核和 RAG 构建后，提供给 CustomerOpsAgent 等 Agent 以受限 API 调用。
 

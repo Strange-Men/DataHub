@@ -388,9 +388,25 @@ class PipelineHarness:
         )
 
     def step_sync_rag(self) -> StepResult:
+        def _extract(j: dict[str, Any]) -> dict[str, str]:
+            data = j.get("data") or {}
+            ids: dict[str, str] = {
+                "chunk_count": str(data.get("chunk_count", "")),
+            }
+            # P1-M22: extract vector sync fields if present
+            emb_count = data.get("embedding_count")
+            if emb_count is not None:
+                ids["embedding_count"] = str(emb_count)
+            vec_enabled = data.get("vector_sync_enabled")
+            if vec_enabled is not None:
+                ids["vector_sync_enabled"] = str(vec_enabled)
+            emb_provider = data.get("embedding_provider")
+            if emb_provider:
+                ids["embedding_provider"] = str(emb_provider)
+            return ids
         return self._call_and_record(
             "sync_rag", "POST", "/api/rag/build",
-            key_extractor=lambda j: {"chunk_count": str((j.get("data") or {}).get("chunk_count", ""))},
+            key_extractor=_extract,
         )
 
     def step_customerops_retrieve(self) -> StepResult:

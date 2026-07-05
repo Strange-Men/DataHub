@@ -1300,20 +1300,36 @@ P1-M21.1 is complete when:
 
 P1-M22 is complete when:
 
-- [ ] approved knowledge_candidates 可同步到 `vector_chunks`。
-- [ ] chunk text + metadata + embedding + source trace 完整写入。
-- [ ] pending_review / rejected / needs_revision 不进入向量知识库。
-- [ ] 重复同步幂等（同 candidate_id upsert，不重复行）。
-- [ ] 保留 `rag_chunks` / keyword fallback 兼容。
-- [ ] 预留 `source_type` / `modality` 字段，为 P2 多模态做准备。
-- [ ] sync 测试和 approved-only 边界测试通过。
-- [ ] approved candidate 数量和 vector_chunks 数量可对应。
-- [ ] source trace 不丢。
-- [ ] `/health` 报告 `P1-M22`。
-- [ ] 现有测试全部通过。
-- [ ] git status clean。
-- [ ] 不打 tag（commit only）。
-- [ ] 不进入 P2/P3/P4 后端开发。
+- [x] approved knowledge_candidates 可同步到 `vector_chunks`。
+- [x] chunk text + metadata + embedding + source trace 完整写入。
+- [x] pending_review / rejected / needs_revision 不进入向量知识库。
+- [x] 重复同步幂等（delete-rebuild 策略，不重复行）。
+- [x] 保留 `rag_chunks` / keyword fallback 兼容。
+- [x] 预留 `source_type` / `modality` 字段，为 P2 多模态做准备。
+- [x] sync 测试和 approved-only 边界测试通过（18 tests）。
+- [x] approved candidate 数量和 rag_embeddings 数量可对应。
+- [x] source trace 不丢。
+- [x] `/health` 报告 `P1-M22`。
+- [x] 现有测试全部通过（75 tests）。
+- [x] git status clean。
+- [x] 不打 tag（commit only）。
+- [x] 不进入 P2/P3/P4 后端开发。
+
+本轮已完成 (2026-07-05)：
+
+- [x] `POST /api/rag/build` 同步 approved knowledge 到 `rag_embeddings` 表
+- [x] delete-rebuild 幂等策略（每次 build 删除旧 approved_knowledge embeddings 后重建）
+- [x] 扩展 RagBuildResult 返回 embedding_count / vector_sync_enabled / embedding_provider / embedding_model / embedding_dimension / approved_candidate_count / skipped_candidate_count
+- [x] db_repositories 新增 save_rag_embeddings_to_db / list_rag_embeddings_from_db / count_rag_embeddings_from_db / count_rag_embeddings_by_sync_method
+- [x] 新增 test_approved_knowledge_vector_sync.py (18 tests)
+- [x] 更新 12 个已有测试文件的 phase 断言至 P1-M22
+- [x] 更新 harness sync_rag 步骤提取 vector_sync 字段
+- [x] 不修改 CustomerOpsAgent semantic retrieval
+- [x] 不修改前端
+- [x] 保留 rag_chunks / keyword fallback
+- [x] 不提交 backend/storage/、.env、datahub.db、API Key
+- [x] 不打 tag
+- [x] git status clean
 
 ### 41D. P1-M23 CustomerOpsAgent Semantic Retrieval
 

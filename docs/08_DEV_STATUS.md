@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. Current checkpoint: P1-M15 High-quality DataHub Final Release.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. Current checkpoint: P1-M22.
 
 Current code remains Phase 1.
 
@@ -10,7 +10,7 @@ Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be im
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
-Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test. Current workflow UX polish checkpoint: P1-M20.5 Simplify P1 Workflow UX. Current global frontend visual system checkpoint: P1-M20.6 Global Frontend Visual System Polish. Current pipeline harness checkpoint: P1-M20.7 Lightweight Pipeline Harness. Current vector RAG foundation checkpoint: P1-M21 Vector RAG Foundation + Eval Set. Current pgvector readiness gate checkpoint: P1-M21.1 pgvector Readiness Verification Gate.
+Current cleanup checkpoint: P1-M15.5 Frontend UX Cleanup & Project Boundary Review. Current deployment checkpoint: P1-M15.6 Render Deployment Config. Current UX redesign checkpoint: P1-M15.7 Product UX Redesign & Deployment Link Fix. Current public surface cleanup checkpoint: P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup. Current documentation checkpoint: P1-M15.9 Database Persistence Roadmap Lock. Current database foundation checkpoint: P1-M16 Database Foundation. Current import & cleaning DB persistence checkpoint: P1-M17 Import & Cleaning DB Persistence. Current manual cleaning & review DB persistence checkpoint: P1-M18 Manual Cleaning & Review DB Persistence. Current RAG / Agent / Bad Case DB persistence checkpoint: P1-M19 RAG / Agent / Bad Case DB Persistence. Current DB release & online smoke test checkpoint: P1-M20 DB Release & Online Persistence Smoke Test. Current workflow UX polish checkpoint: P1-M20.5 Simplify P1 Workflow UX. Current global frontend visual system checkpoint: P1-M20.6 Global Frontend Visual System Polish. Current pipeline harness checkpoint: P1-M20.7 Lightweight Pipeline Harness. Current vector RAG foundation checkpoint: P1-M21 Vector RAG Foundation + Eval Set. Current pgvector readiness gate checkpoint: P1-M21.1 pgvector Readiness Verification Gate. Current approved knowledge vector sync checkpoint: P1-M22 Approved Knowledge Sync to Vector RAG.
 
 ## Completed Through M1
 
@@ -1413,8 +1413,58 @@ This is a pgvector readiness verification gate only. No RAG sync, no schema chan
 - Confirmed no P2/P3/P4 development.
 - Confirmed no tag.
 
+## Completed In P1-M22
+
+- Modified `POST /api/rag/build` to sync approved knowledge to `rag_embeddings` vector table alongside `rag_chunks`.
+- Added db_repositories functions: `save_rag_embeddings_to_db`, `list_rag_embeddings_from_db`, `count_rag_embeddings_from_db`, `count_rag_embeddings_by_sync_method`.
+- Vector sync strategy: **delete-rebuild** (Plan A) — each RAG build deletes all existing `approved_knowledge_vector_sync` rows, then rebuilds from current approved candidates.
+- Idempotency: repeated builds do not double the row count.
+- Only `approved` candidates enter `rag_embeddings`; `pending_review`, `rejected`, and `needs_revision` candidates are excluded.
+- Each `rag_embeddings` row includes:
+  - `chunk_text` (from candidate question + answer + intent + tags).
+  - `metadata_json` with full source trace (`candidate_id`, `source_type`, `source_batch_id`, `source_message_id`, `intent`, `quality_score`, `modality: text`, `sync_method: approved_knowledge_vector_sync`).
+  - `embedding` vector (mock deterministic by default, dimension=64).
+  - `embedding_provider`, `embedding_model`, `embedding_dimension`.
+  - `modality` default `text` (reserved for P2 multimodal).
+- Extended `RagBuildResult` schema with new fields: `embedding_count`, `vector_sync_enabled`, `embedding_provider`, `embedding_model`, `embedding_dimension`, `approved_candidate_count`, `skipped_candidate_count`.
+- Embedding provider defaults to mock (no external API required). Works without `EMBEDDING_API_KEY`.
+- Updated harness `step_sync_rag` to extract and display `embedding_count` and `vector_sync_enabled`.
+- SQLite / PostgreSQL compatible: embedding stored as Text (JSON) on SQLite, Vector on PostgreSQL + pgvector.
+- Added `backend/tests/test_approved_knowledge_vector_sync.py` with 18 tests covering:
+  - approved candidate sync to rag_embeddings.
+  - rejected / pending_review / needs_revision exclusion.
+  - repeated sync idempotency.
+  - metadata_json integrity (candidate_id, source_type, modality, sync_method).
+  - embedding_dimension matches mock provider (64).
+  - source trace preservation.
+  - rag_chunks compatibility.
+  - mixed status boundary.
+  - health phase P1-M22.
+- Updated health phase to `P1-M22`.
+- Updated test phase assertions across 12 existing test files.
+- Updated harness `run_p1_pipeline_harness.py` to extract new vector sync fields.
+- Confirmed no CustomerOpsAgent semantic retrieval integration.
+- Confirmed no frontend changes.
+- Confirmed no P2/P3/P4 development.
+- Confirmed `rag_chunks` and keyword fallback preserved.
+- Confirmed no `.env`, `datahub.db`, API Key, or `backend/storage/` committed.
+
+### P1-M22 Boundaries
+
+This is an approved knowledge to vector RAG sync checkpoint. CustomerOpsAgent semantic retrieval is NOT yet integrated.
+
+- Confirmed no CustomerOpsAgent semantic retrieval changes.
+- Confirmed no `/api/customer-ops-agent/retrieve` changes.
+- Confirmed no frontend changes.
+- Confirmed no P2/P3/P4 backend development.
+- Confirmed keyword/JSON fallback preserved.
+- Confirmed `rag_chunks` table preserved.
+- Confirmed no real LLM, MCP, or CustomerOpsAgent repository change.
+- Confirmed `backend/storage/`, `.env`, `datahub.db`, `.venv/`, `frontend/node_modules/`, `frontend/dist/` remain git-ignored.
+- Confirmed no tag was created (commit only).
+
 ## Next Suggested Stage
 
-**P1-M22 Approved Knowledge Sync to Vector RAG** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
+**P1-M23 CustomerOpsAgent Semantic Retrieval** — per `docs/35_REAL_RAG_DEVELOPMENT_ROADMAP.md`.
 
 P2 不应在 P1 真实 RAG 闭环完成前启动。

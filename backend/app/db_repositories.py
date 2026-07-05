@@ -25,6 +25,7 @@ from app.db_models import (
     KnowledgeCandidate as DbKnowledgeCandidate,
     ManualCleaningRecord,
     RagChunk,
+    RagEmbedding,
     RawBatch,
     RawMessage,
     RetrievalLog,
@@ -1125,6 +1126,142 @@ def create_candidate_from_bad_case_in_db(
         )
     )
     db.commit()
+
+
+# ──────────────────────────────────────────────────────────────────
+#  RAG embeddings  (P1-M22)
+# ──────────────────────────────────────────────────────────────────
+
+DEFAULT_SYNC_METHOD = "approved_knowledge_vector_sync"
+
+
+def save_rag_embeddings_to_db(
+    db: Session,
+    embeddings: list[dict[str, Any]],
+) -> int:
+    """Delete old approved-knowledge rag_embeddings and insert new ones.
+
+    Idempotent delete-rebuild strategy (Plan A):
+    1. Delete all rag_embeddings rows with sync_method = approved_knowledge_vector_sync.
+    2. Insert the new set of embeddings.
+
+    Returns the number of embeddings inserted.
+    """
+    now = datetime.now(UTC)
+
+    # Delete existing approved-knowledge-sync embeddings by metadata_json.sync_method
+    # We use a LIKE query on the JSON text to find rows with the sync_method marker.
+    # This is simpler and more compatible across SQLite / PostgreSQL than JSON path queries.
+    existing_rows = db.query(RagEmbedding).all()
+    for row in existing_rows:
+        meta = row.metadata_json
+        if isinstance(meta, dict) and meta.get("sync_method") == DEFAULT_SYNC_METHOD:
+            db.delete(row)
+    db.flush()
+
+    inserted = 0
+    for emb_data in embeddings:
+        emb_id = emb_data.get("id", "")
+        candidate_id = emb_data.get("candidate_id", "")
+        chunk_text_val = emb_data.get("chunk_text", "")
+        embedding_vector = emb_data.get("embedding", [])
+
+        metadata = dict(emb_data.get("metadata_json", {}))
+        metadata["sync_method"] = DEFAULT_SYNC_METHOD
+
+        # Determine embedding storage format based on backend
+        from app.database import DATABASE_URL
+        if DATABASE_URL.startswith("sqlite"):
+            # SQLite: store as JSON text
+            embedding_value = json.dumps(embedding_vector) if embedding_vector else None
+        else:
+            # PostgreSQL: store as list for pgvector Vector type
+            embedding_value = embedding_vector if embedding_vector else None
+
+        db.add(
+            RagEmbedding(
+                id=emb_id,
+                chunk_id=emb_data.get("chunk_id"),
+                candidate_id=candidate_id,
+                source_type=emb_data.get("source_type", "sanitized_batch"),
+                source_batch_id=emb_data.get("source_batch_id"),
+                source_message_id=emb_data.get("source_message_id"),
+                modality=emb_data.get("modality", "text"),
+                chunk_text=chunk_text_val,
+                metadata_json=metadata,
+                embedding=embedding_value,
+                embedding_provider=emb_data.get("embedding_provider"),
+                embedding_model=emb_data.get("embedding_model"),
+                embedding_dimension=emb_data.get("embedding_dimension"),
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        inserted += 1
+
+    db.commit()
+    return inserted
+
+
+def list_rag_embeddings_from_db(db: Session) -> list[dict[str, Any]]:
+    """Return all rag_embeddings from the database (without the raw vector for readability)."""
+    rows = db.query(RagEmbedding).order_by(RagEmbedding.created_at.desc()).all()
+    result: list[dict[str, Any]] = []
+    for row in rows:
+        result.append(_db_rag_embedding_to_dict(row))
+    return result
+
+
+def count_rag_embeddings_from_db(db: Session) -> int:
+    """Return total count of rag_embeddings rows."""
+    return db.query(RagEmbedding).count()
+
+
+def count_rag_embeddings_by_sync_method(db: Session) -> int:
+    """Return count of rag_embeddings rows created by approved knowledge vector sync."""
+    total = 0
+    for row in db.query(RagEmbedding).all():
+        meta = row.metadata_json
+        if isinstance(meta, dict) and meta.get("sync_method") == DEFAULT_SYNC_METHOD:
+            total += 1
+    return total
+
+
+def _db_rag_embedding_to_dict(row: RagEmbedding) -> dict[str, Any]:
+    """Convert a RagEmbedding row to a dict (embedding vector truncated for readability)."""
+    meta = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+    # Truncate embedding preview — never return the full vector in list views
+    emb = row.embedding
+    emb_preview: Any = None
+    if emb is not None:
+        if isinstance(emb, str):
+            try:
+                parsed = json.loads(emb)
+                emb_preview = f"[{len(parsed)} floats]"
+            except (json.JSONDecodeError, TypeError):
+                emb_preview = "[embedded]"
+        elif isinstance(emb, list):
+            emb_preview = f"[{len(emb)} floats]"
+        else:
+            emb_preview = "[embedded]"
+
+    return {
+        "id": row.id,
+        "chunk_id": row.chunk_id,
+        "candidate_id": row.candidate_id,
+        "source_type": row.source_type,
+        "source_batch_id": row.source_batch_id,
+        "source_message_id": row.source_message_id,
+        "modality": row.modality,
+        "chunk_text": row.chunk_text,
+        "metadata_json": meta,
+        "embedding_preview": emb_preview,
+        "embedding_provider": row.embedding_provider,
+        "embedding_model": row.embedding_model,
+        "embedding_dimension": row.embedding_dimension,
+        "created_at": row.created_at.isoformat() if row.created_at else "",
+        "updated_at": row.updated_at.isoformat() if row.updated_at else "",
+    }
 
 
 def _db_bad_case_to_dict(row: BadCase) -> dict[str, Any]:

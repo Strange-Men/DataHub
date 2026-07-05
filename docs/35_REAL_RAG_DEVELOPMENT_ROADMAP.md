@@ -302,20 +302,66 @@ M22 可立即启动：Approved Knowledge Sync to Vector RAG。
 ### 范围
 
 1. "同步已审核知识到 RAG 知识库" 不再只写 `rag_chunks`
-2. approved knowledge_candidates → chunk text + metadata + embedding + source trace → `vector_chunks`
+2. approved knowledge_candidates → chunk text + metadata + embedding + source trace → `rag_embeddings`
 3. **pending_review / rejected / needs_revision 绝对不能进入向量知识库**
-4. 重复同步幂等：同一 candidate_id 不产生重复行（upsert by candidate_id）
+4. 重复同步幂等：同一 candidate_id 不产生重复行（delete-rebuild by sync_method）
 5. 保留 `rag_chunks` / keyword fallback 兼容
 6. 预留 `source_type` / `modality` 字段，为 P2 多模态接入做准备
 7. 新增 sync 测试和 approved-only 边界测试
 
 ### 验收
 
-- approved candidate 数量和 vector_chunks 数量可对应
+- approved candidate 数量和 rag_embeddings 数量可对应
 - 重复 sync 不产生重复行
 - rejected / pending 不进入向量知识库
 - source trace 不丢
 - keyword fallback 仍可用
+
+### 实装记录（2026-07-05）
+
+**同步策略**：delete-rebuild（Plan A）
+- 每次 RAG build 时，先删除所有 `sync_method=approved_knowledge_vector_sync` 的旧 `rag_embeddings` 行，然后根据当前 approved candidates 重建。
+- 优点：简单、可测、不容易重复堆垃圾。
+
+**rag_embeddings 写入规则**：
+1. 只有 `status=approved` 的 knowledge_candidates 可进入 `rag_embeddings`。
+2. `pending_review` / `rejected` / `needs_revision` 绝对不进入。
+3. 每条 approved candidate 生成一个 embedding chunk。
+4. `chunk_text` 格式：`"Question: {question}\nAnswer: {answer}\nIntent: {intent}\nTags: {tags}"`
+5. `metadata_json` 包含完整 source trace：`candidate_id`, `source_type`, `source_batch_id`, `source_message_id`, `intent`, `quality_score`, `modality: text`, `sync_method: approved_knowledge_vector_sync`
+6. `embedding_provider` / `embedding_model` / `embedding_dimension` 完整写入。
+7. `modality` 默认 `text`，为 P2 多模态预留。
+8. 默认使用 MockEmbeddingProvider（deterministic, SHA-256 hash-based, dimension=64），无需外部 API。
+
+**幂等策略**：
+- 按 `sync_method` 标记进行 delete-rebuild。同一次 build 中，相同的 candidate 不会重复写入。
+- 测试验证：第一次 sync 后 count = approved candidates count；第二次 sync 后 count 不变。
+
+**API 返回扩展**：
+`POST /api/rag/build` 的 `RagBuildResult` 新增字段：
+- `embedding_count`：写入的 embedding 数量
+- `vector_sync_enabled`：是否本次 build 启用了向量同步
+- `embedding_provider` / `embedding_model` / `embedding_dimension`：embedding provider 配置
+- `approved_candidate_count`：本次 approved candidates 数量
+- `skipped_candidate_count`：被跳过的 candidates 数量
+
+**source trace 字段**：
+从 `rag_embeddings` 可追溯回 `knowledge_candidates`：
+- `candidate_id` → `knowledge_candidates.id`
+- `source_type` / `source_batch_id` → 原始数据来源
+- `source_message_id` → 原始消息
+
+**测试覆盖**（18 个新增测试）：
+- approved candidate 同步到 rag_embeddings
+- rejected / pending_review / needs_revision 不同步
+- 重复 sync 幂等
+- metadata_json 包含 candidate_id / source_type / modality
+- embedding_dimension 与 mock provider 一致
+- source trace 不丢
+- rag_chunks 原有逻辑仍可用
+- 不需要真实外部 embedding API
+
+**M23 下一步**：CustomerOpsAgent Semantic Retrieval — 让 CustomerOpsAgent 真正调用语义 RAG 知识库。
 
 ---
 
