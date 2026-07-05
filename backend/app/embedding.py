@@ -175,12 +175,14 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         model: str = "text-embedding-3-small",
         api_key: str | None = None,
         dimension: int | None = None,
+        base_url: str | None = None,
         timeout: float = 30.0,
         max_retries: int = 3,
     ) -> None:
         self._model = model
         self._api_key = api_key or os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY", "")
         self._dimension = dimension or 1536
+        self._base_url = base_url or os.getenv("EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL", "")
         self._timeout = timeout
         self._max_retries = max_retries
 
@@ -216,7 +218,10 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
                 "Install it with: pip install openai"
             )
 
-        client = OpenAI(api_key=self._api_key, timeout=self._timeout)
+        client_kwargs: dict[str, Any] = {"api_key": self._api_key, "timeout": self._timeout}
+        if self._base_url:
+            client_kwargs["base_url"] = self._base_url
+        client = OpenAI(**client_kwargs)
         last_exc: Exception | None = None
         for attempt in range(1, self._max_retries + 1):
             try:
@@ -253,7 +258,10 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
                 "Install it with: pip install openai"
             )
 
-        client = OpenAI(api_key=self._api_key, timeout=self._timeout)
+        client_kwargs: dict[str, Any] = {"api_key": self._api_key, "timeout": self._timeout}
+        if self._base_url:
+            client_kwargs["base_url"] = self._base_url
+        client = OpenAI(**client_kwargs)
         last_exc: Exception | None = None
         for attempt in range(1, self._max_retries + 1):
             try:
@@ -309,13 +317,15 @@ def get_embedding_provider(
         dim = dimension or 1536
         return MockEmbeddingProvider(dimension=dim)
 
-    if provider == "openai":
+    if provider == "openai" or provider == "openai_compatible":
         model = model or "text-embedding-3-small"
         dim = dimension or 1536
+        base_url = os.getenv("EMBEDDING_BASE_URL", "").strip() or os.getenv("OPENAI_BASE_URL", "").strip() or None
         return OpenAIEmbeddingProvider(
             model=model,
             api_key=api_key,
             dimension=dim,
+            base_url=base_url,
         )
 
     # Unknown provider — fall back to mock with a warning

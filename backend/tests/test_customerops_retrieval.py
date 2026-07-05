@@ -65,7 +65,7 @@ class CustomerOpsRetrievalTest(unittest.TestCase):
     def test_customerops_retrieval_is_restricted_and_traceable(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M23.1")
+        self.assertEqual(health.json()["phase"], "P1-M23.2")
 
         candidates = [
             *self._create_candidates("a"),

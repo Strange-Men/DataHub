@@ -165,7 +165,7 @@ class P1HighQualityDataHubReleaseTest(unittest.TestCase):
     def test_p1_high_quality_datahub_release_flow(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M23.1")
+        self.assertEqual(health.json()["phase"], "P1-M23.2")
 
         batch_id = self._import_high_quality_sample()
         raw_path = ROOT_DIR / "backend" / "storage" / "raw_batches" / f"{batch_id}.json"

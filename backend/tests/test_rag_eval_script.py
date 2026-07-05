@@ -1,4 +1,4 @@
-"""Tests for P1-M23.1 RAG Eval Script (scripts/run_rag_eval.py).
+"""Tests for P1-M23.2 RAG Eval Script (scripts/run_rag_eval.py).
 
 Verifies:
 - eval script can load rag_eval_queries.json.

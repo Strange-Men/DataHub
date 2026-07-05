@@ -752,12 +752,12 @@ class TestHealthPhaseUpdated(unittest.TestCase):
             pass
 
     def test_health_reports_p1_m22(self):
-        """Health endpoint should report phase P1-M23.1."""
+        """Health endpoint should report phase P1-M23.2."""
         resp = self.client.get("/health")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data.get("phase"), "P1-M23.1",
-                        f"Expected phase P1-M23.1, got {data.get('phase')}")
+        self.assertEqual(data.get("phase"), "P1-M23.2",
+                        f"Expected phase P1-M23.2, got {data.get('phase')}")
 
 
 if __name__ == "__main__":
