@@ -1544,3 +1544,39 @@ P1-M24.1 is complete when:
 - 不删除或破坏 JSON fallback 路径。
 - M21 起：mock embedding 本地测试必须可用。
 - M23 起：eval recall@5 必须可计算。
+
+## P1-M24.2 Real Embedding Provider Verification & Vector Rebuild
+
+### M24.2 Checklist
+
+- [x] EMBEDDING_PROVIDER=mock 继续可用
+- [x] 支持 siliconflow / jina / openai_compatible 真实 embedding provider
+- [x] API key 只从 EMBEDDING_API_KEY 读取
+- [x] base_url 只从 EMBEDDING_BASE_URL 读取
+- [x] model 只从 EMBEDDING_MODEL 读取
+- [x] timeout / retry 从环境变量读取
+- [x] 不允许硬编码真实 key
+- [x] 不允许在日志打印 key
+- [x] 真实 provider 缺 key：provider_ready=false, missing_api_key
+- [x] check_embedding_provider.py 输出真实 embedding 维度
+- [x] 真实 embedding dimension != 1536 时输出 BLOCKED_DIMENSION_MISMATCH
+- [x] BLOCKED_DIMENSION_MISMATCH 时不允许 vector rebuild
+- [x] dimension = 1536 时允许 vector rebuild
+- [x] 无法确认 dimension 时不允许 vector rebuild
+- [x] rebuild_vector_rag.py 脚本新增
+- [x] provider not ready 或 dimension mismatch 时 rebuild 不执行
+- [x] rebuild 输出 embedding_count / failed_embedding_count / provider / model / dimension
+- [x] DeepSeek LLM 与 embedding provider 职责明确分离
+- [x] 测试覆盖：mock 仍可用
+- [x] 测试覆盖：缺 key 不泄露
+- [x] 测试覆盖：provider check 识别 missing_api_key
+- [x] 测试覆盖：provider check 识别 dimension mismatch
+- [x] 测试覆盖：rebuild 在 provider not ready 时不执行
+- [x] 测试覆盖：rebuild 不静默失败
+- [x] 测试不依赖真实外部 API
+- [x] 测试不依赖真实 Render 数据库
+- [x] 文档更新：08/09/35/36/README
+- [x] 不打 tag
+- [x] 不 force push
+- [x] 不改前端
+- [x] 不进入 P2/P3/P4

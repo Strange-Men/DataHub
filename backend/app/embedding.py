@@ -317,21 +317,29 @@ def get_embedding_provider(
         dim = dimension or 1536
         return MockEmbeddingProvider(dimension=dim)
 
-    if provider == "openai" or provider == "openai_compatible":
+    if provider in ("openai", "openai_compatible", "siliconflow", "jina"):
+        # All these providers use OpenAI-compatible API.
+        # SiliconFlow base URL: https://api.siliconflow.com/v1
+        # Jina base URL: https://api.jina.ai/v1
+        # DeepSeek is NOT an embedding provider — only for LLM answer generation.
         model = model or "text-embedding-3-small"
         dim = dimension or 1536
         base_url = os.getenv("EMBEDDING_BASE_URL", "").strip() or os.getenv("OPENAI_BASE_URL", "").strip() or None
+        timeout = float(os.getenv("EMBEDDING_TIMEOUT_SECONDS", "30").strip())
+        max_retries = int(os.getenv("EMBEDDING_MAX_RETRIES", "3").strip())
         return OpenAIEmbeddingProvider(
             model=model,
             api_key=api_key,
             dimension=dim,
             base_url=base_url,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     # Unknown provider — fall back to mock with a warning
     import warnings
     warnings.warn(
         f"Unknown embedding provider '{provider}'. Falling back to mock. "
-        f"Set EMBEDDING_PROVIDER to 'mock' or 'openai'."
+        f"Set EMBEDDING_PROVIDER to 'mock', 'openai', 'openai_compatible', 'siliconflow', or 'jina'."
     )
     return MockEmbeddingProvider(dimension=dimension or 1536)

@@ -176,6 +176,16 @@ cp .env.example .env
 
 Then edit `.env` and fill in your API keys (e.g. DeepSeek LLM key). `.env` is never committed to Git.
 
+The embedding provider defaults to mock (deterministic, keyword-aware). For real semantic retrieval, configure:
+```bash
+EMBEDDING_PROVIDER=siliconflow   # or jina, openai, openai_compatible
+EMBEDDING_API_KEY=your_key
+EMBEDDING_BASE_URL=https://api.siliconflow.com/v1
+EMBEDDING_MODEL=BAAI/bge-large-zh-v1.5
+EMBEDDING_DIMENSION=1536
+```
+Note: `EMBEDDING_DIMENSION` must match the pgvector table schema (currently 1536). DeepSeek is NOT an embedding provider — used only for LLM answer generation.
+
 ## API Examples
 
 Import customer chat JSON:

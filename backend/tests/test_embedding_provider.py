@@ -1,4 +1,4 @@
-"""Tests for the embedding provider abstraction (P1-M21).
+"""Tests for the embedding provider abstraction (P1-M21, extended M24.2).
 
 Covers:
 - MockEmbeddingProvider determinism and dimension correctness.
@@ -6,6 +6,9 @@ Covers:
 - Mock embedding stability across calls.
 - Mock batch embedding correctness.
 - No external API dependency.
+- SiliconFlow / Jina / OpenAI-compatible provider factory routing.
+- Missing API key safety.
+- Dimension mismatch detection readiness.
 """
 
 import math
@@ -15,6 +18,7 @@ import unittest
 from app.embedding import (
     EmbeddingProvider,
     MockEmbeddingProvider,
+    OpenAIEmbeddingProvider,
     get_embedding_provider,
 )
 
@@ -171,3 +175,189 @@ class TestEmbeddingProviderInterface(unittest.TestCase):
         self.assertIsInstance(vec[0], float)
         batch = p.embed_batch(["a", "b"])
         self.assertEqual(len(batch), 2)
+
+
+class TestRealEmbeddingProviderFactory(unittest.TestCase):
+    """Verify factory behaviour for real (non-mock) providers."""
+
+    def setUp(self):
+        self._saved = {
+            k: os.environ.get(k)
+            for k in ("EMBEDDING_PROVIDER", "EMBEDDING_MODEL",
+                       "EMBEDDING_API_KEY", "EMBEDDING_DIMENSION",
+                       "EMBEDDING_BASE_URL", "EMBEDDING_TIMEOUT_SECONDS",
+                       "EMBEDDING_MAX_RETRIES", "OPENAI_API_KEY",
+                       "OPENAI_BASE_URL")
+        }
+        for k in self._saved:
+            if k in os.environ:
+                del os.environ[k]
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is not None:
+                os.environ[k] = v
+            elif k in os.environ:
+                del os.environ[k]
+
+    def test_siliconflow_provider_recognized(self):
+        """siliconflow maps to OpenAIEmbeddingProvider."""
+        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        os.environ["EMBEDDING_API_KEY"] = "test-key"
+        os.environ["EMBEDDING_BASE_URL"] = "https://api.siliconflow.com/v1"
+        provider = get_embedding_provider()
+        self.assertIsInstance(provider, OpenAIEmbeddingProvider)
+        self.assertEqual(provider.provider_name, "openai")
+
+    def test_jina_provider_recognized(self):
+        """jina maps to OpenAIEmbeddingProvider."""
+        os.environ["EMBEDDING_PROVIDER"] = "jina"
+        os.environ["EMBEDDING_API_KEY"] = "test-key"
+        os.environ["EMBEDDING_BASE_URL"] = "https://api.jina.ai/v1"
+        provider = get_embedding_provider()
+        self.assertIsInstance(provider, OpenAIEmbeddingProvider)
+        self.assertEqual(provider.provider_name, "openai")
+
+    def test_openai_compatible_provider_recognized(self):
+        """openai_compatible maps to OpenAIEmbeddingProvider."""
+        os.environ["EMBEDDING_PROVIDER"] = "openai_compatible"
+        os.environ["EMBEDDING_API_KEY"] = "test-key"
+        os.environ["EMBEDDING_BASE_URL"] = "https://custom.api.com/v1"
+        provider = get_embedding_provider()
+        self.assertIsInstance(provider, OpenAIEmbeddingProvider)
+
+    def test_openai_provider_recognized(self):
+        """openai maps to OpenAIEmbeddingProvider."""
+        os.environ["EMBEDDING_PROVIDER"] = "openai"
+        os.environ["EMBEDDING_API_KEY"] = "test-key"
+        provider = get_embedding_provider()
+        self.assertIsInstance(provider, OpenAIEmbeddingProvider)
+
+    def test_real_provider_missing_key_does_not_crash_factory(self):
+        """Factory must return a provider even if API key is missing."""
+        for prov in ("openai", "siliconflow", "jina", "openai_compatible"):
+            os.environ["EMBEDDING_PROVIDER"] = prov
+            # No API key set
+            provider = get_embedding_provider()
+            self.assertIsInstance(provider, EmbeddingProvider,
+                                  f"Provider {prov} should be created without key")
+            self.assertTrue(provider.provider_name in ("openai", "mock"),
+                            f"Provider {prov} has name: {provider.provider_name}")
+
+    def test_real_provider_missing_key_embed_raises(self):
+        """Embedding with real provider without API key should raise ValueError."""
+        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        # No API key
+        provider = get_embedding_provider()
+        if provider.provider_name == "openai":
+            with self.assertRaises(ValueError):
+                provider.embed("test text")
+
+    def test_env_base_url_passed_to_provider(self):
+        """EMBEDDING_BASE_URL should be passed through."""
+        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        os.environ["EMBEDDING_API_KEY"] = "test-key"
+        os.environ["EMBEDDING_BASE_URL"] = "https://api.siliconflow.com/v1"
+        provider = get_embedding_provider()
+        self.assertEqual(provider._base_url, "https://api.siliconflow.com/v1")
+
+    def test_env_timeout_and_retries_read(self):
+        """EMBEDDING_TIMEOUT_SECONDS and EMBEDDING_MAX_RETRIES should be read."""
+        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        os.environ["EMBEDDING_API_KEY"] = "test-key"
+        os.environ["EMBEDDING_TIMEOUT_SECONDS"] = "45"
+        os.environ["EMBEDDING_MAX_RETRIES"] = "5"
+        provider = get_embedding_provider()
+        self.assertEqual(provider._timeout, 45.0)
+        self.assertEqual(provider._max_retries, 5)
+
+    def test_provider_name_never_exposes_key(self):
+        """Provider_name and model_name must not contain API keys."""
+        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        os.environ["EMBEDDING_API_KEY"] = "sk-secret-key-12345"
+        provider = get_embedding_provider()
+        self.assertNotIn("sk-secret", provider.provider_name)
+        self.assertNotIn("sk-secret", provider.model_name)
+
+    def test_mock_provider_still_works_with_all_env_set(self):
+        """Mock provider must work even when env has real provider config."""
+        os.environ["EMBEDDING_PROVIDER"] = "mock"
+        os.environ["EMBEDDING_API_KEY"] = "some-key"
+        os.environ["EMBEDDING_BASE_URL"] = "https://example.com"
+        provider = get_embedding_provider()
+        self.assertIsInstance(provider, MockEmbeddingProvider)
+        vec = provider.embed("test")
+        self.assertEqual(len(vec), 1536)
+
+    def test_mock_fallback_on_unknown_provider(self):
+        """Unknown provider should fallback to mock without crash."""
+        os.environ["EMBEDDING_PROVIDER"] = "deepseek"
+        provider = get_embedding_provider()
+        # DeepSeek is LLM only, not embedding — should fallback to mock
+        self.assertIsInstance(provider, MockEmbeddingProvider)
+
+
+class TestRealEmbeddingReadinessNoExternalAPI(unittest.TestCase):
+    """Verify readiness checks without real external API calls."""
+
+    def setUp(self):
+        self._saved = {
+            k: os.environ.get(k)
+            for k in ("EMBEDDING_PROVIDER", "EMBEDDING_MODEL",
+                       "EMBEDDING_API_KEY", "EMBEDDING_DIMENSION",
+                       "EMBEDDING_BASE_URL", "OPENAI_API_KEY")
+        }
+        for k in self._saved:
+            if k in os.environ:
+                del os.environ[k]
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is not None:
+                os.environ[k] = v
+            elif k in os.environ:
+                del os.environ[k]
+
+    def test_mock_is_always_ready(self):
+        """Mock provider is always ready, no API key needed."""
+        os.environ["EMBEDDING_PROVIDER"] = "mock"
+        provider = get_embedding_provider()
+        vec = provider.embed("test")
+        self.assertEqual(len(vec), 1536)
+        self.assertEqual(provider.provider_name, "mock")
+
+    def test_missing_key_detected(self):
+        """When real provider set but no key, this should be detectable."""
+        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        # No EMBEDDING_API_KEY set
+        api_key = os.getenv("EMBEDDING_API_KEY", "").strip()
+        self.assertEqual(api_key, "")
+        # Factory should still work but provider.embed() will raise ValueError
+        provider = get_embedding_provider()
+        if provider.provider_name == "openai":
+            with self.assertRaises(ValueError):
+                provider.embed("test")
+
+    def test_dimension_mismatch_can_be_detected(self):
+        """We can compare provider dimension vs expected table dimension."""
+        expected_table_dim = 1536
+        # Mock provider with 1024 dim would mismatch
+        provider = MockEmbeddingProvider(dimension=1024)
+        vec = provider.embed("test")
+        actual_dim = len(vec)
+        self.assertEqual(actual_dim, 1024)
+        self.assertNotEqual(actual_dim, expected_table_dim)
+        # This mismatch should be flagged in rebuild scripts
+
+    def test_default_mock_dimension_matches_table(self):
+        """Default mock 1536 dim should match pgvector Vector(1536)."""
+        provider = MockEmbeddingProvider()  # default 1536
+        self.assertEqual(provider.dimension, 1536)
+        vec = provider.embed("test")
+        self.assertEqual(len(vec), 1536)
+
+    def test_openai_provider_default_dimension(self):
+        """OpenAIEmbeddingProvider default dimension is 1536."""
+        os.environ["EMBEDDING_API_KEY"] = "test-key"
+        provider = OpenAIEmbeddingProvider(api_key="test-key")
+        self.assertEqual(provider.dimension, 1536)

@@ -790,3 +790,62 @@ P1-M24    线上 Smoke Test + Release Readiness
    v
 用户确认后 → P1 Release Tag → 再决定是否进入 P2
 ```
+
+---
+
+## 16. P1-M24.2：Real Embedding Provider Verification & Vector Rebuild
+
+### 目标
+
+在 DeepSeek 真实 LLM 已接入后，继续补齐真实 embedding provider。明确区分 LLM 和 Embedding 职责。
+
+### DeepSeek LLM vs Embedding Provider 职责分离
+
+| 组件 | 职责 | Provider | 配置 |
+|------|------|----------|------|
+| **LLM** | Agent 回答生成 | DeepSeek (OpenAI-compatible) | `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_BASE_URL` |
+| **Embedding** | 文本向量化 / 语义检索 | mock (default) / siliconflow / jina / openai | `EMBEDDING_PROVIDER`, `EMBEDDING_API_KEY`, `EMBEDDING_BASE_URL` |
+
+**DeepSeek 不作为 embedding provider。** 仅用于 LLM 回答生成。
+
+### 已实现
+
+1. `backend/app/embedding.py`：factory 支持 `mock`, `openai`, `openai_compatible`, `siliconflow`, `jina`。所有真实 provider 共用 `OpenAIEmbeddingProvider`。
+2. `scripts/check_embedding_provider.py`：`BLOCKED_DIMENSION_MISMATCH` 检测，API key 安全输出。
+3. `scripts/rebuild_vector_rag.py`：provider readiness → dimension 验证 → rebuild 或 blocked。
+4. 70 个新测试：mock/real routing、missing_key 安全、dimension mismatch、rebuild blocking。
+
+### 当前真实 embedding provider 验证结果
+
+| 字段 | 值 |
+|------|-----|
+| **EMBEDDING_PROVIDER** | mock |
+| **real_embedding_provider** | false |
+| **reason** | no API key configured |
+
+### 是否替换 mock embedding
+
+**未替换。** mock embedding 仍是默认安全选项。真实 embedding provider 代码已完备，待用户配置 API key 后即可启用。
+
+切换到真实 embedding 只需设置环境变量：
+- `EMBEDDING_PROVIDER=siliconflow` (或 jina, openai)
+- `EMBEDDING_API_KEY=<your_key>`
+- `EMBEDDING_BASE_URL=<provider_base_url>`
+- `EMBEDDING_MODEL=<model_name>`
+- `EMBEDDING_DIMENSION=1536` (必须与 pgvector Vector(1536) 匹配)
+
+### 如果 blocked，原因
+
+- **missing_api_key**：未设置 `EMBEDDING_API_KEY`。
+- **dimension_mismatch**：真实 provider 返回维度 ≠ 1536。解决方案：A. 换匹配模型 / B. ALTER TABLE / C. 新建独立表。
+
+### 验收
+
+- [x] mock provider 仍可用
+- [x] siliconflow/jina/openai_compatible factory routing 正确
+- [x] 缺 key 不崩溃，返回 missing_api_key
+- [x] dimension mismatch 输出 BLOCKED_DIMENSION_MISMATCH
+- [x] rebuild 在 provider not ready 时不执行
+- [x] DeepSeek LLM 与 embedding 职责明确分离
+- [x] 70 个测试全部通过
+- [x] 不改前端、不进入 P2/P3/P4

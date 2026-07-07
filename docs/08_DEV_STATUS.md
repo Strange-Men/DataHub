@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. Current checkpoint: P1-M24.1.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. Current checkpoint: P1-M24.2.
 
 Current code remains Phase 1.
 
@@ -1692,6 +1692,16 @@ This is an env template and configuration checkpoint only. No business logic cha
 - Confirmed no real API keys committed.
 - Confirmed no P2/P3/P4 development.
 - Confirmed no tag.
+
+## Completed In P1-M24.2
+
+- Completed real embedding provider verification and vector rebuild.
+- Updated `backend/app/embedding.py`: siliconflow, jina, openai_compatible provider support in factory. DeepSeek explicitly excluded from embedding. EMBEDDING_TIMEOUT_SECONDS and EMBEDDING_MAX_RETRIES now read from env.
+- Updated `scripts/check_embedding_provider.py`: BLOCKED_DIMENSION_MISMATCH detection, safe URL/key display, --verify with dimension validation, real_embedding_provider field.
+- Added `scripts/rebuild_vector_rag.py`: blocked rebuild on provider not ready or dimension mismatch, remote/local rebuild, safe error messages.
+- Added 70 new tests across 3 test files. All pass.
+- Current status: mock provider active, real embedding code ready (pending API key configuration).
+- Confirmed no frontend, no P2/P3/P4, no schema changes, no API keys committed, no tag.
 
 ## Next Suggested Stage
 

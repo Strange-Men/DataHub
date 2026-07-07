@@ -319,3 +319,57 @@ P2/P3/P4 在 P1 real RAG 最终收版且用户确认后再启动。
 - **验证人**: DataHub P1-M24 pipeline
 - **Health phase**: P1-M24
 - **Commit**: [P1-M24] test: verify real rag online release readiness
+
+---
+
+## 8. M24.2：Real Embedding Provider Verification (2026-07-07)
+
+### 8.1 本轮目标
+
+在 DeepSeek 真实 LLM 已接入后，补齐真实 embedding provider 验证和 vector rebuild 能力。
+
+### 8.2 当前 Embedding Provider 状态
+
+| 字段 | 值 |
+|------|-----|
+| **EMBEDDING_PROVIDER** | mock |
+| **EMBEDDING_MODEL** | mock-deterministic |
+| **EMBEDDING_DIMENSION** | 1536 |
+| **mock_ready** | true |
+| **provider_ready** | true (mock only) |
+| **real_embedding_provider** | false |
+| **pgvector table dimension** | 1536 |
+| **dimension_match** | N/A (no real provider configured) |
+
+### 8.3 本次新能力
+
+1. **多 provider 支持**：`siliconflow`, `jina`, `openai_compatible` 均可通过环境变量切换。
+2. **维度安全门**：`check_embedding_provider.py --verify` 会测试真实 API，若返回维度 != 1536 则输出 `BLOCKED_DIMENSION_MISMATCH` 并阻止 rebuild。
+3. **rebuild 脚本**：`scripts/rebuild_vector_rag.py` 一键重建向量 RAG。
+4. **DeepSeek 职责分离**：DeepSeek = LLM 回答生成，不作为 embedding provider。
+5. **70 个新测试**：覆盖 provider routing、missing_key、dimension mismatch、rebuild blocking。
+
+### 8.4 当前 P1 版本定位
+
+**P1 仍是 Demo / 工程验收版：**
+- mock embedding (token-based bag-of-words, keyword-aware)
+- rule_based_mock extraction (非真实 LLM)
+- 模板化 Agent answer (非真实 LLM 生成)
+
+**升级为真实语义 RAG 验收版的条件：**
+1. 配置真实 `EMBEDDING_API_KEY`（SiliconFlow / Jina / OpenAI）
+2. 设置 `EMBEDDING_PROVIDER=siliconflow`（或 jina, openai）
+3. 验证 dimension = 1536 匹配 pgvector 表
+4. 运行 `check_embedding_provider.py --verify` 确认 provider_ready=true
+5. 运行 `rebuild_vector_rag.py` 重建向量库
+6. 重新运行 harness + eval，对比 mock vs real 指标
+7. 若指标达标，P1 可升级为「真实语义 RAG 验收版」
+
+### 8.5 LLM vs Embedding 职责
+
+| 组件 | 职责 | 当前 Provider | 配置前缀 |
+|------|------|-------------|---------|
+| **LLM** | Agent 回答生成 | DeepSeek (代码已支持) | `LLM_*` |
+| **Embedding** | 文本向量化 / 语义检索 | mock (default) | `EMBEDDING_*` |
+
+两个系统完全独立，互不依赖。

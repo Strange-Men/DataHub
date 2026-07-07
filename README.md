@@ -174,6 +174,16 @@ cp .env.example .env
 
 然后编辑 `.env`，填入你的 API Key（如 DeepSeek LLM Key）。`.env` 不会被提交到 Git。
 
+当前 embedding provider 默认使用 mock（确定性、keyword-aware）。如需真实语义检索，可配置：
+```bash
+EMBEDDING_PROVIDER=siliconflow   # 或 jina, openai, openai_compatible
+EMBEDDING_API_KEY=your_key
+EMBEDDING_BASE_URL=https://api.siliconflow.com/v1
+EMBEDDING_MODEL=BAAI/bge-large-zh-v1.5
+EMBEDDING_DIMENSION=1536
+```
+注意：`EMBEDDING_DIMENSION` 必须与 pgvector 表结构匹配（当前为 1536）。DeepSeek 不作为 embedding provider，仅用于 LLM 回答生成。
+
 ## API 示例
 
 导入客服聊天 JSON：
