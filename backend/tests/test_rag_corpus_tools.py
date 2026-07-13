@@ -128,7 +128,10 @@ class RagCorpusToolsTest(unittest.TestCase):
         result = check_provider(verify=False)
         self.assertTrue(result.get("mock_ready"))
         # Without API key, should be mock or report provider_ready
-        self.assertIn(result.get("provider"), ["mock", "openai", "openai_compatible"])
+        self.assertIn(
+            result.get("provider"),
+            ["mock", "openai", "openai_compatible", "siliconflow", "jina"],
+        )
 
     def test_08_embedding_check_no_key_leak(self):
         """check_embedding_provider output must never contain API key text."""

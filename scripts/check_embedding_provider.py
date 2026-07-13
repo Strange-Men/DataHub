@@ -26,6 +26,35 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+BACKEND_DIR = PROJECT_ROOT / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+
+def _load_local_env_if_unconfigured() -> None:
+    """Load the project .env only when no embedding config is already set.
+
+    Render and explicit shell environment variables always win because
+    load_dotenv is called with override=False. The file contents are never
+    printed.
+    """
+    if os.getenv("EMBEDDING_PROVIDER") or os.getenv("EMBEDDING_API_KEY"):
+        return
+    env_path = PROJECT_ROOT / ".env"
+    if not env_path.is_file():
+        return
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    load_dotenv(dotenv_path=env_path, override=False)
+
+
+_load_local_env_if_unconfigured()
 
 # Current pgvector table constraint on Render PostgreSQL
 PGVECTOR_TABLE_DIMENSION = 1536

@@ -75,7 +75,8 @@ def run_cleanup(apply_changes: bool = False, verbose: bool = False) -> dict[str,
 
     engine = None
     try:
-        engine = create_engine(database_url, echo=False, connect_args={"connect_timeout": 10})
+        connect_args = {"connect_timeout": 10} if backend == "postgresql" else {}
+        engine = create_engine(database_url, echo=False, connect_args=connect_args)
         session = Session(engine)
         all_rows = session.query(RagEmbedding).all()
         total_before = len(all_rows)

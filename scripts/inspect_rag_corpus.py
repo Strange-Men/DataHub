@@ -83,7 +83,8 @@ def inspect_corpus(verbose: bool = False) -> dict[str, Any]:
 
     engine = None
     try:
-        engine = create_engine(database_url, echo=False, connect_args={"connect_timeout": 10})
+        connect_args = {"connect_timeout": 10} if backend == "postgresql" else {}
+        engine = create_engine(database_url, echo=False, connect_args=connect_args)
         session = Session(engine)
         rows = session.query(RagEmbedding).all()
         total = len(rows)

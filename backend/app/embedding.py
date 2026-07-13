@@ -20,7 +20,7 @@ import os
 import re
 import struct
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any
 
 
 # ── Abstract base ────────────────────────────────────────────────────────────
@@ -178,6 +178,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         base_url: str | None = None,
         timeout: float = 30.0,
         max_retries: int = 3,
+        provider_name: str = "openai",
     ) -> None:
         self._model = model
         self._api_key = api_key or os.getenv("EMBEDDING_API_KEY") or os.getenv("OPENAI_API_KEY", "")
@@ -185,6 +186,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         self._base_url = base_url or os.getenv("EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL", "")
         self._timeout = timeout
         self._max_retries = max_retries
+        self._provider_name = provider_name
 
     @property
     def dimension(self) -> int:
@@ -192,7 +194,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
 
     @property
     def provider_name(self) -> str:
-        return "openai"
+        return self._provider_name
 
     @property
     def model_name(self) -> str:
@@ -228,6 +230,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
                 response = client.embeddings.create(
                     model=self._model,
                     input=text,
+                    dimensions=self._dimension,
                 )
                 return list(response.data[0].embedding)
             except Exception as exc:
@@ -268,6 +271,7 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
                 response = client.embeddings.create(
                     model=self._model,
                     input=texts,
+                    dimensions=self._dimension,
                 )
                 return [list(d.embedding) for d in response.data]
             except Exception as exc:
@@ -334,6 +338,7 @@ def get_embedding_provider(
             base_url=base_url,
             timeout=timeout,
             max_retries=max_retries,
+            provider_name=provider,
         )
 
     # Unknown provider — fall back to mock with a warning

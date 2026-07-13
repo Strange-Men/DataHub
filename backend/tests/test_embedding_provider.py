@@ -207,7 +207,7 @@ class TestRealEmbeddingProviderFactory(unittest.TestCase):
         os.environ["EMBEDDING_BASE_URL"] = "https://api.siliconflow.com/v1"
         provider = get_embedding_provider()
         self.assertIsInstance(provider, OpenAIEmbeddingProvider)
-        self.assertEqual(provider.provider_name, "openai")
+        self.assertEqual(provider.provider_name, "siliconflow")
 
     def test_jina_provider_recognized(self):
         """jina maps to OpenAIEmbeddingProvider."""
@@ -216,7 +216,7 @@ class TestRealEmbeddingProviderFactory(unittest.TestCase):
         os.environ["EMBEDDING_BASE_URL"] = "https://api.jina.ai/v1"
         provider = get_embedding_provider()
         self.assertIsInstance(provider, OpenAIEmbeddingProvider)
-        self.assertEqual(provider.provider_name, "openai")
+        self.assertEqual(provider.provider_name, "jina")
 
     def test_openai_compatible_provider_recognized(self):
         """openai_compatible maps to OpenAIEmbeddingProvider."""
@@ -241,7 +241,7 @@ class TestRealEmbeddingProviderFactory(unittest.TestCase):
             provider = get_embedding_provider()
             self.assertIsInstance(provider, EmbeddingProvider,
                                   f"Provider {prov} should be created without key")
-            self.assertTrue(provider.provider_name in ("openai", "mock"),
+            self.assertTrue(provider.provider_name in (prov, "mock"),
                             f"Provider {prov} has name: {provider.provider_name}")
 
     def test_real_provider_missing_key_embed_raises(self):
@@ -249,7 +249,7 @@ class TestRealEmbeddingProviderFactory(unittest.TestCase):
         os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
         # No API key
         provider = get_embedding_provider()
-        if provider.provider_name == "openai":
+        if isinstance(provider, OpenAIEmbeddingProvider):
             with self.assertRaises(ValueError):
                 provider.embed("test text")
 
@@ -334,7 +334,7 @@ class TestRealEmbeddingReadinessNoExternalAPI(unittest.TestCase):
         self.assertEqual(api_key, "")
         # Factory should still work but provider.embed() will raise ValueError
         provider = get_embedding_provider()
-        if provider.provider_name == "openai":
+        if isinstance(provider, OpenAIEmbeddingProvider):
             with self.assertRaises(ValueError):
                 provider.embed("test")
 
