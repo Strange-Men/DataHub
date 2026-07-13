@@ -849,3 +849,31 @@ P1-M24    线上 Smoke Test + Release Readiness
 - [x] DeepSeek LLM 与 embedding 职责明确分离
 - [x] 70 个测试全部通过
 - [x] 不改前端、不进入 P2/P3/P4
+
+---
+
+## 17. P1-M24.3 Real Embedding Online Verification
+
+### Verified production path
+
+```text
+approved knowledge
+  -> SiliconFlow Qwen/Qwen3-Embedding-4B (1536 dimensions)
+  -> Render PostgreSQL rag_embeddings / pgvector
+  -> CustomerOpsAgent customerops_vector_retrieval
+  -> source-traced results
+  -> Bad Case feedback
+```
+
+- Mock embedding has been replaced for the active online approved-knowledge sync path.
+- Provider: `siliconflow`.
+- Model: `Qwen/Qwen3-Embedding-4B`.
+- Dimension: 1536, matching the PostgreSQL `Vector(1536)` column.
+- Rebuild: 24 embeddings, 0 failures.
+- Retrieval: vector mode for all 12 eval queries, 0 fallbacks.
+- Paraphrase smoke test: 5/5 topic hits.
+- DeepSeek API connectivity is real and verified independently. DataHub retrieval currently returns governed evidence and does not expose an LLM answer-generation mode.
+
+### P1 technical objective
+
+The P1 real semantic retrieval objective is complete. A final release tag is recommended only after explicit user confirmation. P2/P3/P4 remain out of scope.

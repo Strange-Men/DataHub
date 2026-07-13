@@ -1713,3 +1713,21 @@ Options after user confirmation:
 - **P2-M1**: Material Ingestion — NOT to be started before user confirms P1 final release.
 
 P2 不应在 P1 真实 RAG 闭环最终收版且用户确认前启动。
+
+## Completed In P1-M24.3
+
+- Local SiliconFlow configuration loaded safely from the ignored root `.env`; existing process and Render environment variables retain priority.
+- A real SiliconFlow embedding request succeeded with model `Qwen/Qwen3-Embedding-4B` and returned exactly 1536 dimensions, matching `Vector(1536)`.
+- Render health verified PostgreSQL, pgvector availability, and extension creation; phase is `P1-M24.3`.
+- Render vector rebuild completed with 24 approved candidates, 24 embeddings, 0 failed embeddings, provider `siliconflow`, model `Qwen/Qwen3-Embedding-4B`, dimension 1536.
+- Online harness completed 10/10 PASS, including CustomerOpsAgent vector retrieval and Bad Case feedback/draft flow.
+- Online eval completed with 12/12 semantic-mode queries, 0 fallbacks, `keyword_hit_rate@5=0.8181`, `keyword_query_hit_rate@5=0.9167`, `avg_top1_score=0.7051`, and `avg_top5_score=0.6592`.
+- Semantic paraphrase smoke test passed 5/5 topics: return/refund, shipping/tracking, escalation, cancellation, and warranty.
+- A real DeepSeek short-answer API call succeeded with the configured `LLM_*` provider settings. The current DataHub retrieval schema has no `answer_generation_mode` and does not integrate LLM answer generation; provider connectivity and retrieval are recorded separately.
+- Local SQLite corpus inspection found 614 historical mock embeddings and no explicit pollution matches. It is not the Render corpus. Online rebuild replaced the active approved-knowledge sync corpus with SiliconFlow embeddings.
+- The online harness introduced a clearly marked test placeholder. No online cleanup was applied because this environment has no safe Render PostgreSQL direct connection and no scoped deletion API.
+- No API key, `.env`, database URL, frontend change, P2/P3/P4 work, tag, force push, or history rewrite is included.
+
+### P1-M24.3 Release Gate
+
+**P1 FINAL RELEASE READY** for the verified DataHub retrieval scope. The recommended tag remains pending explicit user confirmation. DataHub-internal LLM answer generation is not part of the current retrieval contract and must not be claimed as implemented.

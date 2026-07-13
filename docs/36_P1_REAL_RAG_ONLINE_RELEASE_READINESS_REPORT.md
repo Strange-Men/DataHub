@@ -373,3 +373,70 @@ P2/P3/P4 在 P1 real RAG 最终收版且用户确认后再启动。
 | **Embedding** | 文本向量化 / 语义检索 | mock (default) | `EMBEDDING_*` |
 
 两个系统完全独立，互不依赖。
+
+---
+
+## 9. P1-M24.3 Final Online Gate (2026-07-13)
+
+### Provider verification
+
+| Gate | Result |
+|---|---|
+| Local configuration | `siliconflow`, key present without disclosure |
+| Real embedding call | PASS |
+| Model | `Qwen/Qwen3-Embedding-4B` |
+| Actual dimension | 1536 |
+| pgvector column | `Vector(1536)` |
+| Dimension match | PASS |
+| DeepSeek real short-answer call | PASS |
+
+The repository contains no `backend/app/llm.py` and the retrieval schema has no `answer_generation_mode`. DeepSeek provider connectivity was verified independently; this report does not claim that DataHub retrieval currently performs LLM answer generation.
+
+### Render rebuild
+
+| Metric | Result |
+|---|---|
+| health phase | `P1-M24.3` |
+| PostgreSQL | available |
+| pgvector | available |
+| extension_create_ok | true |
+| approved_candidate_count | 24 |
+| embedding_count | 24 |
+| failed_embedding_count | 0 |
+| embedding_provider | `siliconflow` |
+| embedding_model | `Qwen/Qwen3-Embedding-4B` |
+| embedding_dimension | 1536 |
+
+The approved-knowledge sync rebuild replaces its prior sync rows before writing the new corpus. The active online sync path therefore no longer writes mock embeddings.
+
+### Harness and eval
+
+- Harness: 10/10 PASS.
+- Retrieval mode: `customerops_vector_retrieval`.
+- Fallback: false in harness; 0/12 in eval.
+- Bad Case submit and Bad Case-to-draft: PASS.
+- `keyword_hit_rate@5`: 0.8181.
+- `keyword_query_hit_rate@5`: 0.9167.
+- `candidate_recall@5`: not available because the eval fixture has no expected candidate IDs.
+- `semantic_mode_count`: 12/12.
+- `avg_top1_score`: 0.7051.
+- `avg_top5_score`: 0.6592.
+- Low-score query: the intentional nonsense/noise query only.
+
+### Paraphrase smoke test
+
+All 5/5 paraphrases hit the expected topic: return/refund, shipping/tracking, escalation/human agent, cancellation after shipment, and warranty coverage. Every query used vector retrieval with no fallback and retained candidate/chunk/source trace.
+
+### Corpus boundary
+
+- Local SQLite inspection: 614 rows, all historical mock/1536, no explicit pollution match. This is not the Render database.
+- The online harness created a clearly marked test placeholder. It was not deleted because no safe direct Render PostgreSQL connection or narrowly scoped deletion API was available in this environment.
+- No full-table deletion, truncation, or ambiguous cleanup was attempted.
+
+### Final gate decision
+
+**P1 FINAL RELEASE READY** for the verified real-embedding retrieval scope.
+
+All mandatory technical gates passed: DeepSeek API call, SiliconFlow API call, 1536 dimension match, pgvector rebuild, no failed embeddings, vector retrieval, harness, eval, semantic smoke test, Bad Case feedback, and secret hygiene. The release tag must still wait for explicit user confirmation.
+
+Recommended final tag: `p1-m24.3-real-embedding-online-release`.

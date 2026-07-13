@@ -1432,6 +1432,7 @@ P1-M23 is complete when:
 - [x] 所有 211 个测试通过 (22 new + 189 existing)
 - [x] 不改前端
 - [x] 不进入 P2/P3/P4
+
 - [x] 保留 keyword / JSON fallback
 - [x] 保留 rag_chunks 表
 - [x] 不接真实 LLM
@@ -1580,3 +1581,25 @@ P1-M24.1 is complete when:
 - [x] 不 force push
 - [x] 不改前端
 - [x] 不进入 P2/P3/P4
+
+## P1-M24.3 Real Embedding Online Verification & Final Release Gate
+
+- [x] branch is `main`; worktree was clean before execution.
+- [x] `.env` is ignored and no secret value was printed or staged.
+- [x] local provider is `siliconflow` and API key presence is detected without disclosure.
+- [x] real SiliconFlow API request succeeded.
+- [x] real embedding dimension is 1536 and matches pgvector `Vector(1536)`.
+- [x] provider/model metadata is preserved as `siliconflow` / `Qwen/Qwen3-Embedding-4B`.
+- [x] Render PostgreSQL and pgvector checks passed.
+- [x] Render rebuild completed: approved=24, embeddings=24, failures=0.
+- [x] active approved-knowledge vector sync no longer writes `mock` provider rows.
+- [x] CustomerOpsAgent retrieval trace records `customerops_vector_retrieval`, no fallback, and SiliconFlow provider/model.
+- [x] online harness passed 10/10, including Bad Case feedback and draft creation.
+- [x] eval passed thresholds: keyword hit rate 0.8181, query hit rate 0.9167, semantic 12/12, fallback 0.
+- [x] paraphrase smoke test passed 5/5.
+- [x] DeepSeek real short-answer request succeeded without exposing the key.
+- [x] retrieval schema has no `answer_generation_mode`; no false LLM-integration claim was made.
+- [x] explicit online harness pollution was not blindly deleted without a safe Render DB connection.
+- [x] relevant local tests passed.
+- [x] no frontend changes and no P2/P3/P4 work.
+- [x] commit and push only; no tag.

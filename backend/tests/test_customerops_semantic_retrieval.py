@@ -343,12 +343,12 @@ class CustomerOpsSemanticRetrievalTest(unittest.TestCase):
             self.assertIsInstance(data.get("results"), list)
 
     def test_10_health_reports_p1_m24(self):
-        """Health check should report P1-M24.2 phase."""
+        """Health check should report P1-M24.3 phase."""
         resp = self.client.get("/api/health")
         self.assertEqual(resp.status_code, 200)
         # health endpoint returns dict directly (not wrapped in ApiResponse)
         phase = resp.json().get("phase", "")
-        self.assertEqual(phase, "P1-M24.2", f"Expected P1-M24.2, got {phase}")
+        self.assertEqual(phase, "P1-M24.3", f"Expected P1-M24.3, got {phase}")
 
 
 if __name__ == "__main__":

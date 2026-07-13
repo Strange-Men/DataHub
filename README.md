@@ -136,7 +136,7 @@ DataHub 只返回 approved 且已构建为 retrieval-ready chunk 的知识，不
 | advanced cleaning tests | passed |
 | manual cleaning / review quality / high-quality release tests | passed |
 
-这些结果证明 DataHub 的治理链路可跑通，但当前检索仍是 local keyword/mock retrieval，不代表生产级向量检索质量。
+这些结果证明 DataHub 的治理链路可跑通。当前线上检索已使用 SiliconFlow `Qwen/Qwen3-Embedding-4B` 的 1536 维真实 embedding 与 PostgreSQL/pgvector；关键词检索仍作为安全 fallback。
 
 ## 快速开始
 
@@ -174,15 +174,15 @@ cp .env.example .env
 
 然后编辑 `.env`，填入你的 API Key（如 DeepSeek LLM Key）。`.env` 不会被提交到 Git。
 
-当前 embedding provider 默认使用 mock（确定性、keyword-aware）。如需真实语义检索，可配置：
+配置模板仍以 mock 作为无密钥安全默认值；线上已验证以下真实语义检索配置：
 ```bash
 EMBEDDING_PROVIDER=siliconflow   # 或 jina, openai, openai_compatible
 EMBEDDING_API_KEY=your_key
-EMBEDDING_BASE_URL=https://api.siliconflow.com/v1
-EMBEDDING_MODEL=BAAI/bge-large-zh-v1.5
+EMBEDDING_BASE_URL=https://api.siliconflow.cn/v1
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-4B
 EMBEDDING_DIMENSION=1536
 ```
-注意：`EMBEDDING_DIMENSION` 必须与 pgvector 表结构匹配（当前为 1536）。DeepSeek 不作为 embedding provider，仅用于 LLM 回答生成。
+注意：`EMBEDDING_DIMENSION` 必须与 pgvector 表结构匹配（当前为 1536）。DeepSeek 不作为 embedding provider；其 API 连通性已独立验证，但当前 retrieval 契约不声明 LLM answer generation。
 
 ## API 示例
 
@@ -230,11 +230,12 @@ Invoke-RestMethod `
 
 - 前端：React + TypeScript + Vite。
 - 后端：FastAPI + Python。
-- 当前存储：本地 JSON 文件。
+- 当前存储：PostgreSQL 持久化优先，本地 JSON 保留兼容 fallback。
 - 当前检索：语义向量检索优先（pgvector cosine similarity），关键词检索为 fallback。
+- 当前 embedding：SiliconFlow `Qwen/Qwen3-Embedding-4B`，1536 维，已完成线上重建与语义检索验证。
 - 当前测试：Python unittest + FastAPI TestClient。
 
-数据库、ORM、真实向量库、embedding、真实 LLM、生产鉴权和云部署仍保留为后续技术决策，不在当前实现中强行绑定。
+DeepSeek provider 的真实 API 连通性已验证，但当前 DataHub retrieval 契约仍返回知识证据，不声明已接入 LLM answer generation。生产鉴权、运行监控和更高可用部署仍需后续加固。
 
 ## 安全边界
 
@@ -273,7 +274,7 @@ DataHub 的完整产品形态面向 Agent 集群：
 - MCP Tools：`search_customer_knowledge`、`submit_bad_case`、`export_training_dataset` 等工具接口。
 - Agent 集群调用：CustomerOpsAgent、SalesAgent、OpsAgent、MaterialAgent 通过统一入口调用 DataHub。
 
-以上属于架构支持和 Roadmap 能力，当前仓库没有接入真实多模态、真实向量库、真实 LLM、真实数据库或 MCP 运行层。
+以上属于架构支持和 Roadmap 能力；当前仓库尚未接入真实多模态、DataHub 内部 LLM answer generation 或 MCP 运行层。
 
 ## 项目目录
 

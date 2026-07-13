@@ -176,15 +176,15 @@ cp .env.example .env
 
 Then edit `.env` and fill in your API keys (e.g. DeepSeek LLM key). `.env` is never committed to Git.
 
-The embedding provider defaults to mock (deterministic, keyword-aware). For real semantic retrieval, configure:
+The template keeps mock as a key-free safe default. The online real-semantic path has been verified with:
 ```bash
 EMBEDDING_PROVIDER=siliconflow   # or jina, openai, openai_compatible
 EMBEDDING_API_KEY=your_key
-EMBEDDING_BASE_URL=https://api.siliconflow.com/v1
-EMBEDDING_MODEL=BAAI/bge-large-zh-v1.5
+EMBEDDING_BASE_URL=https://api.siliconflow.cn/v1
+EMBEDDING_MODEL=Qwen/Qwen3-Embedding-4B
 EMBEDDING_DIMENSION=1536
 ```
-Note: `EMBEDDING_DIMENSION` must match the pgvector table schema (currently 1536). DeepSeek is NOT an embedding provider — used only for LLM answer generation.
+Note: `EMBEDDING_DIMENSION` must match the pgvector table schema (currently 1536). DeepSeek is not an embedding provider; its API connectivity is verified independently, while the current retrieval contract does not claim LLM answer generation.
 
 ## API Examples
 
@@ -232,11 +232,12 @@ Invoke-RestMethod `
 
 - Frontend: React + TypeScript + Vite.
 - Backend: FastAPI + Python.
-- Current storage: local JSON files.
+- Current persistence: PostgreSQL-first with a local JSON compatibility fallback.
 - Current retrieval: semantic vector retrieval first (pgvector cosine similarity), keyword retrieval as fallback.
+- Current embedding: SiliconFlow `Qwen/Qwen3-Embedding-4B`, 1536 dimensions, verified through an online rebuild and semantic retrieval checks.
 - Current tests: Python unittest + FastAPI TestClient.
 
-Database, ORM, production vector store, embedding model, real LLM, production auth, and cloud deployment are intentionally left as future technology decisions.
+Real DeepSeek provider connectivity has been verified, while the current DataHub retrieval contract still returns governed knowledge evidence and does not claim integrated LLM answer generation. Production authentication, observability, and higher-availability deployment remain future hardening work.
 
 ## Safety Boundaries
 
@@ -275,7 +276,7 @@ The full DataHub product shape is agent-cluster oriented:
 - MCP tools: `search_customer_knowledge`, `submit_bad_case`, `export_training_dataset`, and related tools.
 - Agent cluster access: CustomerOpsAgent, SalesAgent, OpsAgent, and MaterialAgent through a unified DataHub entry point.
 
-These are architectural and roadmap capabilities. This repository does not yet connect a real multimodal pipeline, vector database, embedding model, real LLM, production database, or MCP runtime.
+These are architectural and roadmap capabilities. This repository does not yet connect a real multimodal pipeline, DataHub-internal LLM answer generation, or an MCP runtime.
 
 ## Project Layout
 
