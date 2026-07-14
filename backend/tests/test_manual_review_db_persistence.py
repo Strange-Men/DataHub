@@ -624,12 +624,12 @@ class ManualReviewDbPersistenceTest(unittest.TestCase):
                 break
         self.assertTrue(found)
 
-    # ── 16. Health check reports P1-M18 ──────────────────────────────
+    # ── 16. Health check reports P1-M24.3 ────────────────────────────
 
-    def test_16_health_reports_p1_m18(self) -> None:
+    def test_16_health_reports_p1_m24_3(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M23.2")
+        self.assertEqual(health.json()["phase"], "P1-M24.3")
         db_status = health.json()["database_status"]
         self.assertTrue(db_status["enabled"])
         self.assertEqual(db_status["status"], "ok")

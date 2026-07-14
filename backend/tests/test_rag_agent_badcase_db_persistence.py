@@ -658,14 +658,14 @@ class RagAgentBadCaseDbPersistenceTest(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["data"]["retrieval_id"], retrieval_id)
 
-    # ── 15. Health check reports P1-M20 ──────────────────────────────
+    # ── 15. Health check reports P1-M24.3 ────────────────────────────
 
-    def test_15_health_reports_p1_m19(self):
-        """Health check should report P1-M20."""
+    def test_15_health_reports_p1_m24_3(self):
+        """Health check should report P1-M24.3."""
         resp = self.client.get("/api/health")
         self.assertEqual(resp.status_code, 200)
         health = resp.json()
-        self.assertEqual(health["phase"], "P1-M23.2")
+        self.assertEqual(health["phase"], "P1-M24.3")
         self.assertIn("database_status", health)
 
     # ── 16. No real PostgreSQL required ────────────────────────────

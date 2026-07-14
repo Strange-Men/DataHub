@@ -435,8 +435,8 @@ All 5/5 paraphrases hit the expected topic: return/refund, shipping/tracking, es
 
 ### Final gate decision
 
-**P1 FINAL RELEASE READY** for the verified real-embedding retrieval scope.
+**P1 FINAL RELEASE SEALED** for the verified real-embedding retrieval scope.
 
-All mandatory technical gates passed: DeepSeek API call, SiliconFlow API call, 1536 dimension match, pgvector rebuild, no failed embeddings, vector retrieval, harness, eval, semantic smoke test, Bad Case feedback, and secret hygiene. The release tag must still wait for explicit user confirmation.
+All mandatory technical gates passed: DeepSeek API call, SiliconFlow API call, 1536 dimension match, pgvector rebuild, no failed embeddings, vector retrieval, harness, eval, semantic smoke test, Bad Case feedback, and secret hygiene. The final seal rerun on 2026-07-14 passed 249/249 repository tests, the online harness passed 10/10, and the online eval retained `keyword_hit_rate@5=0.8181`, `keyword_query_hit_rate@5=0.9167`, 12/12 vector retrieval, and zero fallbacks.
 
-Recommended final tag: `p1-m24.3-real-embedding-online-release`.
+Stable release tag: `p1-m24.3-real-embedding-online-release`. P1 is frozen at this baseline; the next stage is P2-M0 Planning only.

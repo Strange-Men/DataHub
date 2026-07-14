@@ -876,4 +876,4 @@ approved knowledge
 
 ### P1 technical objective
 
-The P1 real semantic retrieval objective is complete. A final release tag is recommended only after explicit user confirmation. P2/P3/P4 remain out of scope.
+The P1 real semantic retrieval objective is complete and sealed under `p1-m24.3-real-embedding-online-release`. The final repository suite passed 249/249, the online harness passed 10/10, and the online eval used vector retrieval for 12/12 queries with zero fallbacks. P2/P3/P4 implementation remains out of scope; the next stage is P2-M0 Planning only.

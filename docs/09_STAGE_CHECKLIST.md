@@ -1602,4 +1602,8 @@ P1-M24.1 is complete when:
 - [x] explicit online harness pollution was not blindly deleted without a safe Render DB connection.
 - [x] relevant local tests passed.
 - [x] no frontend changes and no P2/P3/P4 work.
-- [x] commit and push only; no tag.
+- [x] final release metadata assertions updated from `P1-M23.2` to `P1-M24.3`.
+- [x] full repository suite passed: 249/249.
+- [x] final online harness passed 10/10 and eval retained 12/12 vector mode with zero fallbacks.
+- [x] final annotated release baseline: `p1-m24.3-real-embedding-online-release`.
+- [x] next stage is P2-M0 Planning only; no P2 implementation starts from this seal.

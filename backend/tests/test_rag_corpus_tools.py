@@ -1,4 +1,4 @@
-"""Tests for P1-M23.2 RAG Corpus Tools.
+"""Tests for P1-M24.3 RAG Corpus Tools.
 
 Verifies:
 - inspect_rag_corpus.py gracefully SKIPs when DATABASE_URL unset.

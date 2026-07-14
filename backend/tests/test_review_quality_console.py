@@ -103,7 +103,7 @@ class ReviewQualityConsoleTest(unittest.TestCase):
     def test_review_console_workflow_and_rag_boundaries(self) -> None:
         health = self.client.get("/health")
         self.assertEqual(health.status_code, 200, health.text)
-        self.assertEqual(health.json()["phase"], "P1-M23.2")
+        self.assertEqual(health.json()["phase"], "P1-M24.3")
 
         approved = self._patch_candidate(
             self._create_candidate("approved"),

@@ -1730,4 +1730,4 @@ P2 不应在 P1 真实 RAG 闭环最终收版且用户确认前启动。
 
 ### P1-M24.3 Release Gate
 
-**P1 FINAL RELEASE READY** for the verified DataHub retrieval scope. The recommended tag remains pending explicit user confirmation. DataHub-internal LLM answer generation is not part of the current retrieval contract and must not be claimed as implemented.
+**P1 FINAL RELEASE SEALED** for the verified DataHub retrieval scope under tag `p1-m24.3-real-embedding-online-release`. The final gate passed 249/249 repository tests, the online harness passed 10/10, and the online eval retained 12/12 vector retrieval with zero fallbacks. DataHub-internal LLM answer generation is not part of the current retrieval contract and must not be claimed as implemented. The next stage is limited to P2-M0 Planning.

@@ -751,7 +751,7 @@ class TestHealthPhaseUpdated(unittest.TestCase):
         except OSError:
             pass
 
-    def test_health_reports_p1_m24(self):
+    def test_health_reports_p1_m24_3(self):
         """Health endpoint should report phase P1-M24.3."""
         resp = self.client.get("/health")
         self.assertEqual(resp.status_code, 200)

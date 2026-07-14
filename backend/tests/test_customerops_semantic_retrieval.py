@@ -1,4 +1,4 @@
-"""Tests for P1-M23.2 CustomerOpsAgent Semantic Retrieval.
+"""Tests for P1-M24.3 CustomerOpsAgent Semantic Retrieval.
 
 Verifies:
 - semantic retrieval from rag_embeddings when available.
@@ -342,7 +342,7 @@ class CustomerOpsSemanticRetrievalTest(unittest.TestCase):
             self.assertIsNotNone(data.get("retrieval_mode"))
             self.assertIsInstance(data.get("results"), list)
 
-    def test_10_health_reports_p1_m24(self):
+    def test_10_health_reports_p1_m24_3(self):
         """Health check should report P1-M24.3 phase."""
         resp = self.client.get("/api/health")
         self.assertEqual(resp.status_code, 200)
