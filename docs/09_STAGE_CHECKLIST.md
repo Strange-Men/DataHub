@@ -1647,6 +1647,7 @@ P2-M1 is complete when:
 - [x] Work starts from P2-M0 commit `703c7c8` and the sealed P1 tag remains unchanged.
 - [x] `docs/41_P2_M1_OBJECT_STORAGE_ADR.md` records local development, Render persistent disk, future S3/R2/OSS migration, private access, and lifecycle decisions.
 - [x] `AssetStorageAdapter` separates binary persistence from Asset metadata and prevents path escape.
+- [x] Render requires an explicit absolute persistent-disk root and fails closed rather than writing to its ephemeral filesystem.
 - [x] Uploaded binary content is not stored in PostgreSQL, Git, API metadata, or a public URL.
 - [x] One additive `assets` table records id, asset type, file name, MIME, size, opaque storage URI, SHA-256 hash, status, metadata JSON, and timestamps.
 - [x] The database hash constraint and deterministic object key enforce deduplication/idempotency.
@@ -1661,7 +1662,7 @@ P2-M1 is complete when:
 - [x] Full repository pytest passes 256/256 in a clean isolated workspace.
 - [x] Frontend production build and Python compile checks pass.
 - [x] Final Render P1 harness passes 10/10 after cold-start-safe retry, including real vector sync and retrieval.
-- [x] Online RAG sync reports 28 chunks, 28 embeddings, 0 failures, SiliconFlow provider, and dimension 1536.
+- [x] Post-deploy online RAG sync reports 29 chunks, 29 embeddings, 0 failures, SiliconFlow provider, and dimension 1536.
 - [x] Online CustomerOpsAgent uses `customerops_vector_retrieval` with no fallback.
 - [x] `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `docs/42_P2_M1_MATERIAL_INGESTION_REPORT.md` record completion and evidence.
 - [x] No tag, force push, secret, `.env`, uploaded binary, or local database is committed.

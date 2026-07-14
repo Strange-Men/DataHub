@@ -113,5 +113,12 @@ def get_asset_storage_adapter() -> AssetStorageAdapter:
             "Unsupported ASSET_STORAGE_BACKEND. P2-M1 implements only 'local'."
         )
     configured_root = os.getenv("ASSET_STORAGE_ROOT", "").strip()
+    on_render = os.getenv("RENDER", "").strip().lower() == "true"
+    if on_render and not configured_root:
+        raise AssetStorageError(
+            "ASSET_STORAGE_ROOT is required on Render and must point to an attached persistent disk."
+        )
+    if on_render and not Path(configured_root).is_absolute():
+        raise AssetStorageError("ASSET_STORAGE_ROOT must be an absolute path on Render.")
     root = Path(configured_root) if configured_root else _default_storage_root()
     return LocalFilesystemAssetStorage(root)

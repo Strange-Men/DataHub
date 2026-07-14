@@ -1767,7 +1767,7 @@ This is a planning and documentation checkpoint only.
 - Replaced the P2 roadmap placeholder with a minimal Material Center for upload, paginated list, and metadata detail while preserving the existing dark visual system.
 - Added seven Asset ingestion tests covering success, illegal/mismatched content, duplicate upload, pagination, detail/404, size/type boundaries, and storage path escape.
 - Full clean-workspace repository suite passed 256/256; frontend `tsc && vite build` and Python compile checks passed.
-- Final Render P1 harness passed 10/10 with PostgreSQL/pgvector healthy, 28/28 1536-dimensional SiliconFlow embeddings, vector-only CustomerOpsAgent retrieval, and no fallback.
+- After the P2 routes deployed, the final Render P1 harness passed 10/10 with PostgreSQL/pgvector healthy, 29/29 1536-dimensional SiliconFlow embeddings, vector-only CustomerOpsAgent retrieval, and no fallback.
 - Added `docs/42_P2_M1_MATERIAL_INGESTION_REPORT.md` with implementation and gate evidence.
 
 ### P2-M1 Boundaries

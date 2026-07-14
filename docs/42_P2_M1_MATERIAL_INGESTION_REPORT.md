@@ -19,7 +19,7 @@ The accepted decision is recorded in `docs/41_P2_M1_OBJECT_STORAGE_ADR.md`.
 | Environment | P2-M1 decision | Boundary |
 |---|---|---|
 | Local development/test | `LocalFilesystemAssetStorage`, defaulting to ignored `backend/storage/asset_objects/` | Private files, atomic writes, opaque `local://` URI |
-| Render production MVP | Same adapter on an attached paid persistent disk, for example `/var/data/datahub-assets` | Single-instance only; Render's default ephemeral filesystem is prohibited |
+| Render production MVP | Same adapter on an attached paid persistent disk, for example `/var/data/datahub-assets` | Single-instance only; missing/non-absolute root fails closed instead of using Render's ephemeral filesystem |
 | Future production scale | Add an S3-compatible R2/S3/OSS adapter | Deferred; no SDK, credential, public bucket, or signed URL is added in M1 |
 
 The database stores metadata only. It does not store BLOBs, absolute local paths, public object URLs, credentials, or signed URLs. Objects use deterministic keys of the form `assets/{hash-prefix}/{sha256}.{validated-extension}`.
@@ -112,7 +112,7 @@ Coverage includes upload success, illegal/mismatched files, duplicate content, p
 
 ```text
 python -m pytest -q backend/tests
-256 passed, 20 warnings in 113.36s
+256 passed, 20 warnings in 108.23s
 ```
 
 The authoritative full run used the exact current source in a clean isolated Git workspace. This avoids loading the developer machine's ignored historical `backend/storage/` corpus while preserving the P1 test assertion that the storage directory is Git-ignored. An initial isolated run without minimal Git metadata reached 255 passes and failed only its `git check-ignore backend/storage` environment assertion; adding `.gitignore` and `git init` produced the clean 256/256 result. The warnings are existing FastAPI lifecycle, pytest-asyncio configuration, and intentional unknown-provider fallback warnings, not test failures.
@@ -142,15 +142,16 @@ Final result:
 
 | Gate | Result |
 |---|---|
-| Pipeline Harness | PASS 10/10, 0 failed, 34.5 s |
-| Trace | `p1-harness-20260714-112100-f652eb` |
+| Deployed P2 route check | `/api/assets` and `/api/assets/upload` present in deployed OpenAPI |
+| Pipeline Harness | PASS 10/10, 0 failed, 40.1 s |
+| Trace | `p1-harness-20260714-121535-a60a4c` |
 | Health | P1-M24.3, PostgreSQL healthy, pgvector available and extension enabled |
-| Vector sync | 28 chunks, 28 embeddings, 0 failures |
+| Vector sync | 29 chunks, 29 embeddings, 0 failures |
 | Embedding | SiliconFlow, 1536 dimensions |
 | Retrieval | HTTP 200, `customerops_vector_retrieval`, no fallback |
 | Bad Case flow | Feedback and pending-review draft both passed |
 
-The first 30-second attempts encountered a Render cold-start health timeout and then a long vector-sync timeout. After waking the service and using a 120-second harness timeout, all ten gates passed. No P1 code or deployed data was modified to manufacture the result.
+The final table above was captured after commit `a40064c` reached Render and the deployed OpenAPI exposed both Asset routes. The first 30-second attempts before the push encountered a Render cold-start health timeout and then a long vector-sync timeout. After waking the service and using a 120-second harness timeout, all ten gates passed both before and after deployment. The harness performed its documented test-data writes; no P1 code, configuration, or business behavior was altered to manufacture the result.
 
 ## 9. Files changed
 

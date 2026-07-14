@@ -30,6 +30,7 @@ class AssetIngestionTest(unittest.TestCase):
                 "ASSET_STORAGE_BACKEND",
                 "ASSET_STORAGE_ROOT",
                 "ASSET_MAX_UPLOAD_BYTES",
+                "RENDER",
             )
         }
         cls._temp_dir = Path(tempfile.mkdtemp(prefix="datahub-assets-test-"))
@@ -226,11 +227,27 @@ class AssetIngestionTest(unittest.TestCase):
         self.assertEqual(video.status_code, 400)
         self.assertEqual(video.json()["detail"]["code"], "UNSUPPORTED_ASSET_TYPE")
 
-    def test_07_storage_adapter_rejects_path_escape(self) -> None:
+    def test_07_storage_adapter_rejects_unsafe_render_config_and_path_escape(self) -> None:
         adapter = self.storage_module.get_asset_storage_adapter()
         with self.assertRaises(self.storage_module.AssetStorageError):
             adapter.save("../escape.png", self._png("escape"))
         self.assertFalse((self._temp_dir / "escape.png").exists())
+
+        configured_root = os.environ.pop("ASSET_STORAGE_ROOT")
+        previous_render = os.environ.get("RENDER")
+        os.environ["RENDER"] = "true"
+        try:
+            with self.assertRaises(self.storage_module.AssetStorageError):
+                self.storage_module.get_asset_storage_adapter()
+            os.environ["ASSET_STORAGE_ROOT"] = "relative/render-assets"
+            with self.assertRaises(self.storage_module.AssetStorageError):
+                self.storage_module.get_asset_storage_adapter()
+        finally:
+            os.environ["ASSET_STORAGE_ROOT"] = configured_root
+            if previous_render is None:
+                os.environ.pop("RENDER", None)
+            else:
+                os.environ["RENDER"] = previous_render
 
 
 if __name__ == "__main__":

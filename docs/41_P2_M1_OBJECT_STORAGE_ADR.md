@@ -67,7 +67,9 @@ Only the configured mount path is persistent. The database remains Render Postgr
 
 The Render profile must not be enabled unless the disk is actually attached and the mount path matches `ASSET_STORAGE_ROOT`. Otherwise uploads would appear successful and disappear on redeploy.
 
-Reference: [Render Persistent Disks](https://render.com/docs/disks).
+The adapter enforces a fail-closed runtime gate: when Render's built-in `RENDER=true` marker is present, `ASSET_STORAGE_ROOT` is mandatory and must be absolute. A missing or relative root returns a safe storage-unavailable error instead of writing to Render's ephemeral project filesystem. Disk attachment and mount correctness remain deployment responsibilities.
+
+Reference: [Render Persistent Disks](https://render.com/docs/disks) and [Render Default Environment Variables](https://render.com/docs/environment-variables).
 
 ## 5. S3-compatible migration target
 
