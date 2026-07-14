@@ -1814,9 +1814,53 @@ P2-M5 is complete when:
 
 P2-M6 entry gate:
 
-- [ ] Obtain explicit authorization for P2-M6 Knowledge Index Foundation; P2-M5 completion does not authorize implementation.
-- [ ] Write a schema ADR for P2 index entry/chunk naming, constraints, indexes, migration, SQLite/PostgreSQL behavior, retention, and rollback.
-- [ ] Freeze deterministic text projection and chunk-id/fingerprint contracts using active Knowledge Assets only.
-- [ ] Prove archive/withdraw visibility ordering and reconciliation behavior before schema implementation.
-- [ ] Limit P2-M6 to index control-plane and chunks; do not add vector columns, real Embedding, retrieval API, CustomerOpsAgent changes, or Agent calls.
-- [ ] Define focused tests plus full pytest and sealed P1 online Harness gates before implementation.
+- [x] Obtain explicit authorization for P2-M6 Knowledge Index Foundation; P2-M5 completion alone did not authorize implementation.
+- [x] Record the P2 index entry/chunk schema decision, constraints, SQLite/PostgreSQL behavior, retention, and rollback boundary in the M6 report.
+- [x] Freeze deterministic text projection and chunk-id/fingerprint contracts using active Knowledge Assets only.
+- [x] Prove archive visibility ordering and atomic superseded-version propagation before serving can exist.
+- [x] Limit P2-M6 to index control-plane and chunks; do not add vector columns, real Embedding, retrieval API, CustomerOpsAgent changes, or Agent calls.
+- [x] Define and pass focused tests, full pytest, frontend build, and sealed P1 online Harness gates.
+
+## P2-M6 Knowledge Index Foundation
+
+P2-M6 is complete when:
+
+- [x] `p2_knowledge_index_entries` stores Knowledge Asset, lifecycle status, generation, fingerprint, sync state, safe error, and timestamps.
+- [x] `knowledge_asset_id` and fingerprint enforce durable idempotency.
+- [x] `p2_knowledge_chunks` stores immutable text, hash, order, metadata, source ids, and creation time.
+- [x] `(index_entry_id, chunk_order)` prevents duplicate projection positions.
+- [x] States are `pending`, `building`, `ready`, `serving`, `failed`, and `archived`.
+- [x] M6 executes `pending -> building -> ready`; `serving` is reserved and not publicly activatable.
+- [x] `status` and `sync_state` responsibilities are separated.
+- [x] Only active Knowledge Assets can create an Index Entry.
+- [x] Archived Knowledge Assets are rejected even when an archived Entry already exists.
+- [x] Fingerprint is deterministic over source identity/version/content and projection/chunker versions.
+- [x] `p2_text_projection_v1` with `single_chunk_v1` creates deterministic text, chunk hash, and chunk id.
+- [x] Repeated index calls return the same Entry and Chunk without duplication.
+- [x] Explicit Index archive is idempotent and preserves chunks.
+- [x] Explicit Knowledge Asset archive atomically archives its Index Entry.
+- [x] Publishing a later Knowledge Asset version atomically archives the superseded Index Entry.
+- [x] Source trace resolves Index Entry -> Knowledge Asset -> Snapshot -> Review -> Extraction/Job -> Asset.
+- [x] `POST /api/knowledge-assets/{id}/index` creates the control record and text projection only.
+- [x] `GET /api/knowledge-index` returns paginated/filterable lifecycle state.
+- [x] `GET /api/knowledge-index/{id}` returns Entry, Chunk, fingerprint, and complete trace.
+- [x] `POST /api/knowledge-index/{id}/archive` immediately sets archived state.
+- [x] Material Center minimally displays Index status, generation, chunk count, create, and archive actions.
+- [x] Focused Knowledge Index tests pass 8/8; M4/M6 lifecycle regression passes 14/14.
+- [x] Full clean-workspace pytest passes 282/282.
+- [x] Frontend `tsc && vite build`, Python compile, and diff checks pass.
+- [x] P1 online Pipeline Harness passes 10/10.
+- [x] PostgreSQL and pgvector remain healthy; SiliconFlow reports 37/37 embeddings at 1536 dimensions.
+- [x] CustomerOpsAgent remains `customerops_vector_retrieval` with no fallback.
+- [x] No P1 RAG change, P2 embedding/vector table, vector column/index, Embedding call, retrieval API, RRF, unified retrieval, or Agent integration is included.
+- [x] `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `docs/47_P2_M6_KNOWLEDGE_INDEX_FOUNDATION_REPORT.md` record completion.
+- [x] No tag, force push, secret, `.env`, uploaded binary, or local database is committed.
+
+P2-M7 entry gate:
+
+- [ ] Obtain explicit authorization for P2-M7 Text Bridge Semantic Index.
+- [ ] Write an ADR for P2-only provider/model/dimension, pgvector DDL/index, profile/generation, SQLite fallback, cost, rollback, and model migration.
+- [ ] Define `p2_knowledge_embeddings` without modifying or writing P1 `rag_embeddings`.
+- [ ] Freeze ready/active/fingerprint eligibility and legal `ready -> serving` semantics.
+- [ ] Add a P2 text-bridge eval set covering active-only, archive zero-hit, version replacement, OCR/Caption semantics, and Asset deduplication.
+- [ ] Keep CustomerOpsAgent, unified retrieval, RRF, image embedding, and Agent calls outside P2-M7.

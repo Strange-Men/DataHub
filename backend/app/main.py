@@ -23,6 +23,7 @@ from app.extraction_repositories import get_extraction_job as get_asset_extracti
 from app.extraction_routes import router as asset_extraction_router
 from app.review_routes import router as review_router
 from app.knowledge_asset_routes import router as knowledge_asset_router
+from app.knowledge_index_routes import router as knowledge_index_router
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -59,6 +60,7 @@ app.include_router(asset_router)
 app.include_router(asset_extraction_router)
 app.include_router(review_router)
 app.include_router(knowledge_asset_router)
+app.include_router(knowledge_index_router)
 
 # Ensure tables exist on module load (idempotent, safe for both tests and production).
 # Also runs on startup event for environments where module-level init is insufficient.

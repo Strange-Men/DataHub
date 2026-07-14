@@ -8,6 +8,7 @@ import type {
   ExtractionReview,
   ExtractionReviewStatus,
   KnowledgeAsset,
+  KnowledgeIndexEntry,
 } from "../types";
 
 const PAGE_SIZE = 10;
@@ -34,6 +35,7 @@ export function P2MaterialCenter() {
   const [extractions, setExtractions] = useState<AssetExtraction[]>([]);
   const [snapshots, setSnapshots] = useState<AssetReviewSnapshot[]>([]);
   const [knowledgeAssets, setKnowledgeAssets] = useState<KnowledgeAsset[]>([]);
+  const [knowledgeIndexEntries, setKnowledgeIndexEntries] = useState<KnowledgeIndexEntry[]>([]);
   const [activeReview, setActiveReview] = useState<ExtractionReview | null>(null);
   const [reviewer, setReviewer] = useState("");
   const [reviewComment, setReviewComment] = useState("");
@@ -41,6 +43,7 @@ export function P2MaterialCenter() {
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
   const [isKnowledgeSubmitting, setIsKnowledgeSubmitting] = useState(false);
+  const [isIndexSubmitting, setIsIndexSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -106,6 +109,7 @@ export function P2MaterialCenter() {
       setExtractions([]);
       setSnapshots([]);
       setKnowledgeAssets([]);
+      setKnowledgeIndexEntries([]);
       setActiveReview(null);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -136,15 +140,17 @@ export function P2MaterialCenter() {
   async function loadReviewWorkspace(assetId: string) {
     setIsReviewLoading(true);
     try {
-      const [extractionResponse, snapshotResponse, knowledgeResponse] = await Promise.all([
+      const [extractionResponse, snapshotResponse, knowledgeResponse, indexResponse] = await Promise.all([
         fetch(apiPath(`/api/assets/${assetId}/extractions`)),
         fetch(apiPath(`/api/assets/${assetId}/snapshots`)),
         fetch(apiPath(`/api/knowledge-assets?page=1&page_size=100&asset_id=${assetId}`)),
+        fetch(apiPath(`/api/knowledge-index?page=1&page_size=100&asset_id=${assetId}`)),
       ]);
-      const [extractionBody, snapshotBody, knowledgeBody] = await Promise.all([
+      const [extractionBody, snapshotBody, knowledgeBody, indexBody] = await Promise.all([
         extractionResponse.json(),
         snapshotResponse.json(),
         knowledgeResponse.json(),
+        indexResponse.json(),
       ]);
       if (!extractionResponse.ok || !extractionBody.success) {
         throw new Error(apiError(extractionBody, "Extraction 结果加载失败。"));
@@ -155,9 +161,13 @@ export function P2MaterialCenter() {
       if (!knowledgeResponse.ok || !knowledgeBody.success) {
         throw new Error(apiError(knowledgeBody, "Knowledge Asset 加载失败。"));
       }
+      if (!indexResponse.ok || !indexBody.success) {
+        throw new Error(apiError(indexBody, "Knowledge Index 状态加载失败。"));
+      }
       setExtractions(extractionBody.data.extractions);
       setSnapshots(snapshotBody.data.snapshots);
       setKnowledgeAssets(knowledgeBody.data.knowledge_assets);
+      setKnowledgeIndexEntries(indexBody.data.index_entries);
       setActiveReview(null);
       setReviewer("");
       setReviewComment("");
@@ -307,6 +317,54 @@ export function P2MaterialCenter() {
     }
   }
 
+  async function createKnowledgeIndex(knowledgeAssetId: string) {
+    if (!selectedAsset) return;
+    setIsIndexSubmitting(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(apiPath(`/api/knowledge-assets/${knowledgeAssetId}/index`), {
+        method: "POST",
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(apiError(body, "Knowledge Index 创建失败。"));
+      }
+      await loadReviewWorkspace(selectedAsset.id);
+      setMessage(
+        body.data.created
+          ? "文本投影已生成并进入 ready；未创建 Embedding，也未进入检索。"
+          : "该 Knowledge Asset 已有 Index Entry，未重复生成 Chunk。",
+      );
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Knowledge Index 创建失败。");
+    } finally {
+      setIsIndexSubmitting(false);
+    }
+  }
+
+  async function archiveKnowledgeIndex(indexEntryId: string) {
+    if (!selectedAsset) return;
+    setIsIndexSubmitting(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(apiPath(`/api/knowledge-index/${indexEntryId}/archive`), {
+        method: "POST",
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(apiError(body, "Knowledge Index 归档失败。"));
+      }
+      await loadReviewWorkspace(selectedAsset.id);
+      setMessage("Index Entry 已归档；不可变文本 Chunk 仅保留审计，不提供检索。 ");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Knowledge Index 归档失败。");
+    } finally {
+      setIsIndexSubmitting(false);
+    }
+  }
+
   return (
     <div className="p2-page">
       <div className="page-hero">
@@ -317,8 +375,8 @@ export function P2MaterialCenter() {
       <div className="roadmap-banner material-boundary-banner">
         <span className="roadmap-icon">P2</span>
         <div>
-          <strong>Knowledge Asset Foundation</strong>
-          <p>P2-M4 只将 approved snapshot 治理为独立 Knowledge Asset。Embedding、RAG 同步和 Agent 调用均未接入。</p>
+          <strong>Knowledge Index Foundation</strong>
+          <p>P2-M6 只建立 Index Entry 与确定性文本 Chunk。Embedding、向量检索、统一检索和 Agent 调用均未接入。</p>
         </div>
       </div>
 
@@ -587,8 +645,12 @@ export function P2MaterialCenter() {
           <div className="review-empty-note">暂无 Knowledge Asset。请先发布 approved snapshot。</div>
         ) : (
           <div className="knowledge-asset-list">
-            {knowledgeAssets.map((knowledge) => (
-              <article className="knowledge-asset-card" key={knowledge.id}>
+            {knowledgeAssets.map((knowledge) => {
+              const indexEntry = knowledgeIndexEntries.find(
+                (item) => item.knowledge_asset_id === knowledge.id,
+              );
+              return (
+                <article className="knowledge-asset-card" key={knowledge.id}>
                 <div className="review-card-meta">
                   <span>{knowledge.content_type} · v{knowledge.version}</span>
                   <span className={`knowledge-status status-${knowledge.status}`}>{knowledge.status}</span>
@@ -601,6 +663,41 @@ export function P2MaterialCenter() {
                   <div><dt>Extraction</dt><dd>{knowledge.source_trace.extraction_id}</dd></div>
                   <div><dt>Asset</dt><dd>{knowledge.source_trace.asset_id}</dd></div>
                 </dl>
+                <div className="knowledge-index-summary">
+                  <div>
+                    <span>Knowledge Index</span>
+                    <strong className={`knowledge-index-status status-${indexEntry?.status || "pending"}`}>
+                      {indexEntry?.status || "pending"}
+                    </strong>
+                  </div>
+                  {indexEntry ? (
+                    <small>
+                      generation {indexEntry.generation} · chunks {indexEntry.chunks.length} · {indexEntry.id}
+                    </small>
+                  ) : (
+                    <small>尚未创建 Index Entry</small>
+                  )}
+                  {!indexEntry && knowledge.status === "active" && (
+                    <button
+                      className="btn-primary btn-sm"
+                      type="button"
+                      disabled={isIndexSubmitting}
+                      onClick={() => void createKnowledgeIndex(knowledge.id)}
+                    >
+                      生成文本投影
+                    </button>
+                  )}
+                  {indexEntry && indexEntry.status !== "archived" && (
+                    <button
+                      className="btn-secondary btn-sm"
+                      type="button"
+                      disabled={isIndexSubmitting}
+                      onClick={() => void archiveKnowledgeIndex(indexEntry.id)}
+                    >
+                      归档 Index
+                    </button>
+                  )}
+                </div>
                 {knowledge.status === "active" && (
                   <button
                     className="btn-secondary btn-sm"
@@ -611,8 +708,9 @@ export function P2MaterialCenter() {
                     归档
                   </button>
                 )}
-              </article>
-            ))}
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

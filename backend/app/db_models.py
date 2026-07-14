@@ -362,6 +362,47 @@ class KnowledgeAsset(Base):
     updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
 
 
+# ── P2-M6: Knowledge Index Foundation ────────────────────────────────────────
+
+
+class P2KnowledgeIndexEntry(Base):
+    """Control-plane state for one immutable Knowledge Asset projection."""
+
+    __tablename__ = "p2_knowledge_index_entries"
+
+    id = Column(String, primary_key=True)
+    knowledge_asset_id = Column(String, nullable=False, unique=True, index=True)
+    status = Column(String, nullable=False, default="pending", index=True)
+    generation = Column(Integer, nullable=False, default=1)
+    fingerprint = Column(String, nullable=False, unique=True, index=True)
+    sync_state = Column(String, nullable=False, default="pending", index=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class P2KnowledgeChunk(Base):
+    """Immutable deterministic text projection owned by one P2 index entry."""
+
+    __tablename__ = "p2_knowledge_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "index_entry_id",
+            "chunk_order",
+            name="uq_p2_knowledge_chunk_order",
+        ),
+    )
+
+    id = Column(String, primary_key=True)
+    index_entry_id = Column(String, nullable=False, index=True)
+    knowledge_asset_id = Column(String, nullable=False, index=True)
+    chunk_text = Column(Text, nullable=False)
+    chunk_hash = Column(String, nullable=False, index=True)
+    chunk_order = Column(Integer, nullable=False, default=0)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+
+
 # ── P1-M21: Vector RAG Foundation ────────────────────────────────────────────
 
 

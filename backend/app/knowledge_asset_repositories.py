@@ -16,6 +16,7 @@ from app.db_models import (
     AssetReviewSnapshot,
     ExtractionReview,
     KnowledgeAsset,
+    P2KnowledgeIndexEntry,
 )
 from app.knowledge_asset_schemas import (
     KnowledgeAssetList,
@@ -164,6 +165,18 @@ def publish_knowledge_asset(
         .scalar()
     )
     now = datetime.now(UTC)
+    superseded_ids = [
+        item[0]
+        for item in (
+            db.query(KnowledgeAsset.id)
+            .filter(
+                KnowledgeAsset.asset_id == asset_id,
+                KnowledgeAsset.content_type == content_type,
+                KnowledgeAsset.status == "active",
+            )
+            .all()
+        )
+    ]
     (
         db.query(KnowledgeAsset)
         .filter(
@@ -176,6 +189,23 @@ def publish_knowledge_asset(
             synchronize_session=False,
         )
     )
+    if superseded_ids:
+        (
+            db.query(P2KnowledgeIndexEntry)
+            .filter(
+                P2KnowledgeIndexEntry.knowledge_asset_id.in_(superseded_ids),
+                P2KnowledgeIndexEntry.status != "archived",
+            )
+            .update(
+                {
+                    "status": "archived",
+                    "sync_state": "archived",
+                    "error_message": None,
+                    "updated_at": now,
+                },
+                synchronize_session=False,
+            )
+        )
     row = KnowledgeAsset(
         id=f"knowledge_asset_{uuid4().hex[:20]}",
         source_snapshot_id=source_snapshot_id,
@@ -216,6 +246,22 @@ def archive_knowledge_asset(
     if row.status != "archived":
         row.status = "archived"
         row.updated_at = datetime.now(UTC)
+        (
+            db.query(P2KnowledgeIndexEntry)
+            .filter(
+                P2KnowledgeIndexEntry.knowledge_asset_id == knowledge_asset_id,
+                P2KnowledgeIndexEntry.status != "archived",
+            )
+            .update(
+                {
+                    "status": "archived",
+                    "sync_state": "archived",
+                    "error_message": None,
+                    "updated_at": row.updated_at,
+                },
+                synchronize_session=False,
+            )
+        )
         db.commit()
         db.refresh(row)
     return _record(db, row)

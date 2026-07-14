@@ -110,6 +110,38 @@ export type KnowledgeAsset = {
   source_trace: KnowledgeAssetSourceTrace;
 };
 
+export type KnowledgeIndexStatus =
+  | "pending"
+  | "building"
+  | "ready"
+  | "serving"
+  | "failed"
+  | "archived";
+
+export type KnowledgeChunk = {
+  id: string;
+  index_entry_id: string;
+  knowledge_asset_id: string;
+  chunk_text: string;
+  chunk_hash: string;
+  chunk_order: number;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+};
+
+export type KnowledgeIndexEntry = {
+  id: string;
+  knowledge_asset_id: string;
+  status: KnowledgeIndexStatus;
+  generation: number;
+  fingerprint: string;
+  sync_state: "pending" | "building" | "ready" | "failed" | "archived";
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  chunks: KnowledgeChunk[];
+};
+
 export type CleaningJob = {
   raw_message_count: number;
   sanitized_message_count: number;

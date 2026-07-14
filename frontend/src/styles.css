@@ -1665,6 +1665,40 @@ label { display: grid; gap: 6px; color: #b4c4d9; font-size: 0.88rem; font-weight
 .knowledge-trace-grid dt { margin-bottom: 4px; color: var(--text-faint); font-size: 0.72rem; font-weight: 700; }
 .knowledge-trace-grid dd { margin: 0; color: var(--text-muted); font-size: 0.76rem; overflow-wrap: anywhere; }
 
+.knowledge-index-summary {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 7px;
+  background: var(--bg-surface-muted);
+}
+
+.knowledge-index-summary > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.knowledge-index-summary small { color: var(--text-faint); overflow-wrap: anywhere; }
+
+.knowledge-index-status {
+  padding: 3px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  color: #fde68a;
+  font-size: 0.72rem;
+}
+
+.knowledge-index-status.status-ready { color: #86efac; border-color: rgba(52, 211, 153, 0.3); }
+.knowledge-index-status.status-serving { color: #93c5fd; border-color: rgba(96, 165, 250, 0.3); }
+.knowledge-index-status.status-archived { color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3); }
+.knowledge-index-status.status-failed { color: #fca5a5; border-color: rgba(248, 113, 113, 0.3); }
+
 /* ---- P4 Specific ---- */
 .mcp-section, .agents-section { margin-bottom: var(--space-section); }
 .mcp-section h2, .agents-section h2 { color: var(--text-strong); margin: 0 0 6px; font-size: 1.2rem; }
