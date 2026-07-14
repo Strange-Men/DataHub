@@ -1706,8 +1706,47 @@ P2-M2 is complete when:
 
 P2-M3 entry gate:
 
-- [ ] Define one review aggregate for an Asset extraction bundle; do not create separate OCR/Caption review tables.
-- [ ] Freeze immutable review snapshot, decision, reviewer, correction, and source-extraction trace semantics.
-- [ ] Keep approval separate from RAG publication and keep unreviewed extraction results invisible to Agent retrieval.
-- [ ] Decide whether P2-M3 includes only review or also a non-indexing Knowledge Link draft before implementation.
-- [ ] Preserve the P1 job-query compatibility dispatch and repeat full pytest plus the sealed P1 online harness.
+- [x] Define one review aggregate shared by Asset extraction types; do not create separate OCR/Caption review tables.
+- [x] Freeze immutable review snapshot, decision, reviewer, correction, and source-extraction trace semantics.
+- [x] Keep approval separate from RAG publication and keep unreviewed extraction results invisible to Agent retrieval.
+- [x] Limit P2-M3 to review and approved snapshots; do not add even a draft Knowledge Link in this milestone.
+- [x] Preserve the P1 job-query compatibility dispatch and repeat full pytest plus the sealed P1 online harness.
+
+## P2-M3 Human Review Foundation
+
+P2-M3 is complete when:
+
+- [x] `extraction_reviews` records Asset, Extraction, status, reviewer, comment, immutable original content copy, optional human revision, version, and timestamps.
+- [x] Review states are exactly `pending`, `approved`, `rejected`, and `needs_revision`.
+- [x] Only `pending -> approved/rejected/needs_revision` is legal.
+- [x] Terminal reviews reject every later PATCH with HTTP 409 and preserve the original decision.
+- [x] One Extraction has at most one pending review; duplicate creation returns the existing review id.
+- [x] Human edits are stored on the Review and never overwrite `asset_extractions.content`.
+- [x] `asset_review_snapshots` stores immutable approved content with Asset, Extraction, Review, type, source content, version, metadata, and creation time.
+- [x] Approved review and snapshot commit atomically.
+- [x] Rejected and needs-revision reviews create no snapshot.
+- [x] A later review version can create a later snapshot without overwriting older snapshots.
+- [x] `ReviewService` owns source validation, review creation, decision validation, and approval orchestration.
+- [x] `POST /api/assets/{asset_id}/reviews` creates a pending review.
+- [x] `GET /api/reviews/{review_id}` returns the review state and audit content.
+- [x] `PATCH /api/reviews/{review_id}` accepts only approved, rejected, or needs_revision decisions.
+- [x] `GET /api/assets/{asset_id}/snapshots` lists immutable approved snapshots.
+- [x] The existing dark Material Center displays Extraction results, editable review content, decisions, and snapshot history without a complex admin redesign.
+- [x] Focused Human Review Foundation tests pass 6/6.
+- [x] P2 ingestion/extraction/review focused regression passes 19/19.
+- [x] Full clean-workspace pytest passes 268/268.
+- [x] Frontend `tsc && vite build`, Python compile, and diff checks pass.
+- [x] P1 online Pipeline Harness passes 10/10.
+- [x] PostgreSQL and pgvector are healthy; real SiliconFlow sync reports 32/32 embeddings at 1536 dimensions.
+- [x] CustomerOpsAgent uses `customerops_vector_retrieval` with no fallback.
+- [x] No real OCR, Caption, Vision LLM, Embedding, RAG sync, Knowledge Link, Agent call, or P1 table change is included.
+- [x] `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `docs/44_P2_M3_HUMAN_REVIEW_FOUNDATION_REPORT.md` record completion.
+- [x] No tag, force push, secret, `.env`, uploaded binary, or local database is committed.
+
+P2-M4 entry gate:
+
+- [ ] Define Knowledge Link and approved-snapshot projection semantics before any RAG write.
+- [ ] Prove that pending, rejected, and needs-revision records cannot enter a publication queue.
+- [ ] Keep P2 index writes isolated from sealed P1 `rag_chunks` and `rag_embeddings`.
+- [ ] Decide whether P2-M4 starts with non-indexing Knowledge Link publication or includes a separately gated text-bridge index.
+- [ ] Define withdrawal, active-version, idempotency, source trace, and P1/P2 retrieval regression before implementation.

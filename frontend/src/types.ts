@@ -35,6 +35,50 @@ export type AssetPagination = {
   total_pages: number;
 };
 
+export type AssetExtraction = {
+  id: string;
+  asset_id: string;
+  job_id: string;
+  extract_type: "ocr" | "caption" | "metadata" | string;
+  content: string;
+  metadata_json: Record<string, unknown>;
+  version: number;
+  created_at: string;
+};
+
+export type ExtractionReviewStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "needs_revision";
+
+export type ExtractionReview = {
+  id: string;
+  asset_id: string;
+  extraction_id: string;
+  review_status: ExtractionReviewStatus;
+  reviewer: string | null;
+  review_comment: string | null;
+  original_content: string;
+  revised_content: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AssetReviewSnapshot = {
+  id: string;
+  asset_id: string;
+  extraction_id: string;
+  review_id: string;
+  extract_type: string;
+  original_content: string;
+  approved_content: string;
+  metadata_json: Record<string, unknown>;
+  version: number;
+  created_at: string;
+};
+
 export type CleaningJob = {
   raw_message_count: number;
   sanitized_message_count: number;

@@ -282,6 +282,58 @@ class AssetExtraction(Base):
     created_at = Column(DateTime, nullable=False, default=_utcnow)
 
 
+# ── P2-M3: Human Review Foundation ───────────────────────────────────────────
+
+
+class ExtractionReview(Base):
+    """Versioned human decision over one immutable Asset extraction."""
+
+    __tablename__ = "extraction_reviews"
+    __table_args__ = (
+        UniqueConstraint(
+            "extraction_id",
+            "version",
+            name="uq_extraction_review_version",
+        ),
+    )
+
+    id = Column(String, primary_key=True)
+    asset_id = Column(String, nullable=False, index=True)
+    extraction_id = Column(String, nullable=False, index=True)
+    review_status = Column(String, nullable=False, default="pending", index=True)
+    reviewer = Column(String, nullable=True)
+    review_comment = Column(Text, nullable=True)
+    original_content = Column(Text, nullable=False)
+    revised_content = Column(Text, nullable=True)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class AssetReviewSnapshot(Base):
+    """Immutable approved content produced atomically with a Review decision."""
+
+    __tablename__ = "asset_review_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "extraction_id",
+            "version",
+            name="uq_asset_review_snapshot_version",
+        ),
+    )
+
+    id = Column(String, primary_key=True)
+    asset_id = Column(String, nullable=False, index=True)
+    extraction_id = Column(String, nullable=False, index=True)
+    review_id = Column(String, nullable=False, unique=True, index=True)
+    extract_type = Column(String, nullable=False, index=True)
+    original_content = Column(Text, nullable=False)
+    approved_content = Column(Text, nullable=False)
+    metadata_json = Column(JSON, nullable=True)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+
+
 # ── P1-M21: Vector RAG Foundation ────────────────────────────────────────────
 
 

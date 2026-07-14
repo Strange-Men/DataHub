@@ -161,6 +161,18 @@ def create_asset_extraction(
     return _extraction_record(row)
 
 
+def get_asset_extraction(
+    db: Session,
+    extraction_id: str,
+) -> AssetExtractionRecord | None:
+    row = (
+        db.query(AssetExtraction)
+        .filter(AssetExtraction.id == extraction_id)
+        .first()
+    )
+    return _extraction_record(row) if row is not None else None
+
+
 def list_asset_extractions(db: Session, asset_id: str) -> AssetExtractionList:
     rows = (
         db.query(AssetExtraction)
