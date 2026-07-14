@@ -1780,8 +1780,43 @@ P2-M4 is complete when:
 
 P2-M5 entry gate:
 
-- [ ] Define a P2-only index/synchronization contract without writing sealed P1 `rag_chunks` or `rag_embeddings`.
-- [ ] Decide and document whether the first P2 retrieval representation is a reviewed text bridge only.
-- [ ] Define active/archive propagation, rebuild idempotency, withdrawal, cost, and evaluation gates.
-- [ ] Design query-time P1/P2 fusion and CustomerOpsAgent exposure as separately approved changes.
-- [ ] Repeat full pytest and the sealed P1 online harness before any P2 content becomes retrievable.
+- [x] Define a P2-only index/synchronization contract without writing sealed P1 `rag_chunks` or `rag_embeddings`.
+- [x] Decide and document that the first P2 retrieval representation is reviewed text bridge only.
+- [x] Define active/archive propagation, rebuild idempotency, withdrawal, cost, and evaluation gates.
+- [x] Design query-time P1/P2 fusion and CustomerOpsAgent exposure as separately approved changes.
+- [x] Preserve full pytest and sealed P1 online Harness as mandatory gates before any P2 content becomes retrievable; P2-M5 itself performs no code or retrieval change.
+
+## P2-M5 Knowledge Index Planning Gate
+
+P2-M5 is complete when:
+
+- [x] `docs/46_P2_M5_KNOWLEDGE_INDEX_PLANNING.md` records the architecture review.
+- [x] P1 text knowledge and P2 multimodal Knowledge Asset responsibilities are explicitly separated.
+- [x] Direct P2 writes to P1 `rag_chunks` and `rag_embeddings` are rejected.
+- [x] Physical dual indexes plus a future logical unified retrieval layer are selected.
+- [x] P1/P2 parallel retrieval, route normalization, Asset deduplication, partial result behavior, and RRF are defined.
+- [x] Existing `POST /api/customer-ops-agent/retrieve` remains P1-only and behaviorally unchanged.
+- [x] Future CustomerOpsAgent fusion requires an additive versioned API, shadow/eval verification, and explicit opt-in.
+- [x] Governance status, index state, and serving eligibility are separated.
+- [x] Index states cover pending, indexing, ready, failed, withdraw_pending, and withdrawn.
+- [x] Only active Knowledge Assets with ready/serving index entries can be returned.
+- [x] Archive immediately revokes serving eligibility before physical vector cleanup.
+- [x] Immutable version, source fingerprint, generation, idempotency, incremental update, rebuild, and withdrawal semantics are defined.
+- [x] Source trace remains Knowledge Asset -> Snapshot -> Review -> Extraction/Job -> Asset.
+- [x] Reviewed text bridge is selected for MVP; raw Extraction cannot bypass governance into an index.
+- [x] Image embedding, multimodal shared-space embedding, and text/image late fusion are deferred and isolated by profile.
+- [x] Future `p2_knowledge_index_entries`, `p2_knowledge_chunks`, and `p2_knowledge_embeddings` are reviewed but not created.
+- [x] No unnecessary collection, pipeline step/event, per-extraction-type, or unified P1/P2 vector table is planned for MVP.
+- [x] The roadmap is P2-M6 Index Foundation -> P2-M7 Text Bridge Semantic Index -> P2-M8 Unified Retrieval Gate -> optional P2-M9 Native Multimodal Retrieval.
+- [x] Risk review covers P1 pollution, stale archive hits, state drift, score comparability, latency, model/version growth, trace cost, withdrawal failure, and storage/API cost.
+- [x] Only `docs/46_P2_M5_KNOWLEDGE_INDEX_PLANNING.md`, `docs/08_DEV_STATUS.md`, and `docs/09_STAGE_CHECKLIST.md` are changed.
+- [x] No table, schema, business code, frontend, test, Embedding, retrieval, RAG sync, Agent integration, dependency, secret, or tag is added.
+
+P2-M6 entry gate:
+
+- [ ] Obtain explicit authorization for P2-M6 Knowledge Index Foundation; P2-M5 completion does not authorize implementation.
+- [ ] Write a schema ADR for P2 index entry/chunk naming, constraints, indexes, migration, SQLite/PostgreSQL behavior, retention, and rollback.
+- [ ] Freeze deterministic text projection and chunk-id/fingerprint contracts using active Knowledge Assets only.
+- [ ] Prove archive/withdraw visibility ordering and reconciliation behavior before schema implementation.
+- [ ] Limit P2-M6 to index control-plane and chunks; do not add vector columns, real Embedding, retrieval API, CustomerOpsAgent changes, or Agent calls.
+- [ ] Define focused tests plus full pytest and sealed P1 online Harness gates before implementation.
