@@ -2,13 +2,13 @@
 
 ## Current Stage
 
-P2-M0 Planning completed. P1 remains formally sealed at `p1-m24.3-real-embedding-online-release`; no P1 API, schema, frontend, or business behavior was changed. The current repository work is documentation-only planning for the P2 AI multimodal knowledge asset center. P2-M1 implementation has not started.
+P2-M1 Material Ingestion Foundation completed. P1 remains formally sealed at `p1-m24.3-real-embedding-online-release`; its APIs, tables, retrieval contract, embedding flow, and business behavior remain unchanged. P2 now has an additive Asset metadata model, private storage adapter, validated image upload, hash deduplication, paginated listing, detail lookup, and a minimal dark Material Center. OCR, Caption, image understanding, embedding, RAG publication, and Agent use have not started.
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. P1-M24.3 Real Embedding Online Verification & Final Release Gate completed. Current checkpoint: P2-M0 Planning completed.
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. P1-M24.3 Real Embedding Online Verification & Final Release Gate completed. P2-M0 Planning completed. Current checkpoint: P2-M1 Material Ingestion Foundation completed.
 
-Current code remains Phase 1.
+Current code contains the sealed P1 foundation plus the isolated P2-M1 ingestion boundary.
 
-P2 is now planning-complete only. P2 implementation, Phase 3, and Phase 4 must not be implemented early or outside their declared milestones.
+P2-M1 ingestion is complete. P2 extraction/review/publication work, Phase 3, and Phase 4 must not be implemented early or outside their declared milestones.
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
@@ -1755,3 +1755,24 @@ This is a planning and documentation checkpoint only.
 - No P1 API, schema, frontend, retrieval contract, or CustomerOpsAgent repository change.
 - No P2 backend, database, frontend, object storage, OCR, Caption, embedding, or unified retrieval implementation.
 - The next allowed stage is P2-M1 Material Ingestion, starting with an object-storage ADR and additive Asset foundation only.
+
+## Completed In P2-M1
+
+- Added `docs/41_P2_M1_OBJECT_STORAGE_ADR.md` and accepted a storage adapter boundary: ignored local filesystem for development, paid Render persistent disk for the single-instance MVP, and a future S3/R2/OSS adapter without changing the Asset/API contract.
+- Added one additive `assets` table for governed metadata. Binary content is never stored in PostgreSQL.
+- Added private, atomic local object persistence with opaque `local://` URIs and deterministic SHA-256 object keys.
+- Added `POST /api/assets/upload`, `GET /api/assets`, and `GET /api/assets/{id}`.
+- Added JPEG, PNG, and WebP validation across declared MIME, extension, magic bytes, non-empty content, safe file name, and configurable 10 MiB default limit.
+- Added SHA-256 idempotency at service, database unique constraint, and deterministic storage-key levels; duplicate upload returns HTTP 409 with the existing Asset id.
+- Replaced the P2 roadmap placeholder with a minimal Material Center for upload, paginated list, and metadata detail while preserving the existing dark visual system.
+- Added seven Asset ingestion tests covering success, illegal/mismatched content, duplicate upload, pagination, detail/404, size/type boundaries, and storage path escape.
+- Full clean-workspace repository suite passed 256/256; frontend `tsc && vite build` and Python compile checks passed.
+- Final Render P1 harness passed 10/10 with PostgreSQL/pgvector healthy, 28/28 1536-dimensional SiliconFlow embeddings, vector-only CustomerOpsAgent retrieval, and no fallback.
+- Added `docs/42_P2_M1_MATERIAL_INGESTION_REPORT.md` with implementation and gate evidence.
+
+### P2-M1 Boundaries
+
+- P1 remains sealed at `p1-m24.3-real-embedding-online-release`; P1 routes, tables, retrieval, embedding, RAG, Agent, and business logic are unchanged.
+- P2-M1 accepts image materials only. The schema reserves future `video` and `pdf` types, but the API rejects them in this milestone.
+- No OCR, Caption, image understanding, extraction job, human review, embedding, RAG synchronization, Agent call, public object URL, or binary preview/download endpoint is included.
+- No tag is created. The next suggested stage is P2-M2 Extraction Foundation, gated by a separate provider/job-state design and continued P1 regression protection.

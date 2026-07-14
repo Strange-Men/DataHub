@@ -17,6 +17,7 @@ import datetime
 import os
 
 from sqlalchemy import (
+    BigInteger,
     Column,
     DateTime,
     Float,
@@ -205,6 +206,32 @@ class BadCase(Base):
     expected_answer = Column(Text, nullable=True)
     status = Column(String, nullable=False, default="open")
     created_candidate_id = Column(String, nullable=True)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+# ── P2-M1: Material Ingestion Foundation ─────────────────────────────────────
+
+
+class Asset(Base):
+    """Governed metadata for one uploaded material object.
+
+    Binary content is intentionally stored behind the asset storage adapter,
+    never in PostgreSQL. P2-M1 supports image uploads while asset_type remains
+    extensible for later video and PDF milestones.
+    """
+
+    __tablename__ = "assets"
+
+    id = Column(String, primary_key=True)
+    asset_type = Column(String, nullable=False, default="image", index=True)
+    file_name = Column(String, nullable=False)
+    mime_type = Column(String, nullable=False)
+    size = Column(BigInteger, nullable=False)
+    storage_uri = Column(Text, nullable=False)
+    hash = Column(String, nullable=False, unique=True, index=True)
+    status = Column(String, nullable=False, default="uploaded", index=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=_utcnow)
     updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)

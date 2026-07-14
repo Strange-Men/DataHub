@@ -14,6 +14,27 @@ export type BackendStatus = {
   detail?: string;
 };
 
+export type Asset = {
+  id: string;
+  asset_type: "image" | "video" | "pdf" | string;
+  file_name: string;
+  mime_type: string;
+  size: number;
+  storage_uri: string;
+  hash: string;
+  status: "uploaded" | string;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AssetPagination = {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+};
+
 export type CleaningJob = {
   raw_message_count: number;
   sanitized_message_count: number;

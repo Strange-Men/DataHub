@@ -1633,9 +1633,43 @@ P2-M0 is complete when:
 
 P2-M1 entry gate:
 
-- [ ] Create an object-storage ADR covering provider, private access, lifecycle, deletion, cost, and local-test strategy.
-- [ ] Freeze the additive Asset schema and content-hash idempotency contract without modifying P1 schema.
-- [ ] Define supported image types, size/batch limits, archive semantics, and security validation.
-- [ ] Write P2-M1 API contract and tests before implementation.
-- [ ] Keep OCR, Caption, Review, Knowledge Link publication, and multimodal RAG outside P2-M1.
-- [ ] Run the complete sealed P1 regression suite before and after P2-M1 changes.
+- [x] Create an object-storage ADR covering provider, private access, lifecycle, deletion, cost, and local-test strategy.
+- [x] Freeze the additive Asset schema and content-hash idempotency contract without modifying P1 schema.
+- [x] Define supported image types, size/batch limits, archive semantics, and security validation.
+- [x] Write and verify the P2-M1 API contract and ingestion tests.
+- [x] Keep OCR, Caption, Review, Knowledge Link publication, and multimodal RAG outside P2-M1.
+- [x] Run the complete sealed P1 regression suite and online P1 harness after P2-M1 changes.
+
+## P2-M1 Material Ingestion Foundation
+
+P2-M1 is complete when:
+
+- [x] Work starts from P2-M0 commit `703c7c8` and the sealed P1 tag remains unchanged.
+- [x] `docs/41_P2_M1_OBJECT_STORAGE_ADR.md` records local development, Render persistent disk, future S3/R2/OSS migration, private access, and lifecycle decisions.
+- [x] `AssetStorageAdapter` separates binary persistence from Asset metadata and prevents path escape.
+- [x] Uploaded binary content is not stored in PostgreSQL, Git, API metadata, or a public URL.
+- [x] One additive `assets` table records id, asset type, file name, MIME, size, opaque storage URI, SHA-256 hash, status, metadata JSON, and timestamps.
+- [x] The database hash constraint and deterministic object key enforce deduplication/idempotency.
+- [x] `POST /api/assets/upload` validates and persists JPEG, PNG, and WebP material.
+- [x] File-name safety, extension, MIME, magic bytes, empty-content, future-type, and configurable size-limit checks reject invalid uploads.
+- [x] Duplicate upload returns HTTP 409 and identifies the existing Asset without creating another row.
+- [x] `GET /api/assets` returns stable paginated metadata.
+- [x] `GET /api/assets/{id}` returns metadata detail and HTTP 404 for an unknown id.
+- [x] The Material Center supports upload, paginated list, and metadata detail using the existing P1 dark design tokens.
+- [x] No OCR, Caption, image understanding, embedding, RAG synchronization, Agent use, review workflow, or binary preview/download endpoint is implemented.
+- [x] Asset ingestion tests pass 7/7.
+- [x] Full repository pytest passes 256/256 in a clean isolated workspace.
+- [x] Frontend production build and Python compile checks pass.
+- [x] Final Render P1 harness passes 10/10 after cold-start-safe retry, including real vector sync and retrieval.
+- [x] Online RAG sync reports 28 chunks, 28 embeddings, 0 failures, SiliconFlow provider, and dimension 1536.
+- [x] Online CustomerOpsAgent uses `customerops_vector_retrieval` with no fallback.
+- [x] `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `docs/42_P2_M1_MATERIAL_INGESTION_REPORT.md` record completion and evidence.
+- [x] No tag, force push, secret, `.env`, uploaded binary, or local database is committed.
+
+P2-M2 entry gate:
+
+- [ ] Define extraction job states, retry/idempotency, provider abstraction, and cost/timeout controls before implementation.
+- [ ] Select a bounded OCR-first MVP and keep Caption/image understanding provider work explicitly gated.
+- [ ] Preserve Asset immutability/source trace and keep extracted output separate from approved knowledge.
+- [ ] Do not synchronize P2 content to RAG or expose it to CustomerOpsAgent before review/publication milestones.
+- [ ] Re-run full pytest and the sealed P1 online harness after any additive P2-M2 work.

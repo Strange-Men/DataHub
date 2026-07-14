@@ -1369,6 +1369,118 @@ label { display: grid; gap: 6px; color: #b4c4d9; font-size: 0.88rem; font-weight
 .info-panel h3 { margin: 0 0 var(--space-tight); color: var(--text-strong); font-size: 1rem; }
 .info-panel ul { margin: 0; padding-left: 20px; color: var(--text-muted); display: grid; gap: 4px; line-height: 1.5; font-size: 0.88rem; }
 
+/* ---- P2-M1 Material Ingestion ---- */
+.material-boundary-banner {
+  border-color: rgba(34, 211, 238, 0.22);
+  background: rgba(8, 47, 73, 0.22);
+}
+
+.material-boundary-banner .roadmap-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.material-panel {
+  margin-bottom: var(--space-section);
+  padding: var(--space-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+}
+
+.material-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-element);
+  margin-bottom: var(--space-element);
+}
+
+.material-panel-header h2 { margin: 0 0 6px; color: var(--text-strong); font-size: 1.1rem; }
+.material-panel-header p { margin: 0; color: var(--text-muted); font-size: 0.88rem; }
+
+.material-upload-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-element);
+  align-items: end;
+}
+
+.material-upload-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-tight);
+}
+
+.material-upload-actions span { color: var(--text-faint); font-size: 0.82rem; max-width: 260px; overflow-wrap: anywhere; }
+
+.material-list { display: grid; gap: 8px; }
+
+.material-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(120px, 0.8fr) 90px 90px 110px;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  height: auto;
+  min-height: 58px;
+  padding: 10px 14px;
+  text-align: left;
+  color: var(--text-muted);
+  background: var(--bg-surface-soft);
+}
+
+.material-row-main { display: grid; gap: 3px; min-width: 0; }
+.material-row-main strong { color: var(--text-primary); overflow-wrap: anywhere; }
+.material-row-main small { color: var(--text-faint); }
+
+.asset-status-badge {
+  width: max-content;
+  padding: 3px 9px;
+  border: 1px solid rgba(52, 211, 153, 0.28);
+  border-radius: var(--radius-pill);
+  color: #86efac;
+  background: rgba(20, 83, 45, 0.18);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.material-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-tight);
+  margin-top: var(--space-element);
+  color: var(--text-faint);
+  font-size: 0.82rem;
+}
+
+.asset-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.asset-detail-grid > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-button);
+  background: var(--bg-surface-soft);
+}
+
+.asset-detail-grid dt { margin-bottom: 5px; color: var(--text-faint); font-size: 0.76rem; font-weight: 700; }
+.asset-detail-grid dd { margin: 0; color: var(--text-secondary); font-size: 0.86rem; overflow-wrap: anywhere; }
+.asset-detail-grid .asset-detail-wide { grid-column: 1 / -1; }
+
 /* ---- P4 Specific ---- */
 .mcp-section, .agents-section { margin-bottom: var(--space-section); }
 .mcp-section h2, .agents-section h2 { color: var(--text-strong); margin: 0 0 6px; font-size: 1.2rem; }
@@ -1470,6 +1582,11 @@ label { display: grid; gap: 6px; color: #b4c4d9; font-size: 0.88rem; font-weight
   .dual-cards, .info-grid {
     grid-template-columns: 1fr;
   }
+
+  .material-upload-form, .asset-detail-grid { grid-template-columns: 1fr; }
+  .asset-detail-grid .asset-detail-wide { grid-column: auto; }
+  .material-upload-actions { align-items: stretch; flex-direction: column; }
+  .material-row { grid-template-columns: 1fr; }
 
   .step-indicator { flex-direction: column; }
   .step-item { border-right: none; border-bottom: 1px solid var(--border-subtle); }

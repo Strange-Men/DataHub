@@ -18,6 +18,7 @@ from app.schemas import (
     ReviewDecisionRequest,
 )
 from app.database import check_database_connection, check_pgvector_available, ensure_pgvector_extension, init_database_tables
+from app.asset_routes import router as asset_router
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -50,6 +51,7 @@ from app.storage import (
 )
 
 app = FastAPI(title="DataHub API", version="0.1.0")
+app.include_router(asset_router)
 
 # Ensure tables exist on module load (idempotent, safe for both tests and production).
 # Also runs on startup event for environments where module-level init is insufficient.
