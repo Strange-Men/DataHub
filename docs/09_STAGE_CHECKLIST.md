@@ -1607,3 +1607,35 @@ P1-M24.1 is complete when:
 - [x] final online harness passed 10/10 and eval retained 12/12 vector mode with zero fallbacks.
 - [x] final annotated release baseline: `p1-m24.3-real-embedding-online-release`.
 - [x] next stage is P2-M0 Planning only; no P2 implementation starts from this seal.
+
+## P2-M0 Multimodal Knowledge Center Planning
+
+P2-M0 is complete when:
+
+- [x] Work starts from the sealed `p1-m24.3-real-embedding-online-release` baseline.
+- [x] P1 is explicitly frozen; no P1 API, schema, frontend, business behavior, or retrieval contract is modified.
+- [x] `docs/40_P2_MULTIMODAL_KNOWLEDGE_CENTER_PLANNING.md` is added.
+- [x] P2 is positioned as an AI multimodal knowledge asset center, not a file drive or simple upload page.
+- [x] The simple user flow is defined: upload -> process -> review -> knowledge asset -> Agent use.
+- [x] Asset, Asset Extraction, Review, and Knowledge Link logical models are defined.
+- [x] OCR, Caption, tags, metadata, and SKU relationships are covered without isolated-table proliferation.
+- [x] Binary object storage and PostgreSQL metadata responsibilities are separated.
+- [x] P1/P2 unified RAG uses isolated write paths and query-time fusion.
+- [x] P2-MVP uses reviewed OCR/Caption text bridging before native visual embeddings.
+- [x] Planned APIs are additive and clearly marked as not implemented.
+- [x] Material Center, Review, and Asset Detail pages are planned under the existing P1 dark visual system.
+- [x] MVP in-scope and out-of-scope boundaries are explicit.
+- [x] Risks cover model growth, multimodal RAG, storage/model cost, review throughput, SKU errors, provider lock-in, and P1 regression.
+- [x] Databricks, LlamaIndex, Airbyte, and multimodal RAG principles are adapted without copying their full platforms.
+- [x] No business code, database/schema, API, frontend, dependency, object storage, OCR/Caption, embedding, or P2-M1 implementation is added.
+- [x] `docs/08_DEV_STATUS.md` and `docs/09_STAGE_CHECKLIST.md` record `P2-M0 Planning completed`.
+- [x] Next allowed stage is P2-M1 Material Ingestion only.
+
+P2-M1 entry gate:
+
+- [ ] Create an object-storage ADR covering provider, private access, lifecycle, deletion, cost, and local-test strategy.
+- [ ] Freeze the additive Asset schema and content-hash idempotency contract without modifying P1 schema.
+- [ ] Define supported image types, size/batch limits, archive semantics, and security validation.
+- [ ] Write P2-M1 API contract and tests before implementation.
+- [ ] Keep OCR, Caption, Review, Knowledge Link publication, and multimodal RAG outside P2-M1.
+- [ ] Run the complete sealed P1 regression suite before and after P2-M1 changes.

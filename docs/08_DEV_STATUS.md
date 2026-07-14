@@ -2,11 +2,13 @@
 
 ## Current Stage
 
-M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. Current checkpoint: P1-M24.2.
+P2-M0 Planning completed. P1 remains formally sealed at `p1-m24.3-real-embedding-online-release`; no P1 API, schema, frontend, or business behavior was changed. The current repository work is documentation-only planning for the P2 AI multimodal knowledge asset center. P2-M1 implementation has not started.
+
+M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Persistence Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. P1-M24.3 Real Embedding Online Verification & Final Release Gate completed. Current checkpoint: P2-M0 Planning completed.
 
 Current code remains Phase 1.
 
-Phase 2, Phase 3, and Phase 4 are formal roadmap phases, but they must not be implemented early.
+P2 is now planning-complete only. P2 implementation, Phase 3, and Phase 4 must not be implemented early or outside their declared milestones.
 
 P1-M11 is no longer treated as the final high-quality DataHub release. It is the unified DataHub RAG release.
 P1-M15 High-quality DataHub Final Release completed. P1 is now accepted as the high-quality text data governance and unified local RAG release.
@@ -1731,3 +1733,25 @@ P2 不应在 P1 真实 RAG 闭环最终收版且用户确认前启动。
 ### P1-M24.3 Release Gate
 
 **P1 FINAL RELEASE SEALED** for the verified DataHub retrieval scope under tag `p1-m24.3-real-embedding-online-release`. The final gate passed 249/249 repository tests, the online harness passed 10/10, and the online eval retained 12/12 vector retrieval with zero fallbacks. DataHub-internal LLM answer generation is not part of the current retrieval contract and must not be claimed as implemented. The next stage is limited to P2-M0 Planning.
+
+## Completed In P2-M0
+
+- Added `docs/40_P2_MULTIMODAL_KNOWLEDGE_CENTER_PLANNING.md`.
+- Defined P2 as an AI multimodal knowledge asset center, not a file drive or simple image upload feature.
+- Defined the user flow: upload -> automatic processing -> human review -> approved knowledge asset -> Agent consumption.
+- Planned four core P2 aggregates: Asset, Asset Extraction, Review, and Knowledge Link; avoided separate OCR/Caption/Tag/SKU table proliferation.
+- Planned object storage for binaries and PostgreSQL for governed metadata/source trace; no binary storage in PostgreSQL, Git, or `backend/storage/`.
+- Planned P1/P2 integration as isolated write paths plus unified query-time retrieval, preserving the frozen P1 index/API/schema.
+- Planned a text-bridge MVP using reviewed OCR/Caption/tags/SKU evidence before native visual embeddings.
+- Planned staged APIs, three dark-console pages, MVP boundaries, milestone gates, and risk controls.
+- Referenced Databricks quality layering, LlamaIndex ingestion idempotency, Airbyte connector contracts, and multimodal RAG enrichment principles without adopting their full platforms.
+- Confirmed no business code, database, schema, API, frontend, dependency, secret, or P2-M1 implementation change.
+
+### P2-M0 Boundaries
+
+This is a planning and documentation checkpoint only.
+
+- P1 remains sealed at `p1-m24.3-real-embedding-online-release`.
+- No P1 API, schema, frontend, retrieval contract, or CustomerOpsAgent repository change.
+- No P2 backend, database, frontend, object storage, OCR, Caption, embedding, or unified retrieval implementation.
+- The next allowed stage is P2-M1 Material Ingestion, starting with an object-storage ADR and additive Asset foundation only.
