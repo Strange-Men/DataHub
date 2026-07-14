@@ -7,6 +7,7 @@ import type {
   AssetReviewSnapshot,
   ExtractionReview,
   ExtractionReviewStatus,
+  KnowledgeAsset,
 } from "../types";
 
 const PAGE_SIZE = 10;
@@ -32,12 +33,14 @@ export function P2MaterialCenter() {
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [extractions, setExtractions] = useState<AssetExtraction[]>([]);
   const [snapshots, setSnapshots] = useState<AssetReviewSnapshot[]>([]);
+  const [knowledgeAssets, setKnowledgeAssets] = useState<KnowledgeAsset[]>([]);
   const [activeReview, setActiveReview] = useState<ExtractionReview | null>(null);
   const [reviewer, setReviewer] = useState("");
   const [reviewComment, setReviewComment] = useState("");
   const [revisedContent, setRevisedContent] = useState("");
   const [isReviewLoading, setIsReviewLoading] = useState(false);
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+  const [isKnowledgeSubmitting, setIsKnowledgeSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -102,6 +105,7 @@ export function P2MaterialCenter() {
       setSelectedAsset(body.data);
       setExtractions([]);
       setSnapshots([]);
+      setKnowledgeAssets([]);
       setActiveReview(null);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -132,13 +136,15 @@ export function P2MaterialCenter() {
   async function loadReviewWorkspace(assetId: string) {
     setIsReviewLoading(true);
     try {
-      const [extractionResponse, snapshotResponse] = await Promise.all([
+      const [extractionResponse, snapshotResponse, knowledgeResponse] = await Promise.all([
         fetch(apiPath(`/api/assets/${assetId}/extractions`)),
         fetch(apiPath(`/api/assets/${assetId}/snapshots`)),
+        fetch(apiPath(`/api/knowledge-assets?page=1&page_size=100&asset_id=${assetId}`)),
       ]);
-      const [extractionBody, snapshotBody] = await Promise.all([
+      const [extractionBody, snapshotBody, knowledgeBody] = await Promise.all([
         extractionResponse.json(),
         snapshotResponse.json(),
+        knowledgeResponse.json(),
       ]);
       if (!extractionResponse.ok || !extractionBody.success) {
         throw new Error(apiError(extractionBody, "Extraction 结果加载失败。"));
@@ -146,8 +152,12 @@ export function P2MaterialCenter() {
       if (!snapshotResponse.ok || !snapshotBody.success) {
         throw new Error(apiError(snapshotBody, "审核快照加载失败。"));
       }
+      if (!knowledgeResponse.ok || !knowledgeBody.success) {
+        throw new Error(apiError(knowledgeBody, "Knowledge Asset 加载失败。"));
+      }
       setExtractions(extractionBody.data.extractions);
       setSnapshots(snapshotBody.data.snapshots);
+      setKnowledgeAssets(knowledgeBody.data.knowledge_assets);
       setActiveReview(null);
       setReviewer("");
       setReviewComment("");
@@ -249,6 +259,54 @@ export function P2MaterialCenter() {
     }
   }
 
+  async function publishSnapshot(snapshotId: string) {
+    if (!selectedAsset) return;
+    setIsKnowledgeSubmitting(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(apiPath(`/api/snapshots/${snapshotId}/publish`), {
+        method: "POST",
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(apiError(body, "Knowledge Asset 发布失败。"));
+      }
+      await loadReviewWorkspace(selectedAsset.id);
+      setMessage(
+        body.data.created
+          ? "Approved Snapshot 已发布为 Knowledge Asset；未进入 RAG。"
+          : "该 Snapshot 已发布，返回已有 Knowledge Asset。",
+      );
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Knowledge Asset 发布失败。");
+    } finally {
+      setIsKnowledgeSubmitting(false);
+    }
+  }
+
+  async function archiveKnowledgeAsset(knowledgeAssetId: string) {
+    if (!selectedAsset) return;
+    setIsKnowledgeSubmitting(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(apiPath(`/api/knowledge-assets/${knowledgeAssetId}/archive`), {
+        method: "POST",
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(apiError(body, "Knowledge Asset 归档失败。"));
+      }
+      await loadReviewWorkspace(selectedAsset.id);
+      setMessage("Knowledge Asset 已归档，历史内容和来源链保持不变。");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Knowledge Asset 归档失败。");
+    } finally {
+      setIsKnowledgeSubmitting(false);
+    }
+  }
+
   return (
     <div className="p2-page">
       <div className="page-hero">
@@ -259,8 +317,8 @@ export function P2MaterialCenter() {
       <div className="roadmap-banner material-boundary-banner">
         <span className="roadmap-icon">P2</span>
         <div>
-          <strong>Human Review Foundation</strong>
-          <p>P2-M3 只审核现有 Extraction。真实 OCR、Caption、Embedding、RAG 和 Agent 调用均未接入。</p>
+          <strong>Knowledge Asset Foundation</strong>
+          <p>P2-M4 只将 approved snapshot 治理为独立 Knowledge Asset。Embedding、RAG 同步和 Agent 调用均未接入。</p>
         </div>
       </div>
 
@@ -492,11 +550,69 @@ export function P2MaterialCenter() {
                       </div>
                       <p>{snapshot.approved_content}</p>
                       <small>{snapshot.id}</small>
+                      {knowledgeAssets.some((item) => item.source_snapshot_id === snapshot.id) ? (
+                        <span className="knowledge-published-note">已发布 Knowledge Asset</span>
+                      ) : (
+                        <button
+                          className="btn-primary btn-sm"
+                          type="button"
+                          disabled={isKnowledgeSubmitting}
+                          onClick={() => void publishSnapshot(snapshot.id)}
+                        >
+                          发布为 Knowledge Asset
+                        </button>
+                      )}
                     </article>
                   ))}
                 </div>
               )}
             </div>
+          </div>
+        )}
+      </section>
+
+      <section className="material-panel knowledge-foundation-panel">
+        <div className="material-panel-header">
+          <div>
+            <h2>Knowledge Assets</h2>
+            <p>展示可信内容、状态、版本及完整来源；本区不提供 RAG 或 Embedding 操作。</p>
+          </div>
+        </div>
+        {!selectedAsset ? (
+          <div className="empty-state">
+            <p className="empty-title">请先选择素材</p>
+            <p className="empty-desc">选择素材后可查看其治理后的 Knowledge Asset。</p>
+          </div>
+        ) : knowledgeAssets.length === 0 ? (
+          <div className="review-empty-note">暂无 Knowledge Asset。请先发布 approved snapshot。</div>
+        ) : (
+          <div className="knowledge-asset-list">
+            {knowledgeAssets.map((knowledge) => (
+              <article className="knowledge-asset-card" key={knowledge.id}>
+                <div className="review-card-meta">
+                  <span>{knowledge.content_type} · v{knowledge.version}</span>
+                  <span className={`knowledge-status status-${knowledge.status}`}>{knowledge.status}</span>
+                </div>
+                <p>{knowledge.content}</p>
+                <dl className="knowledge-trace-grid">
+                  <div><dt>Knowledge Asset</dt><dd>{knowledge.id}</dd></div>
+                  <div><dt>Snapshot</dt><dd>{knowledge.source_trace.snapshot_id}</dd></div>
+                  <div><dt>Review</dt><dd>{knowledge.source_trace.review_id}</dd></div>
+                  <div><dt>Extraction</dt><dd>{knowledge.source_trace.extraction_id}</dd></div>
+                  <div><dt>Asset</dt><dd>{knowledge.source_trace.asset_id}</dd></div>
+                </dl>
+                {knowledge.status === "active" && (
+                  <button
+                    className="btn-secondary btn-sm"
+                    type="button"
+                    disabled={isKnowledgeSubmitting}
+                    onClick={() => void archiveKnowledgeAsset(knowledge.id)}
+                  >
+                    归档
+                  </button>
+                )}
+              </article>
+            ))}
           </div>
         )}
       </section>

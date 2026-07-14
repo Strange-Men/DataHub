@@ -334,6 +334,34 @@ class AssetReviewSnapshot(Base):
     created_at = Column(DateTime, nullable=False, default=_utcnow)
 
 
+# ── P2-M4: Knowledge Asset Foundation ────────────────────────────────────────
+
+
+class KnowledgeAsset(Base):
+    """Governed P2 knowledge unit isolated from every P1 RAG table."""
+
+    __tablename__ = "knowledge_assets"
+    __table_args__ = (
+        UniqueConstraint(
+            "asset_id",
+            "content_type",
+            "version",
+            name="uq_knowledge_asset_version",
+        ),
+    )
+
+    id = Column(String, primary_key=True)
+    source_snapshot_id = Column(String, nullable=False, unique=True, index=True)
+    asset_id = Column(String, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    content_type = Column(String, nullable=False, index=True)
+    status = Column(String, nullable=False, default="draft", index=True)
+    version = Column(Integer, nullable=False, default=1)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
 # ── P1-M21: Vector RAG Foundation ────────────────────────────────────────────
 
 

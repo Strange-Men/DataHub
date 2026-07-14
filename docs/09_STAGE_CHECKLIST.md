@@ -1745,8 +1745,43 @@ P2-M3 is complete when:
 
 P2-M4 entry gate:
 
-- [ ] Define Knowledge Link and approved-snapshot projection semantics before any RAG write.
-- [ ] Prove that pending, rejected, and needs-revision records cannot enter a publication queue.
-- [ ] Keep P2 index writes isolated from sealed P1 `rag_chunks` and `rag_embeddings`.
-- [ ] Decide whether P2-M4 starts with non-indexing Knowledge Link publication or includes a separately gated text-bridge index.
-- [ ] Define withdrawal, active-version, idempotency, source trace, and P1/P2 retrieval regression before implementation.
+- [x] Define Knowledge Link and approved-snapshot projection semantics before any RAG write.
+- [x] Prove that pending, rejected, and needs-revision records cannot enter publication.
+- [x] Keep P2 writes isolated from sealed P1 `rag_chunks` and `rag_embeddings`.
+- [x] Limit P2-M4 to non-indexing Knowledge Asset publication; defer the text-bridge index to a separately gated milestone.
+- [x] Define archive, active-version, idempotency, source trace, and P1 retrieval regression before implementation.
+
+## P2-M4 Knowledge Asset Foundation
+
+P2-M4 is complete when:
+
+- [x] One additive `knowledge_assets` table stores source Snapshot, Asset, content, content type, status, version, metadata, and timestamps.
+- [x] States are `draft`, `active`, and `archived`; P2-M4 publish creates active records from already approved Snapshots.
+- [x] `source_snapshot_id` is unique and acts as the durable publication idempotency key.
+- [x] `(asset_id, content_type, version)` is unique and later approved Snapshots preserve earlier versions.
+- [x] Publishing a later version archives the prior active version atomically without overwriting its content or trace.
+- [x] The source Review is revalidated as approved at publication time.
+- [x] Pending, rejected, needs-revision, missing, and inconsistent sources cannot publish.
+- [x] `POST /api/snapshots/{id}/publish` creates once and returns the existing record on replay.
+- [x] `GET /api/knowledge-assets` supports stable pagination plus Asset/status filters.
+- [x] `GET /api/knowledge-assets/{id}` returns governed content and complete source trace.
+- [x] `POST /api/knowledge-assets/{id}/archive` is idempotent and preserves immutable content.
+- [x] Source trace resolves Knowledge Asset -> Snapshot -> Review -> Extraction/Job -> Asset and rejects incomplete/inconsistent lineage.
+- [x] The dark Material Center supports publish, list, source/status/version display, and archive without adding a RAG page.
+- [x] Focused Knowledge Asset tests pass 6/6.
+- [x] Full clean-workspace pytest passes 274/274.
+- [x] Frontend `tsc && vite build` passes.
+- [x] Final P1 online Pipeline Harness passes 10/10.
+- [x] PostgreSQL and pgvector are healthy; SiliconFlow sync reports 35/35 embeddings at 1536 dimensions.
+- [x] CustomerOpsAgent uses `customerops_vector_retrieval` with no fallback.
+- [x] No P1 RAG table, embedding logic, CustomerOpsAgent retrieval, P2 prior model design, OCR, Caption, Vision LLM, RAG sync, multimodal retrieval, or Agent call is changed.
+- [x] `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `docs/45_P2_M4_KNOWLEDGE_ASSET_FOUNDATION_REPORT.md` record completion.
+- [x] No tag, force push, secret, `.env`, uploaded binary, or local database is committed.
+
+P2-M5 entry gate:
+
+- [ ] Define a P2-only index/synchronization contract without writing sealed P1 `rag_chunks` or `rag_embeddings`.
+- [ ] Decide and document whether the first P2 retrieval representation is a reviewed text bridge only.
+- [ ] Define active/archive propagation, rebuild idempotency, withdrawal, cost, and evaluation gates.
+- [ ] Design query-time P1/P2 fusion and CustomerOpsAgent exposure as separately approved changes.
+- [ ] Repeat full pytest and the sealed P1 online harness before any P2 content becomes retrievable.

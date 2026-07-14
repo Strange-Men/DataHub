@@ -79,6 +79,37 @@ export type AssetReviewSnapshot = {
   created_at: string;
 };
 
+export type KnowledgeAssetSourceTrace = {
+  knowledge_asset_id: string;
+  snapshot_id: string;
+  snapshot_version: number;
+  review_id: string;
+  review_status: string;
+  review_version: number;
+  extraction_id: string;
+  extraction_job_id: string;
+  extraction_type: string;
+  extraction_version: number;
+  asset_id: string;
+  asset_file_name: string;
+  asset_hash: string;
+  asset_status: string;
+};
+
+export type KnowledgeAsset = {
+  id: string;
+  source_snapshot_id: string;
+  asset_id: string;
+  content: string;
+  content_type: string;
+  status: "draft" | "active" | "archived";
+  version: number;
+  metadata_json: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  source_trace: KnowledgeAssetSourceTrace;
+};
+
 export type CleaningJob = {
   raw_message_count: number;
   sanitized_message_count: number;

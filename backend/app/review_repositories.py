@@ -214,3 +214,15 @@ def list_asset_review_snapshots(
         asset_id=asset_id,
         snapshots=[_snapshot_record(row) for row in rows],
     )
+
+
+def get_asset_review_snapshot(
+    db: Session,
+    snapshot_id: str,
+) -> AssetReviewSnapshotRecord | None:
+    row = (
+        db.query(AssetReviewSnapshot)
+        .filter(AssetReviewSnapshot.id == snapshot_id)
+        .first()
+    )
+    return _snapshot_record(row) if row is not None else None

@@ -22,6 +22,7 @@ from app.asset_routes import router as asset_router
 from app.extraction_repositories import get_extraction_job as get_asset_extraction_job
 from app.extraction_routes import router as asset_extraction_router
 from app.review_routes import router as review_router
+from app.knowledge_asset_routes import router as knowledge_asset_router
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -57,6 +58,7 @@ app = FastAPI(title="DataHub API", version="0.1.0")
 app.include_router(asset_router)
 app.include_router(asset_extraction_router)
 app.include_router(review_router)
+app.include_router(knowledge_asset_router)
 
 # Ensure tables exist on module load (idempotent, safe for both tests and production).
 # Also runs on startup event for environments where module-level init is insufficient.
