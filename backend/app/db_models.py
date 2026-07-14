@@ -25,6 +25,7 @@ from sqlalchemy import (
     JSON,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.engine import Engine
 
@@ -235,6 +236,50 @@ class Asset(Base):
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=_utcnow)
     updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+# ── P2-M2: Extraction Foundation ─────────────────────────────────────────────
+
+
+class ExtractionJob(Base):
+    """Provider-neutral processing state for one Asset extraction attempt."""
+
+    __tablename__ = "extraction_jobs"
+
+    id = Column(String, primary_key=True)
+    asset_id = Column(String, nullable=False, index=True)
+    extract_type = Column(String, nullable=False, index=True)
+    provider = Column(String, nullable=False, default="mock")
+    status = Column(String, nullable=False, default="pending", index=True)
+    retry_count = Column(Integer, nullable=False, default=0)
+    error_message = Column(Text, nullable=True)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class AssetExtraction(Base):
+    """Versioned normalized output from a provider-neutral extraction job."""
+
+    __tablename__ = "asset_extractions"
+    __table_args__ = (
+        UniqueConstraint(
+            "asset_id",
+            "extract_type",
+            "version",
+            name="uq_asset_extraction_version",
+        ),
+    )
+
+    id = Column(String, primary_key=True)
+    asset_id = Column(String, nullable=False, index=True)
+    job_id = Column(String, nullable=False, unique=True, index=True)
+    extract_type = Column(String, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    metadata_json = Column(JSON, nullable=True)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
 
 
 # ── P1-M21: Vector RAG Foundation ────────────────────────────────────────────

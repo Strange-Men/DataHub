@@ -17,8 +17,10 @@ from app.schemas import (
     RagSearchRequest,
     ReviewDecisionRequest,
 )
-from app.database import check_database_connection, check_pgvector_available, ensure_pgvector_extension, init_database_tables
+from app.database import SessionLocal, check_database_connection, check_pgvector_available, ensure_pgvector_extension, init_database_tables
 from app.asset_routes import router as asset_router
+from app.extraction_repositories import get_extraction_job as get_asset_extraction_job
+from app.extraction_routes import router as asset_extraction_router
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -52,6 +54,7 @@ from app.storage import (
 
 app = FastAPI(title="DataHub API", version="0.1.0")
 app.include_router(asset_router)
+app.include_router(asset_extraction_router)
 
 # Ensure tables exist on module load (idempotent, safe for both tests and production).
 # Also runs on startup event for environments where module-level init is insufficient.
@@ -346,7 +349,16 @@ def run_extraction_for_sanitized_batch(batch_id: str) -> ApiResponse:
 
 @app.get("/api/extraction/jobs/{job_id}", response_model=ApiResponse)
 def get_extraction_job_status(job_id: str) -> ApiResponse:
-    job = get_extraction_job(job_id)
+    # P2 uses a namespaced id so the sealed P1 lookup remains byte-for-byte
+    # compatible for every existing P1 extraction job.
+    if job_id.startswith("asset_extract_job_"):
+        db = SessionLocal()
+        try:
+            job = get_asset_extraction_job(db, job_id)
+        finally:
+            db.close()
+    else:
+        job = get_extraction_job(job_id)
     if job is None:
         raise HTTPException(
             status_code=404,

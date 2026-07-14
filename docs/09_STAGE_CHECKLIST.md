@@ -1669,8 +1669,45 @@ P2-M1 is complete when:
 
 P2-M2 entry gate:
 
-- [ ] Define extraction job states, retry/idempotency, provider abstraction, and cost/timeout controls before implementation.
-- [ ] Select a bounded OCR-first MVP and keep Caption/image understanding provider work explicitly gated.
-- [ ] Preserve Asset immutability/source trace and keep extracted output separate from approved knowledge.
-- [ ] Do not synchronize P2 content to RAG or expose it to CustomerOpsAgent before review/publication milestones.
-- [ ] Re-run full pytest and the sealed P1 online harness after any additive P2-M2 work.
+- [x] Define extraction job states, retry behavior, provider abstraction, and the future timeout/cost boundary before any real provider implementation.
+- [x] Bound P2-M2 to a deterministic Mock provider; defer real OCR, Caption, and image understanding provider selection.
+- [x] Preserve Asset immutability/source trace and keep extracted output separate from approved knowledge.
+- [x] Do not synchronize P2 content to RAG or expose it to CustomerOpsAgent before review/publication milestones.
+- [x] Re-run full pytest and the sealed P1 online harness after additive P2-M2 work.
+
+## P2-M2 Extraction Foundation
+
+P2-M2 is complete when:
+
+- [x] `extraction_jobs` stores Asset id, extract type, provider, status, retry count, safe error, start/completion, creation, and update timestamps.
+- [x] Job states are exactly `pending`, `running`, `success`, `failed`, and `retrying`.
+- [x] Initial synchronous execution persists `pending -> running -> success/failed`.
+- [x] Internal retry persists `failed -> retrying -> running -> success/failed` and increments `retry_count`.
+- [x] `asset_extractions` stores versioned normalized content and metadata linked to Asset and job.
+- [x] OCR, Caption, and metadata share the same job/result models; no provider-specific result tables are introduced.
+- [x] One successful job creates at most one result, and results increment version per Asset/extract type.
+- [x] `ExtractionService` owns job creation, execution, state updates, result persistence, and retry orchestration.
+- [x] `ExtractionProvider` is independent of concrete model SDKs and receives a stable Asset context.
+- [x] Only deterministic `MockExtractionProvider` is registered and its output is marked synthetic/foundation-only.
+- [x] `POST /api/assets/{asset_id}/extract` creates and synchronously executes a mock job.
+- [x] `GET /api/extraction/jobs/{job_id}` reads both existing P1 jobs and namespaced P2 jobs without changing P1 responses.
+- [x] `GET /api/assets/{asset_id}/extractions` lists versioned results.
+- [x] Missing Assets and P2 jobs return stable HTTP 404 errors.
+- [x] Focused Extraction Foundation tests pass 6/6.
+- [x] Asset/P2/P1 extraction-focused regression passes 14/14.
+- [x] Full clean-workspace pytest passes 262/262.
+- [x] Python compile and diff checks pass.
+- [x] P1 online Pipeline Harness passes 10/10.
+- [x] PostgreSQL and pgvector are healthy; real SiliconFlow sync reports 30/30 embeddings at 1536 dimensions.
+- [x] CustomerOpsAgent uses `customerops_vector_retrieval` with no fallback.
+- [x] No real OCR, Caption model, Vision LLM, Embedding, RAG sync, Agent call, review workflow, frontend change, or P1 table change is included.
+- [x] `docs/08_DEV_STATUS.md`, `docs/09_STAGE_CHECKLIST.md`, and `docs/43_P2_M2_EXTRACTION_FOUNDATION_REPORT.md` record completion.
+- [x] No tag, force push, secret, `.env`, uploaded binary, or local database is committed.
+
+P2-M3 entry gate:
+
+- [ ] Define one review aggregate for an Asset extraction bundle; do not create separate OCR/Caption review tables.
+- [ ] Freeze immutable review snapshot, decision, reviewer, correction, and source-extraction trace semantics.
+- [ ] Keep approval separate from RAG publication and keep unreviewed extraction results invisible to Agent retrieval.
+- [ ] Decide whether P2-M3 includes only review or also a non-indexing Knowledge Link draft before implementation.
+- [ ] Preserve the P1 job-query compatibility dispatch and repeat full pytest plus the sealed P1 online harness.
