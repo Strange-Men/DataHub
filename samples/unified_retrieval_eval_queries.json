@@ -1,0 +1,129 @@
+{
+  "version": "p2-m8.2-unified-shadow-v1",
+  "scope": "p1-control-vs-unified-candidate-shadow-eval",
+  "metric_notes": {
+    "expected_terms": "Keyword evidence is a proxy only and is never reported as formal recall.",
+    "exact_ids": "Formal recall and MRR are calculated only when runtime P1/P2 identifiers are supplied through --expected-manifest.",
+    "branch_failure": "HTTP fault isolation is injected in service tests. The two branch-failure dataset cases exercise the corresponding surviving single-source request contract without adding a production fault-injection API.",
+    "shadow": "In shadow mode results are the P1 control and candidate_results are the non-user-visible Unified candidate."
+  },
+  "queries": [
+    {
+      "id": "unified_p1_only_001",
+      "category": "p1_only",
+      "query": "How do I return shoes and get a refund?",
+      "sources": "p1",
+      "fusion_enabled": false,
+      "shadow_mode": true,
+      "expected_sources": ["p1"],
+      "expected_terms": ["return", "refund"]
+    },
+    {
+      "id": "unified_p2_only_001",
+      "category": "p2_only",
+      "query": "What material is SKU DH-100 made from and where should it be used?",
+      "sources": "p2",
+      "fusion_enabled": false,
+      "shadow_mode": true,
+      "expected_sources": ["p2"],
+      "expected_terms": ["recycled aluminum", "indoor"]
+    },
+    {
+      "id": "unified_mixed_001",
+      "category": "mixed",
+      "query": "How do I return DH-100 for a refund, and what material is it made from?",
+      "sources": "all",
+      "fusion_enabled": true,
+      "shadow_mode": true,
+      "expected_sources": ["p1", "p2"],
+      "expected_terms": ["refund", "recycled aluminum"]
+    },
+    {
+      "id": "unified_archived_001",
+      "category": "archived",
+      "query": "What was the withdrawn campaign's archived discount rule?",
+      "sources": "all",
+      "fusion_enabled": true,
+      "shadow_mode": true,
+      "expected_sources": [],
+      "expected_terms": [],
+      "expect_archived_excluded": true,
+      "forbidden_reference_labels": ["archived_campaign"]
+    },
+    {
+      "id": "unified_replaced_001",
+      "category": "replaced_version",
+      "query": "What accessories are included in the current DH-200 V2 package?",
+      "sources": "all",
+      "fusion_enabled": true,
+      "shadow_mode": true,
+      "expected_sources": ["p2"],
+      "expected_terms": ["V2", "adapter"],
+      "forbidden_reference_labels": ["dh200_v1"]
+    },
+    {
+      "id": "unified_conflict_001",
+      "category": "conflict",
+      "query": "Does the current DH-200 package include only a cable, or an adapter and cable?",
+      "sources": "all",
+      "fusion_enabled": true,
+      "shadow_mode": true,
+      "expected_sources": ["p2"],
+      "expected_terms": ["adapter", "cable"],
+      "forbidden_reference_labels": ["dh200_v1"]
+    },
+    {
+      "id": "unified_no_answer_001",
+      "category": "no_answer",
+      "query": "What is the orbital velocity of a satellite around Neptune?",
+      "sources": "all",
+      "fusion_enabled": true,
+      "shadow_mode": true,
+      "expected_sources": [],
+      "expected_terms": [],
+      "expect_no_hit": true
+    },
+    {
+      "id": "unified_p1_failure_001",
+      "category": "p1_branch_failure",
+      "scenario_mode": "surviving_branch_contract",
+      "query": "Which image caption shows the foldable product stand?",
+      "sources": "p2",
+      "fusion_enabled": false,
+      "shadow_mode": true,
+      "expected_sources": ["p2"],
+      "expected_terms": ["foldable", "stand"]
+    },
+    {
+      "id": "unified_p2_failure_001",
+      "category": "p2_branch_failure",
+      "scenario_mode": "surviving_branch_contract",
+      "query": "How do I return shoes and get a refund?",
+      "sources": "p1",
+      "fusion_enabled": false,
+      "shadow_mode": true,
+      "expected_sources": ["p1"],
+      "expected_terms": ["return", "refund"]
+    },
+    {
+      "id": "unified_duplicate_001",
+      "category": "duplicate_asset",
+      "query": "Summarize the current DH-100 product specification without repeating the same material.",
+      "sources": "all",
+      "fusion_enabled": true,
+      "shadow_mode": true,
+      "expected_sources": ["p2"],
+      "expected_terms": ["DH-100"]
+    },
+    {
+      "id": "unified_latency_001",
+      "category": "latency_comparison",
+      "query": "Can an unused product be returned and how long is the warranty?",
+      "sources": "all",
+      "fusion_enabled": true,
+      "shadow_mode": true,
+      "expected_sources": ["p1", "p2"],
+      "expected_terms": ["return", "warranty"]
+    }
+  ]
+}

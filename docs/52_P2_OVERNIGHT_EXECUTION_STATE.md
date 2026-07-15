@@ -17,7 +17,7 @@ Continue from **Next Exact Action**. Do not roll back or redesign a completed ph
 
 - Initialized: 2026-07-16 Asia/Shanghai
 - Last updated: 2026-07-16 Asia/Shanghai
-- Recovery ledger version: 3
+- Recovery ledger version: 5
 - Hard stop active: **no**
 
 ## 2. Fixed Baseline
@@ -74,17 +74,17 @@ Explicitly excluded:
 
 | Field | Current value |
 |---|---|
-| current unit | B. Docker Foundation |
-| status | Docker Foundation implementation and all acceptance gates completed; exact phase commit/push pending |
-| current HEAD | `cbf0e3d [P2-Overnight] docs: initialize final closure execution state` |
-| modified files | Docker/Compose/entrypoint/nginx assets, backend CORS registration, requirements, Docker tests, `.env.example`, README, and docs 08/09/52/53 |
-| tests completed in this unit | Compose/runtime/durability; real P2 acceptance/Eval; sealed P1 Harness; 9 focused tests; 336-test clean-runtime suite; compileall; frontend build; diff/security audit |
+| current unit | C. P2-M8.2 Unified Retrieval Shadow Gate |
+| status | M8.2 implementation and acceptance complete; final staged diff/security audit and commit/push pending |
+| current HEAD | `64c95c0 [P2-Docker] chore: add reproducible local docker environment` |
+| modified files | additive Unified Retrieval schemas/adapters/service/routes, route registration/phase, default-off flags, Docker test calibration, Unified Eval fixture/runner/manifest builder/tests, and docs 08/09/49/52/54 |
+| tests completed in current unit | focused matrix 81 PASS; final M8.2 suite 28 PASS; clean full 365 PASS; compile/frontend PASS; Docker config/build/up PASS; Unified Eval 11/11; P2 baseline retained; latest sealed P1 Harness 10/10 |
 | blockers | none |
 | hard stop | no |
 | planning commit | `cbf0e3d`, pushed to `origin/main` |
-| Docker phase commit | not yet created |
-| Docker phase pushed | no |
-| next phase entry | P2-M8.2 only after final Docker tests/audits and the Docker phase commit/push |
+| Docker phase commit | `64c95c0` |
+| Docker phase pushed | yes, `origin/main` synchronized |
+| next phase entry | final staged diff/ignore/secret audit -> commit/push M8.2 -> enter M8.3 |
 
 ## 5. Master Execution Plan
 
@@ -313,16 +313,32 @@ Exit condition: final commit and annotated tag are pushed, `main` is synchronize
 | B | full backend suite | authoritative clean runtime | PASS; 336 passed, 44 existing warnings, 119.35 s |
 | B | compileall/frontend build | host | PASS |
 | B | diff/ignore/secret audit | Git/host | PASS; `.env`/`.local-data/` ignored; no scope violation or secret |
-| B | phase commit/push | Git | PENDING |
+| B | phase commit/push | Git | PASS; `64c95c0` synchronized to `origin/main` |
+| C | additive Unified API / physical dual-index boundary | code audit + local Docker | PASS; `POST /api/v2/retrieval/search`; legacy P1/Agent path unchanged |
+| C | RRF / dedup / P2 fresh gate | unit + local Docker | PASS; rank-only `k=60`; P2 Asset quota 2; archive leakage 0 |
+| C | feature flags / Shadow control | unit + local Docker | PASS; all three flags default false; 11 Shadow responses, 0 control violations |
+| C | real Unified Eval | local Docker | PASS; 11/11; control/candidate exact recall 0/1 over 7; MRR 0/0.6071; failed 0 |
+| C | independent P2 baseline | local Docker | PASS; recall 1.0; MRR 0.95; leakage 0 |
+| C | sealed P1 Harness | local Docker/default flags off | PASS 10/10; `p1-harness-20260715-201239-f5d993`; vector mode; fallback false |
+| C | branch-failure and duplicate/quota pressure | injected unit tests | PASS; not claimed as a live HTTP failure |
+| C | focused regression matrix | host | PASS; 81 tests |
+| C | final M8.2 targeted suite | host | PASS; 28 tests, including explicit no-fusion coverage without double-counting into the 81-test matrix |
+| C | authoritative full backend suite | clean runtime | PASS; 365 passed, 44 existing warnings, 251.11 s |
+| C | compileall/frontend build | host | PASS |
+| C | Docker config/build/up | local Docker | PASS |
+| C | default-off feature/API safety | local Docker | PASS; all three flags false; Unified API HTTP 503 with retrieval/request ids; P1 healthy |
+| C | diff/ignore/secret audit | Git/host | PENDING |
+| C | phase commit/push | Git | PENDING |
 
 P2 Eval detail: `hit_rate@5=1.0`, `query_hit_rate@5=1.0`, `candidate_recall@5=1.0`, `MRR=0.95`, semantic 12, no-hit 2, archive leakage 0, duplicate rate 0.0, average top-1/top-5 0.712/0.6195, average/p95 latency 296.388/373.805 ms, and zero failures.
 
 ## 7. Current Diff Audit
 
-- Expected current change: audited Docker Foundation files only — `.dockerignore`, `.env.example`, `README.md`, `compose.yaml`, backend/frontend Dockerfiles, nginx/entrypoint/pgvector init assets, minimal backend CORS registration, pinned Harness dependency, Docker tests, and docs 08/09/52/53.
+- Expected current change: additive M8.2 Unified Retrieval schemas, adapters, service, routes, route registration/phase, default-off environment documentation, minimal Docker-test calibration, Unified Eval fixture/runner/manifest/tests, and docs 08/09/49/52/54.
 - Forbidden files changed: none.
 - `.env`, `.local-data/`, runtime manifest, Assets, databases, credentials, `node_modules`, and `dist`: ignored/untracked.
-- Secret values must never be printed by Compose config or committed.
+- P1 `rag_chunks`, `rag_embeddings`, legacy retrieval endpoint/service, and CustomerOpsAgent default behavior: unchanged.
+- Secret values must never be printed or committed; final audit remains pending.
 
 ## 8. Blockers and Hard Stops
 
@@ -365,4 +381,4 @@ Ordinary implementation, Compose, test, type, lint, or configuration failures ar
 
 ## 10. Next Exact Action
 
-Stage only the exact audited Docker phase files, commit them as `[P2-Docker] chore: add reproducible local docker environment`, push `main`, record the resulting hash after it exists, and immediately enter P2-M8.2 Unified Retrieval Shadow Gate.
+Perform the final staged diff/ignored-data/secret audit, stage only the exact M8.2 files, commit as `[P2-M8.2] feat: add unified retrieval shadow gate`, push `main`, record the resulting hash only after it exists, and immediately enter P2-M8.3 CustomerOpsAgent Explicit Opt-in.

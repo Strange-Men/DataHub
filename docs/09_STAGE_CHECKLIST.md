@@ -2036,10 +2036,46 @@ Runtime and durability gates:
 - [x] Pass authoritative clean-runtime full backend tests: 336 passed with 44 existing warnings in 119.35 s.
 - [x] Pass Python compileall and frontend production build.
 - [x] Pass final diff, ignored-data, and secret audit; `.env`/`.local-data/` remain ignored and no out-of-scope file or secret exists.
-- [ ] Commit as `[P2-Docker] chore: add reproducible local docker environment` and push `main`.
+- [x] Commit as `[P2-Docker] chore: add reproducible local docker environment` and push `main` (`64c95c0`, synchronized to `origin/main`).
 
 Phase boundary:
 
-- Local Docker Runtime Acceptance and all Docker Foundation implementation/automated/security gates are PASS. Only the audited commit/push remains pending.
+- Local Docker Runtime Acceptance and all Docker Foundation implementation/automated/security gates are PASS; commit `64c95c0` is pushed.
 - Render Deployment Acceptance remains BLOCKED by missing Persistent Disk.
-- M8.2 starts only after the Docker phase commit is pushed; Docker Foundation itself does not implement Unified Retrieval, RRF, Shadow, or CustomerOpsAgent opt-in.
+- Docker Foundation itself does not implement Unified Retrieval, RRF, Shadow, or CustomerOpsAgent opt-in; M8.2 began only after its commit was pushed.
+
+## P2-M8.2 Unified Retrieval Shadow Gate
+
+Implementation and runtime gates:
+
+- [x] Add only the versioned `POST /api/v2/retrieval/search`; keep the old P1 endpoint and response contract unchanged.
+- [x] Keep P1 and P2 in separate physical indexes and normalize evidence only in an additive logical retrieval layer.
+- [x] Execute independent P1/P2 adapters in parallel through a shared bounded pool (8 workers, capacity 16) with an 8-second default branch timeout.
+- [x] Isolate branch failure/timeout so a healthy branch can return with an explicit fallback reason; fail safely when both branches are unavailable.
+- [x] Add RRF with default `k=60`, using rank only and never comparing or mixing P1/P2 raw cosine scores.
+- [x] Add source-aware deduplication, current P2 Knowledge Asset/version enforcement, and a default per-Asset P2 chunk quota of 2.
+- [x] Re-run the fresh P2 active/serving/sync/fingerprint/profile/source-trace/archive gate before returning evidence.
+- [x] Default `UNIFIED_RETRIEVAL_ENABLED`, `P2_RETRIEVAL_ENABLED`, and `UNIFIED_RETRIEVAL_SHADOW_MODE` to false.
+- [x] Force P1 as the visible server-side Shadow control; keep the unified candidate comparison-only and prevent it from changing legacy P1 or CustomerOpsAgent results.
+- [x] Reuse `retrieval_logs.metadata_json` under `unified_retrieval_v1`, preserve native branch ids, and exclude vectors/secrets/internal stacks.
+- [x] Add an 11-scenario Unified Eval with runtime exact-id manifest support; do not present keyword proxies as formal recall.
+- [x] Real Docker Unified Eval passes 11/11 with control/candidate query hit 0.4444/1.0, exact recall 0.0/1.0 over 7 positives, MRR 0.0/0.6071, source coverage 1.0, duplicate rate 0.0, archive leakage 0 across 3 exact-labeled queries, fallback 0, Shadow violations 0, and failed queries 0.
+- [x] Record candidate distribution P1=18/P2=21 and average/p50/p95 latency 478.579/390.858/1226.990 ms; do not invent a production SLO from this small-corpus baseline.
+- [x] Record that two no-answer samples returned low-confidence evidence because no calibrated refusal threshold is implemented.
+- [x] Preserve the P2-only baseline: exact recall 1.0, MRR 0.95, and archive leakage 0.
+- [x] Final default-off sealed P1 Harness passes 10/10 under trace `p1-harness-20260715-201239-f5d993`; vector retrieval stays active, fallback is false, and legacy `customerops_vector_retrieval` remains unchanged.
+- [x] Prove branch-failure isolation and duplicate/quota pressure with deterministic injected unit tests; do not mislabel them as live HTTP failures.
+- [x] Add `docs/54_P2_M8_2_UNIFIED_RETRIEVAL_SHADOW_REPORT.md` and update planning/status/recovery docs.
+- [x] Pass the focused regression matrix: 81 tests; pass the final M8.2 targeted suite: 28 tests, including the explicit no-fusion path without double-counting it into the matrix.
+- [x] Pass authoritative clean-runtime backend pytest: 365 passed, 44 existing warnings, 251.11 seconds; Python compileall and frontend production build also pass.
+- [x] Reconfirm Docker config/build/healthy-up, P1 Harness, P2 exact baseline (recall 1.0, MRR 0.95, leakage 0), and Unified Eval after the final code state.
+- [x] With all three flags at default false, Unified API returns HTTP 503 safely with retrieval/request ids while the P1 endpoint remains healthy.
+- [ ] Pass final diff, ignored-data, and secret audit.
+- [ ] Commit as `[P2-M8.2] feat: add unified retrieval shadow gate` and push `main`.
+
+Phase boundary:
+
+- **Local Docker Shadow runtime/Eval gate: PASS**.
+- **M8.2 implementation and acceptance: COMPLETED**. Only the final staged diff/ignored-data/secret audit and audited commit/push remain; no uncreated commit hash is recorded.
+- CustomerOpsAgent default remains P1-only. M8.3 explicit opt-in cannot begin until the M8.2 commit is pushed.
+- Render Deployment Acceptance remains BLOCKED by missing Persistent Disk; the local Docker evidence is not Render online acceptance.

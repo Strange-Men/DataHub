@@ -537,3 +537,26 @@ M8.2 remains separately gated by P2 online eval, archive leakage `0`, P1 Harness
 The M8.1 feature commit `bebf92c` is deployed. The sealed P1 Harness passed 10/10 with PostgreSQL/pgvector healthy, 41 SiliconFlow embeddings at 1536 dimensions, `customerops_vector_retrieval`, and no fallback. The deployed P2-only Eval remained isolated (`semantic_mode_count=10`, no P1 fallback) and reported `archived_leakage_count=0`.
 
 The online P2 retrieval-quality gate did not pass: Render rejected the initial Asset upload with `ASSET_STORAGE_UNAVAILABLE` because the P2-M1-required persistent disk root is not configured. With no serving P2 corpus, `query_hit_rate@5=0.0` and formal recall/MRR are unavailable. M8.2 shadow work is therefore not authorized until deployment storage is fixed and the complete ready-zero-hit -> explicit-serve-hit -> archive-zero-hit proof plus the >=0.75 query-hit threshold pass.
+
+## 18. P2-M8.2 Local Docker Implementation Outcome
+
+The earlier Render gate above remains an accurate historical online result. A later, explicit final-closure authorization accepted the successful M8.1.1 local PostgreSQL/pgvector/SiliconFlow proof and the reproducible Docker Foundation as the authority for **local M8.2 development only**. It did not convert the Render result into a pass: Render Deployment Acceptance remains blocked by the missing Persistent Disk.
+
+M8.2 implements the recommended architecture from this plan:
+
+- additive `POST /api/v2/retrieval/search` while the old P1 endpoint remains unchanged;
+- physically separate P1 and P2 indexes with independent adapters and no P2 write into P1 vector tables;
+- parallel branch execution through one bounded shared pool (8 workers, capacity 16) and an 8-second default timeout;
+- rank-only RRF with `k=60`, never cross-index raw-score comparison;
+- source-aware deduplication, current P2 Knowledge Asset/version filtering, a P2 per-Asset chunk quota of 2, and a fresh source-trace/archive gate;
+- default-off `UNIFIED_RETRIEVAL_ENABLED`, `P2_RETRIEVAL_ENABLED`, and `UNIFIED_RETRIEVAL_SHADOW_MODE` feature flags;
+- server-forced P1 Shadow control, with the unified candidate comparison-only and unable to change visible control evidence;
+- `unified_retrieval_v1` metadata logs with native branch ids, latency/source/fallback/comparison fields, and no vectors or secrets.
+
+The real local Docker Unified Eval completed 11/11 queries. Control versus candidate results were: query hit 0.4444 versus 1.0; exact recall 0.0 versus 1.0 over 7 labeled positives; MRR 0.0 versus 0.6071; and keyword coverage 0.3333 versus 1.0. Candidate source coverage was 1.0 over 9 applicable queries, with P1=18/P2=21 evidence distribution, duplicate Asset rate 0.0, archive leakage 0 across 3 exact-labeled forbidden queries, fallback count 0, 11 Shadow responses with 0 control violations, and 0 failed queries. Average/p50/p95 latency was 478.579/390.858/1226.990 ms; average P1/P2 branch latency was 370.848/370.794 ms and fusion averaged 0.077 ms.
+
+The no-answer cases returned two low-confidence vector results. M8.2 does not claim calibrated refusal or a no-answer threshold. Branch-failure isolation and duplicate/quota pressure are demonstrated through injected unit tests, not misrepresented as live HTTP failures.
+
+Independent gates remained healthy: the P2-only exact-recall/MRR/archive-leakage baseline is 1.0/0.95/0, and the sealed P1 Harness passed 10/10 under trace `p1-harness-20260715-195829-e346cd` with legacy `customerops_vector_retrieval` behavior.
+
+At this documentation update, focused/full final tests, compile/build, final Docker rechecks, diff/security audit, and the M8.2 commit/push are still pending. M8.3 CustomerOpsAgent explicit opt-in remains blocked until those gates pass and `[P2-M8.2] feat: add unified retrieval shadow gate` is pushed. No uncreated commit hash is recorded.

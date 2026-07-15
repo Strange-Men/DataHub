@@ -633,7 +633,9 @@ class P2RetrievalFoundationTest(unittest.TestCase):
         import app.main as main_module
 
         routes = {route.path for route in main_module.app.routes}
-        self.assertNotIn("/api/v2/retrieval/search", routes)
+        # M8.2 adds an independent versioned coordinator, but invoking the
+        # P2-only endpoint above must still never fan out to P1 or CustomerOps.
+        self.assertIn("/api/v2/retrieval/search", routes)
 
     def test_20_sqlite_retrieval_is_deterministic_and_network_free(self) -> None:
         from app.db_models import _is_postgresql
