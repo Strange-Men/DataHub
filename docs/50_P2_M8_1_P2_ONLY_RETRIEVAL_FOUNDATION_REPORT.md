@@ -260,3 +260,47 @@ The next proposed stage is **P2-M8.2 Unified Retrieval Shadow Gate**, only after
 - M8.2 receives separate explicit authorization.
 
 Those gates are not yet all satisfied: the P1 gate and local implementation gates pass, but the online P2 smoke and retrieval-quality Eval remain blocked/failed. Therefore M8.2 is **not authorized** by this report.
+
+## 16. P2-M8.1.1 Local Development Acceptance
+
+P2-M8.1.1 subsequently executed the complete governed chain in a real local PostgreSQL/pgvector environment because the Render storage prerequisite in Section 12 remains unavailable. This section supplements rather than rewrites the historical online empty-corpus smoke and Eval values.
+
+The accepted local trace is `p2-local-20260716-014332-34783c6a`. It used real `siliconflow` / `Qwen/Qwen3-Embedding-4B` embeddings at 1536 dimensions with profile `text_bridge:siliconflow:Qwen/Qwen3-Embedding-4B:1536` and proved:
+
+- embedding build leaves the Entry at `ready` with `sync_state=ready`;
+- the target has zero recall before explicit serve;
+- `POST /api/knowledge-index/{id}/serve` makes the governed target retrievable through `p2_vector_retrieval` with `fallback_used=false` and complete trace;
+- archive removes the target immediately while the physical embedding row remains;
+- a superseded old Knowledge Asset/version has zero recall.
+
+The runtime-id manifest enabled formal local metrics:
+
+| Metric | Local result |
+|---|---:|
+| total_queries | 12 |
+| hit_rate@5 | 1.0 (keyword proxy) |
+| query_hit_rate@5 | 1.0 |
+| candidate_recall@5 | 1.0 over 10 positive id-labeled queries |
+| MRR | 0.95 over 10 positive id-labeled queries |
+| semantic_mode_count | 12 |
+| no_hit_count | 2 |
+| archived_leakage_count | 0 |
+| duplicate_asset_rate | 0.0 |
+| avg_top1_score | 0.712 |
+| avg_top5_score | 0.6195 |
+| avg_latency_ms | 2387.681 |
+| p95_latency_ms | 2900.276 |
+| failed_queries | 0 |
+
+Retrieval-log inspection confirmed `p2_retrieval_*` ids, `p2_retrieval_v1` metadata, required result/profile/latency/trace fields, and no full vectors or secrets.
+
+The sealed P1 Harness also passed locally 10/10 with trace `p1-harness-20260715-175644-34b47c`: PostgreSQL and pgvector were healthy, sync produced 2/2 SiliconFlow embeddings at 1536 dimensions with zero failures, CustomerOpsAgent remained `customerops_vector_retrieval` with no fallback, and Bad Case submit/draft passed.
+
+Final M8.1.1 verification passed: the focused M4/M6/M7/M8.1 plus acceptance/Eval set passed 59/59, the authoritative clean-runtime full suite passed 327/327, Python compileall passed, and the frontend production build passed. Details and the clean-runtime rationale are recorded in `docs/51_P2_M8_1_LOCAL_ACCEPTANCE_CLOSURE.md`. Local M8.2 Shadow development/testing may proceed only under a separately authorized scope.
+
+Status split:
+
+- **M8.1 Development Acceptance: PASS** based on the real local governed chain and semantic retrieval evidence.
+- **M8.1 Render Deployment Acceptance: BLOCKED** because Render still returns HTTP 503 `ASSET_STORAGE_UNAVAILABLE` without persistent Asset storage.
+
+This local acceptance does not authorize online P2 retrieval, Render Shadow traffic, CustomerOpsAgent switching, or a claim that Render persistence has passed. Persistent Disk and S3/R2 adapters remain future deployment options and are not implemented here.

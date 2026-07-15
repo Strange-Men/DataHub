@@ -28,6 +28,7 @@ pnpm-debug.log*
 !.env.local.example
 
 # Local data and private files
+.local-data/
 data/
 storage/
 backend/storage/

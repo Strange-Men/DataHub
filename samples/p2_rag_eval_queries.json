@@ -4,7 +4,9 @@
   "metric_notes": {
     "expected_terms": "Keyword evidence proxy only; never reported as formal candidate recall.",
     "expected_knowledge_asset_ids": "Exact governed Knowledge Asset labels for formal recall and MRR.",
-    "expected_asset_ids": "Exact source Asset labels accepted by formal recall when Knowledge Asset ids are unavailable."
+    "expected_chunk_ids": "Exact governed Chunk labels accepted when Knowledge Asset ids are unavailable.",
+    "expected_asset_ids": "Exact source Asset labels accepted only when Knowledge Asset and Chunk ids are unavailable.",
+    "runtime_manifest": "Runtime ids replace these static labels by query_id; canonical metric grain is Knowledge Asset, then Chunk, then Asset. Only an archived query may supply a unique runtime_query override."
   },
   "queries": [
     {
@@ -35,6 +37,15 @@
       "expected_terms": ["cancel", "shipment"]
     },
     {
+      "id": "p2_return_001",
+      "category": "return_policy",
+      "query": "How many days do customers have to return an unused DH-100 product?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["return_policy_dh100"],
+      "expected_terms": ["return", "thirty days"]
+    },
+    {
       "id": "p2_caption_001",
       "category": "caption_derived_knowledge",
       "query": "Which product image shows a foldable stand?",
@@ -60,6 +71,15 @@
       "expected_asset_ids": [],
       "reference_labels": ["metadata_blue_lamp"],
       "expected_terms": ["SKU", "collection"]
+    },
+    {
+      "id": "p2_faq_001",
+      "category": "faq",
+      "query": "According to the FAQ, how do I reset the DH-300 indicator?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["faq_dh300_reset"],
+      "expected_terms": ["reset button", "five seconds"]
     },
     {
       "id": "p2_archive_001",

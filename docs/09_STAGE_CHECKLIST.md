@@ -1972,4 +1972,40 @@ P2-M8.1 is complete when:
 - [x] P1 tables, P1 retrieval service, CustomerOpsAgent endpoint, frontend source, database schema, and P3/P4 remain unchanged.
 - [x] No unified API, P1/P2 fan-out, RRF, shadow mode, Agent integration, secret, local DB, storage object, or tag is committed.
 
-Online gate note (2026-07-15): feature commit `bebf92c` is deployed and the P2 route returns only `p2_vector_retrieval`, but Render upload fails closed with `ASSET_STORAGE_UNAVAILABLE` because `ASSET_STORAGE_ROOT`/the attached persistent disk is not configured. No P2 ids were created. The empty-corpus Eval reports 10 queries, `query_hit_rate@5=0.0`, `candidate_recall@5=n/a`, `MRR=n/a`, `archived_leakage_count=0`, duplicate rate `0.0`, average latency `9.643 ms`, and p95 `48.596 ms`. M8.2 remains blocked until the storage prerequisite is fixed and the complete ready -> serve -> archive online proof and >=0.75 query-hit gate pass.
+Online gate note (2026-07-15): feature commit `bebf92c` is deployed and the P2 route returns only `p2_vector_retrieval`, but Render upload fails closed with `ASSET_STORAGE_UNAVAILABLE` because `ASSET_STORAGE_ROOT`/the attached persistent disk is not configured. No P2 ids were created. The empty-corpus Eval reports 10 queries, `query_hit_rate@5=0.0`, `candidate_recall@5=n/a`, `MRR=n/a`, `archived_leakage_count=0`, duplicate rate `0.0`, average latency `9.643 ms`, and p95 `48.596 ms`. Render Shadow/online P2 enablement remains blocked until the storage prerequisite is fixed and the complete ready -> serve -> archive online proof passes. The P2-M8.1.1 checklist below defines a separate local-development acceptance path; it does not overwrite these online observations.
+
+## P2-M8.1.1 Local Acceptance Closure
+
+P2-M8.1.1 is complete when:
+
+- [x] Continue from the pushed M8.1 implementation without reimplementing retrieval, serving, or archive behavior.
+- [x] Preserve the existing local `.env`, add only missing runtime values, keep it ignored, and never print or commit its credentials.
+- [x] Ignore `.local-data/` and keep local Assets, runtime manifests, PostgreSQL credentials/data, and logs outside version control.
+- [x] Use `D:/Claude_workfile/DataHub/.local-data/assets` through the existing local Storage Adapter and prove a public API upload creates an Asset and physical object without `ASSET_STORAGE_UNAVAILABLE`.
+- [x] Use PostgreSQL 16 plus pgvector 0.8.5; do not use SQLite as formal semantic-retrieval acceptance.
+- [x] Verify real SiliconFlow `Qwen/Qwen3-Embedding-4B`, 1536 dimensions, profile `text_bridge:siliconflow:Qwen/Qwen3-Embedding-4B:1536`, without exposing the key or vector.
+- [x] Execute Asset -> Extraction -> Review -> Snapshot -> Knowledge Asset -> Index/Chunk -> Embedding -> Ready -> explicit Serve -> Retrieval -> Archive through public APIs under trace `p2-local-20260716-014332-34783c6a`.
+- [x] Prove embedding leaves the Entry at `ready`/`sync_state=ready` and the target has zero recall before explicit serve.
+- [x] Prove explicit serve returns the governed target through `p2_vector_retrieval` with `fallback_used=false` and complete source trace.
+- [x] Prove archive causes immediate zero recall while the physical P2 embedding row remains.
+- [x] Prove a superseded Knowledge Asset/version is archived and cannot be returned while the new active/serving version can be returned.
+- [x] Generate an ignored runtime expected-id manifest rather than committing environment-specific Knowledge Asset, Asset, or Chunk ids to the sample fixture.
+- [x] Local Eval executes 12 queries with `semantic_mode_count=12`, `query_hit_rate@5=1.0`, exact-id `candidate_recall@5=1.0` over 10 positives, `MRR=0.95` over 10, `archived_leakage_count=0`, duplicate rate `0.0`, and zero failures.
+- [x] Eval reports the archive/no-answer negatives separately; one no-answer sample is not presented as proof of generally calibrated refusal behavior.
+- [x] Retrieval logs use `p2_retrieval_*` ids and `p2_retrieval_v1`, retain ids/scores/profile/latency/trace summaries, and contain no full vectors or secrets.
+- [x] Local sealed-P1 Harness passes 10/10 (`p1-harness-20260715-175644-34b47c`) with PostgreSQL/pgvector healthy, 2/2 SiliconFlow embeddings at 1536 dimensions, zero embedding failures, `customerops_vector_retrieval`, no fallback, and Bad Case submit/draft PASS.
+- [x] Focused M4/M6/M7/M8.1 plus M8.1.1 acceptance/Eval tests pass: 59/59.
+- [x] The authoritative ignored clean-runtime full `pytest backend/tests -q` passes 327/327, above the 319-test baseline.
+- [x] Python compileall and frontend production build pass.
+- [x] Final `git diff --check` passes and the audited change set contains only allowed scripts/tests/sample/docs/ignore files.
+- [x] Render HTTP 503 `ASSET_STORAGE_UNAVAILABLE` is recorded as a deployment infrastructure limitation rather than misreported as a P2 retrieval failure.
+- [x] No Render Persistent Disk, S3/R2/OSS/MinIO adapter, Render upgrade, or production storage change is implemented.
+- [x] No Unified Retrieval, P1/P2 fan-out, RRF, Shadow runtime, CustomerOpsAgent change, P1 retrieval/vector change, frontend retrieval page, P3, or P4 capability is implemented.
+- [x] `docs/51_P2_M8_1_LOCAL_ACCEPTANCE_CLOSURE.md` records the local evidence while preserving the earlier online empty-corpus Eval.
+- Git closure uses `[P2-M8.1.1] test: close local retrieval acceptance`; the resulting hash and `origin/main` synchronization are recorded in the final handoff because a commit cannot self-record its own hash. No tag is created.
+
+Acceptance split:
+
+- **M8.1 Development Acceptance: PASS** for the real local governed P2 chain and semantic retrieval evidence.
+- **M8.1 Render Deployment Acceptance: BLOCKED** because persistent Asset storage is not configured.
+- Local M8.2 Shadow development/testing is eligible only under a separately authorized scope. Render Shadow, online P2 Retrieval enablement, and CustomerOpsAgent switching remain unauthorized.
