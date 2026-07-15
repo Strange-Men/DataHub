@@ -42,3 +42,16 @@ class BuildP2KnowledgeEmbeddingsResult(BaseModel):
     created_count: int = Field(ge=0)
     skipped_count: int = Field(ge=0)
     embeddings: list[P2KnowledgeEmbeddingRecord]
+
+
+class ServeP2KnowledgeIndexResult(BaseModel):
+    index_entry_id: str
+    index_status: str
+    sync_state: str
+    provider: str
+    model: str
+    dimension: int
+    embedding_profile: str
+    embedding_count: int = Field(ge=1)
+    activated: bool
+    source_trace: KnowledgeIndexSourceTrace

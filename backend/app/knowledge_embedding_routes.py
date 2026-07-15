@@ -9,11 +9,15 @@ from app.database import get_db
 from app.knowledge_embedding_repositories import list_embeddings
 from app.knowledge_embedding_service import (
     P2EmbeddingDimensionError,
+    P2EmbeddingFingerprintError,
     P2EmbeddingIndexNotFoundError,
     P2EmbeddingIndexNotReadyError,
     P2EmbeddingKnowledgeAssetNotActiveError,
+    P2EmbeddingMissingError,
+    P2EmbeddingProfileError,
     P2EmbeddingProviderError,
     P2EmbeddingSourceInvalidError,
+    P2EmbeddingSyncNotReadyError,
     P2KnowledgeEmbeddingService,
 )
 from app.knowledge_index_repositories import KnowledgeIndexSourceTraceError
@@ -63,6 +67,61 @@ def build_knowledge_embeddings(
         raise HTTPException(
             status_code=502,
             detail={"code": "KNOWLEDGE_EMBEDDING_PROVIDER_FAILED", "message": str(exc)},
+        ) from exc
+    return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
+
+
+@router.post("/knowledge-index/{index_entry_id}/serve", response_model=ApiResponse)
+def serve_knowledge_index(
+    index_entry_id: str,
+    db: Session = Depends(get_db),
+) -> ApiResponse:
+    try:
+        result = P2KnowledgeEmbeddingService(db).serve(index_entry_id)
+    except P2EmbeddingIndexNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "KNOWLEDGE_INDEX_NOT_FOUND", "message": "Knowledge Index entry was not found."},
+        ) from exc
+    except P2EmbeddingKnowledgeAssetNotActiveError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_ASSET_NOT_ACTIVE", "message": "Only active Knowledge Assets can be served."},
+        ) from exc
+    except P2EmbeddingIndexNotReadyError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_INDEX_NOT_READY_FOR_SERVING", "message": str(exc)},
+        ) from exc
+    except P2EmbeddingMissingError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_EMBEDDING_MISSING", "message": str(exc)},
+        ) from exc
+    except P2EmbeddingFingerprintError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_EMBEDDING_FINGERPRINT_MISMATCH", "message": str(exc)},
+        ) from exc
+    except P2EmbeddingProfileError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_EMBEDDING_PROFILE_MISMATCH", "message": str(exc)},
+        ) from exc
+    except P2EmbeddingDimensionError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_EMBEDDING_DIMENSION_MISMATCH", "message": str(exc)},
+        ) from exc
+    except P2EmbeddingSyncNotReadyError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_INDEX_SYNC_NOT_READY", "message": str(exc)},
+        ) from exc
+    except P2EmbeddingSourceInvalidError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "KNOWLEDGE_EMBEDDING_SOURCE_INVALID", "message": str(exc)},
         ) from exc
     return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
 

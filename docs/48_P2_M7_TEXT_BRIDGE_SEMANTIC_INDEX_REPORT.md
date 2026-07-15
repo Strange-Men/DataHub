@@ -231,3 +231,9 @@ This validates deployed sealed P1. The new P2 table/API was not deployed during 
 M8 may enter a separately authorized **Unified Retrieval Planning Gate**, not direct implementation. Before any query endpoint or CustomerOpsAgent change it must decide P2 serving-profile/index DDL, active/archive query filters, P2-only retrieval eval, Asset deduplication, P1/P2 score non-comparability, additive versioned API, shadow mode, latency/partial-failure budget, and rollback.
 
 M7 completion authorizes planning only. It does not authorize unified retrieval, RRF, Agent integration, or multimodal embedding.
+
+## 13. P2-M8.1 Serving Boundary Clarification
+
+This is an additive historical clarification; the M7 evidence above is not rewritten.
+
+M7 originally committed embedding rows and changed the Index Entry from `ready` to `serving` in the same operation. P2-M8.1 separated those responsibilities: a successful embedding build now leaves the Entry at `ready`, and only the explicit `POST /api/knowledge-index/{id}/serve` gate may activate `serving` after validating the active Knowledge Asset, Chunk coverage, current profile/provider/model/dimension, exact embedding fingerprint, synchronization state, and complete source trace. Existing `serving` rows are not automatically rolled back.

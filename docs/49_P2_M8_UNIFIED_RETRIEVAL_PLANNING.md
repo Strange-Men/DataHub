@@ -517,3 +517,17 @@ P2-M8 changes documentation only.
 - No `.env`, API key, `DATABASE_URL`, secret, uploaded binary, or tag is added.
 
 Completion of this document authorizes only a request to enter P2-M8.1. It does not authorize that implementation by itself.
+
+## 16. P2-M8.1 Implementation Outcome
+
+P2-M8.1 implemented the isolated prerequisite without entering unified retrieval:
+
+- The concrete P2-only route is `POST /api/v2/retrieval/p2/search`.
+- The planned unified `POST /api/v2/retrieval/search` route remains unimplemented and is deferred to M8.2.
+- Embedding build and serving activation are now separate: build remains `ready`; explicit `/serve` performs the release gate.
+- P2 retrieval queries only `knowledge_assets`, `p2_knowledge_index_entries`, `p2_knowledge_chunks`, and `p2_knowledge_embeddings`.
+- Active/serving/sync/profile/dimension/fingerprint/trace eligibility is checked before vector recall and again before response serialization.
+- Archive visibility is removed synchronously while physical P2 vectors remain available for audit/cleanup.
+- No P1 fan-out, RRF, shadow execution, CustomerOpsAgent integration, or frontend retrieval surface was added.
+
+M8.2 remains separately gated by P2 online eval, archive leakage `0`, P1 Harness 10/10, and explicit authorization.

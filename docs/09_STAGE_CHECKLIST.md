@@ -1932,8 +1932,42 @@ P2-M8 is complete when:
 
 P2-M8.1 entry gate:
 
-- [ ] Obtain separate explicit authorization for P2-M8.1 P2-only Retrieval Foundation.
-- [ ] Freeze one eval-approved P2 serving profile/dimension and the alternate-profile generation/activation lifecycle.
-- [ ] Review profile-specific pgvector index DDL/query plan/rollback without touching P1 vector storage.
-- [ ] Implement P2-only retrieval and active/archive/source-trace gates before any P1 fan-out or RRF.
-- [ ] Pass P2 eval, archive leakage `0`, full regression, frontend build, and P1 Harness 10/10.
+- [x] Obtain separate explicit authorization for P2-M8.1 P2-only Retrieval Foundation.
+- [x] Freeze one current P2 provider/model/dimension/profile per query and reject incompatible serving data.
+- [x] Use exact pgvector cosine query over the isolated P2 vector column without touching P1 vector storage; production ANN DDL remains deferred until corpus/query-plan evidence exists.
+- [x] Implement P2-only retrieval and active/archive/source-trace gates before any P1 fan-out or RRF.
+- [ ] Pass online P2 eval, archive leakage `0`, and P1 Harness 10/10 after deployment.
+
+## P2-M8.1 P2-only Retrieval Foundation
+
+P2-M8.1 is complete when:
+
+- [x] Embedding build persists the complete build and leaves the Index Entry at `ready`.
+- [x] The embed API cannot change `ready` to `serving`.
+- [x] `POST /api/knowledge-index/{id}/serve` is the only new activation path.
+- [x] Serve requires active Knowledge Asset, `ready` Entry, `sync_state=ready`, no error, governed Chunk coverage, current Embedding coverage, valid provider/model/dimension/profile, exact fingerprint, stored vector dimension, and complete trace.
+- [x] Pending, building, failed, archived, non-active, missing Chunk, missing Embedding, stale fingerprint, incompatible dimension/profile, and incomplete trace cannot serve.
+- [x] Repeated serve is idempotent; existing serving rows are not rolled back.
+- [x] `POST /api/v2/retrieval/p2/search` is the only retrieval route added.
+- [x] Request supports query, top_k, debug, and request_id; response preserves retrieval_id, request_id, mode, result ids, score, metadata, trace, provider profile, latency, and safe fallback reason.
+- [x] Retrieval mode is always `p2_vector_retrieval`; fallback to P1 is impossible and `fallback_used=false`.
+- [x] PostgreSQL uses `1 - (embedding <=> query_embedding)` and SQLite tests use deterministic local cosine without external network.
+- [x] Repository recall filters active Knowledge Asset, serving/ready-sync Entry, current profile/dimension, Entry/Chunk ownership, and persisted fingerprint metadata.
+- [x] Service revalidates status, exact fingerprint, current generation/profile, and complete source trace before returning each result.
+- [x] Ready-only, archived Entry, archived Knowledge Asset, superseded version, stale fingerprint, missing trace, and missing valid Embedding produce zero returned evidence.
+- [x] Physical embedding rows may remain after archive without becoming visible.
+- [x] Per-Asset result quota prevents one material from filling the result set.
+- [x] Stable reasons distinguish `no_serving_index`, `embedding_generation_failed`, `embedding_dimension_mismatch`, `embedding_profile_mismatch`, `pgvector_unavailable`, `pgvector_query_error`, `source_trace_invalid`, `fingerprint_mismatch`, and `no_hits`.
+- [x] Errors retain retrieval/request ids, do not leak upstream details, and never include a full vector.
+- [x] P2 retrieval logs reuse flexible `retrieval_logs.metadata_json` with distinct id and metadata namespaces; no new table is added.
+- [x] `samples/p2_rag_eval_queries.json` covers product, warranty, cancellation, Caption, OCR, metadata, archive, replacement, no-answer, and paraphrase cases.
+- [x] `scripts/run_p2_rag_eval.py` reports accurate keyword proxy, exact-id recall/MRR when labels exist, semantic mode, archive leakage, duplicates, scores, latency, and failures.
+- [x] Focused M7/M8.1/Eval tests pass 37/37.
+- [x] M4/M6/M7/M8.1 regression passes 51/51.
+- [x] Authoritative clean-worktree full pytest passes 319/319.
+- [x] Python compileall and frontend production build pass.
+- [ ] Online SiliconFlow P2 smoke proves ready zero-hit -> explicit serve hit -> archive zero-hit.
+- [ ] Online P2 eval meets release thresholds with archive leakage `0`.
+- [ ] Sealed P1 online Harness passes 10/10 with vector retrieval and no fallback.
+- [x] P1 tables, P1 retrieval service, CustomerOpsAgent endpoint, frontend source, database schema, and P3/P4 remain unchanged.
+- [x] No unified API, P1/P2 fan-out, RRF, shadow mode, Agent integration, secret, local DB, storage object, or tag is committed.

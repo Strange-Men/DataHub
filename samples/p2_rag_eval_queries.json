@@ -1,49 +1,104 @@
 {
-  "version": "p2-m7-text-bridge-v1",
-  "scope": "offline-eval-fixtures-only-no-retrieval-api",
+  "version": "p2-m8.1-retrieval-v1",
+  "scope": "p2-only-semantic-retrieval-eval",
+  "metric_notes": {
+    "expected_terms": "Keyword evidence proxy only; never reported as formal candidate recall.",
+    "expected_knowledge_asset_ids": "Exact governed Knowledge Asset labels for formal recall and MRR.",
+    "expected_asset_ids": "Exact source Asset labels accepted by formal recall when Knowledge Asset ids are unavailable."
+  },
   "queries": [
     {
       "id": "p2_product_001",
-      "category": "product_knowledge",
-      "query": "SKU DH-100 的主要材质和适用场景是什么？",
-      "expected_asset_ids": ["eval_asset_product_dh100"],
-      "expected_terms": ["再生铝", "室内"]
-    },
-    {
-      "id": "p2_policy_001",
-      "category": "policy_knowledge",
-      "query": "促销海报中的七天价保政策适用于哪些订单？",
-      "expected_asset_ids": ["eval_asset_policy_price_protection"],
-      "expected_terms": ["七天", "价保"]
-    },
-    {
-      "id": "p2_faq_001",
-      "category": "faq",
-      "query": "商品图片与实物存在轻微色差时如何处理？",
-      "expected_asset_ids": ["eval_asset_faq_color_difference"],
-      "expected_terms": ["色差", "售后"]
-    },
-    {
-      "id": "p2_version_001",
-      "category": "version_content",
-      "query": "DH-200 当前包装清单包含哪些配件？",
-      "expected_asset_ids": ["eval_asset_version_dh200_v2"],
-      "forbidden_asset_ids": ["eval_asset_version_dh200_v1"],
-      "expected_terms": ["V2", "转接头"]
-    },
-    {
-      "id": "p2_archive_001",
-      "category": "archive_boundary",
-      "query": "已撤下活动海报中的旧满减规则是什么？",
+      "category": "product_information",
+      "query": "What material is SKU DH-100 made from and where should it be used?",
+      "expected_knowledge_asset_ids": [],
       "expected_asset_ids": [],
-      "forbidden_asset_ids": ["eval_asset_archived_campaign"]
+      "reference_labels": ["product_dh100"],
+      "expected_terms": ["recycled aluminum", "indoor"]
+    },
+    {
+      "id": "p2_warranty_001",
+      "category": "warranty",
+      "query": "How long is the warranty for DH-100?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["warranty_dh100"],
+      "expected_terms": ["warranty", "months"]
+    },
+    {
+      "id": "p2_cancellation_001",
+      "category": "cancellation_policy",
+      "query": "Can I cancel the order before it ships?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["cancellation_policy"],
+      "expected_terms": ["cancel", "shipment"]
     },
     {
       "id": "p2_caption_001",
-      "category": "caption_text_bridge",
-      "query": "哪张商品图展示了可折叠支架？",
-      "expected_asset_ids": ["eval_asset_caption_foldable_stand"],
-      "expected_terms": ["可折叠", "支架"]
+      "category": "caption_derived_knowledge",
+      "query": "Which product image shows a foldable stand?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["caption_foldable_stand"],
+      "expected_terms": ["foldable", "stand"]
+    },
+    {
+      "id": "p2_ocr_001",
+      "category": "ocr_derived_knowledge",
+      "query": "What seven-day price protection rule is printed on the campaign poster?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["ocr_price_protection"],
+      "expected_terms": ["seven-day", "price protection"]
+    },
+    {
+      "id": "p2_metadata_001",
+      "category": "metadata_derived_knowledge",
+      "query": "Which SKU and collection are recorded for the blue desk lamp asset?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["metadata_blue_lamp"],
+      "expected_terms": ["SKU", "collection"]
+    },
+    {
+      "id": "p2_archive_001",
+      "category": "archived_content",
+      "query": "What was the withdrawn campaign's old discount rule?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "forbidden_knowledge_asset_ids": ["eval_knowledge_archived_campaign"],
+      "forbidden_asset_ids": ["eval_asset_archived_campaign"],
+      "expected_terms": [],
+      "expect_no_hit": true
+    },
+    {
+      "id": "p2_version_001",
+      "category": "replaced_version",
+      "query": "What accessories are included in the current DH-200 V2 package?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["dh200_v2"],
+      "forbidden_knowledge_asset_ids": ["eval_knowledge_dh200_v1"],
+      "expected_terms": ["V2", "adapter"]
+    },
+    {
+      "id": "p2_no_answer_001",
+      "category": "no_answer",
+      "query": "What is the orbital velocity of a satellite around Neptune?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "expected_terms": [],
+      "expect_no_hit": true
+    },
+    {
+      "id": "p2_paraphrase_001",
+      "category": "semantic_paraphrase",
+      "query": "May the purchase be withdrawn while fulfillment has not begun?",
+      "expected_knowledge_asset_ids": [],
+      "expected_asset_ids": [],
+      "reference_labels": ["cancellation_policy_paraphrase"],
+      "expected_terms": ["cancel", "before shipment"]
     }
   ]
 }

@@ -189,7 +189,7 @@ class P2TextBridgeSemanticIndexTest(unittest.TestCase):
         response = self.client.post(f"/api/knowledge-index/{entry['id']}/embed")
         self.assertEqual(response.status_code, 200, response.text)
         result = response.json()["data"]
-        self.assertEqual(result["index_status"], "serving")
+        self.assertEqual(result["index_status"], "ready")
         self.assertEqual(result["provider"], "mock")
         self.assertEqual(result["model"], "mock-deterministic")
         self.assertEqual(result["dimension"], 16)
@@ -207,7 +207,7 @@ class P2TextBridgeSemanticIndexTest(unittest.TestCase):
             self.assertEqual(len(json.loads(row.embedding)), 16)
             self.assertEqual(row.chunk_text, entry["chunks"][0]["chunk_text"])
             index_row = db.query(self.models.P2KnowledgeIndexEntry).one()
-            self.assertEqual(index_row.status, "serving")
+            self.assertEqual(index_row.status, "ready")
         finally:
             db.close()
 
@@ -366,10 +366,29 @@ class P2TextBridgeSemanticIndexTest(unittest.TestCase):
         )
         categories = {item["category"] for item in payload["queries"]}
         self.assertTrue(
-            {"product_knowledge", "policy_knowledge", "faq", "version_content"}
+            {
+                "product_information",
+                "warranty",
+                "cancellation_policy",
+                "replaced_version",
+            }
             <= categories
         )
-        self.assertEqual(payload["scope"], "offline-eval-fixtures-only-no-retrieval-api")
+        self.assertEqual(payload["scope"], "p2-only-semantic-retrieval-eval")
+
+    def test_10_embed_does_not_bypass_explicit_serving_gate(self) -> None:
+        entry = self._create_index()
+        embedded = self.client.post(f"/api/knowledge-index/{entry['id']}/embed")
+        self.assertEqual(embedded.status_code, 200, embedded.text)
+        self.assertEqual(embedded.json()["data"]["index_status"], "ready")
+
+        before = self.client.get(f"/api/knowledge-index/{entry['id']}")
+        self.assertEqual(before.json()["data"]["status"], "ready")
+        served = self.client.post(f"/api/knowledge-index/{entry['id']}/serve")
+        self.assertEqual(served.status_code, 200, served.text)
+        self.assertEqual(served.json()["data"]["index_status"], "serving")
+        after = self.client.get(f"/api/knowledge-index/{entry['id']}")
+        self.assertEqual(after.json()["data"]["status"], "serving")
 
 
 if __name__ == "__main__":

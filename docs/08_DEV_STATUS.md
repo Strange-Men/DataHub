@@ -1914,3 +1914,24 @@ This is a planning and documentation checkpoint only.
 - No P2 retrieval route exists yet; `serving` records remain invisible to search until a separately authorized M8.1 implementation passes its gates.
 - No secret, `.env`, API key, `DATABASE_URL`, dependency, uploaded binary, tag, force push, rebase, or history rewrite is included.
 - The next suggested stage is P2-M8.1 P2-only Retrieval Foundation. P2-M8 completion does not itself authorize implementation.
+
+## Completed In P2-M8.1
+
+- Corrected the M7 lifecycle boundary: embedding build now persists immutable vectors and leaves the Index Entry at `ready`; it no longer activates retrieval visibility.
+- Added idempotent `POST /api/knowledge-index/{id}/serve` with active Knowledge Asset, ready/sync state, Chunk coverage, current provider/model/dimension/profile, stored vector dimension, exact fingerprint, and complete trace gates.
+- Added isolated `POST /api/v2/retrieval/p2/search` with P2-only cosine retrieval, result-time governance revalidation, per-Asset chunk quota, safe typed failures, and no P1 fallback.
+- Added SQL/pgvector cosine recall for PostgreSQL and deterministic in-process cosine evaluation for SQLite tests.
+- Reused `retrieval_logs.metadata_json` with `p2_retrieval_*` ids and `p2_retrieval_v1` namespace; no table or P1 retrieval writer change was required.
+- Added `scripts/run_p2_rag_eval.py` and a 10-category P2-only eval fixture with exact metric semantics; keyword evidence is never presented as formal recall.
+- Added archive-zero-recall coverage for ready, archived Entry, archived Knowledge Asset, superseded version, invalid fingerprint, and invalid source trace while retaining physical vector rows.
+- Focused M7/M8.1/Eval tests passed 37/37; M4/M6/M7/M8.1 regression passed 51/51.
+- Authoritative clean-worktree full backend suite passed 319/319; Python compile and frontend production build passed.
+- Health preserves the sealed P1 `phase=P1-M24.3` and adds `p2_phase=P2-M8.1`.
+
+### P2-M8.1 Boundaries
+
+- P2 retrieval does not import, query, write, delete, or rebuild P1 `rag_chunks` or `rag_embeddings`.
+- `/api/customer-ops-agent/retrieve`, CustomerOpsAgent modes/fallbacks, P1 provider behavior, and P1 retrieval service are unchanged.
+- No `/api/v2/retrieval/search`, P1/P2 fan-out, RRF, shadow mode, Agent opt-in, answer generation, frontend retrieval page, P3, or P4 implementation is included.
+- No database table/schema/migration, `.env`, secret, API key, `DATABASE_URL`, storage object, local database, frontend source, or tag is included.
+- M8.2 Unified Retrieval Shadow Gate remains unauthorized until the online P2 and P1 gates recorded in the M8.1 report pass.

@@ -33,6 +33,13 @@ class P2EmbeddingPersistenceError(RuntimeError):
     pass
 
 
+class P2EmbeddingActivationError(RuntimeError):
+    def __init__(self, reason: str, status: str | None = None) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.status = status
+
+
 def _iso(value: datetime | None) -> str:
     return value.isoformat() if value is not None else ""
 
@@ -81,13 +88,29 @@ def get_embeddings_for_fingerprints(
     return [_record(db, row) for row in rows]
 
 
+def get_embedding_rows_for_index(
+    db: Session,
+    *,
+    index_entry_id: str,
+    embedding_profile: str | None = None,
+) -> list[P2KnowledgeEmbedding]:
+    query = db.query(P2KnowledgeEmbedding).filter(
+        P2KnowledgeEmbedding.index_entry_id == index_entry_id
+    )
+    if embedding_profile is not None:
+        query = query.filter(
+            P2KnowledgeEmbedding.embedding_profile == embedding_profile
+        )
+    return query.order_by(P2KnowledgeEmbedding.chunk_id.asc()).all()
+
+
 def save_embedding_build(
     db: Session,
     *,
     index_entry_id: str,
     rows: list[dict[str, object]],
 ) -> tuple[list[P2KnowledgeEmbeddingRecord], int]:
-    """Persist one complete build and activate serving in a single transaction."""
+    """Persist one complete build while keeping the Index Entry at ready."""
     entry = (
         db.query(P2KnowledgeIndexEntry)
         .filter(P2KnowledgeIndexEntry.id == index_entry_id)
@@ -137,7 +160,9 @@ def save_embedding_build(
         )
         created += 1
 
-    entry.status = "serving"
+    # P2-M8.1: embedding readiness and retrieval serving are separate gates.
+    # A successful build remains ready until the explicit /serve operation.
+    entry.status = "ready"
     entry.sync_state = "ready"
     entry.error_message = None
     entry.updated_at = now
@@ -158,7 +183,7 @@ def save_embedding_build(
                 .first()
             )
             if raced_entry is not None and raced_entry.status == "ready":
-                raced_entry.status = "serving"
+                raced_entry.status = "ready"
                 raced_entry.sync_state = "ready"
                 raced_entry.error_message = None
                 raced_entry.updated_at = datetime.now(UTC)
@@ -171,6 +196,62 @@ def save_embedding_build(
         fingerprints=fingerprints,
     )
     return records, created
+
+
+def activate_index_serving(
+    db: Session,
+    *,
+    index_entry_id: str,
+    embedding_profile: str,
+    provider: str,
+    model: str,
+    dimension: int,
+    expected_fingerprints: set[str],
+) -> tuple[object, bool]:
+    """Atomically activate a previously validated ready embedding build."""
+    entry = (
+        db.query(P2KnowledgeIndexEntry)
+        .filter(P2KnowledgeIndexEntry.id == index_entry_id)
+        .with_for_update()
+        .first()
+    )
+    if entry is None:
+        raise P2EmbeddingIndexNotFound(index_entry_id)
+    if entry.status == "serving":
+        return get_index_entry(db, index_entry_id), False
+    if entry.status != "ready":
+        raise P2EmbeddingActivationError(
+            "Index Entry is not ready for serving.", status=entry.status
+        )
+    if entry.sync_state != "ready" or entry.error_message:
+        raise P2EmbeddingActivationError(
+            "Index Entry synchronization is not ready.", status=entry.status
+        )
+
+    rows = (
+        db.query(P2KnowledgeEmbedding)
+        .filter(
+            P2KnowledgeEmbedding.index_entry_id == index_entry_id,
+            P2KnowledgeEmbedding.embedding_profile == embedding_profile,
+            P2KnowledgeEmbedding.provider == provider,
+            P2KnowledgeEmbedding.model == model,
+            P2KnowledgeEmbedding.dimension == dimension,
+        )
+        .with_for_update()
+        .all()
+    )
+    actual_fingerprints = {row.fingerprint for row in rows}
+    if actual_fingerprints != expected_fingerprints:
+        raise P2EmbeddingActivationError(
+            "Embedding build changed before serving activation.", status=entry.status
+        )
+
+    entry.status = "serving"
+    entry.sync_state = "ready"
+    entry.error_message = None
+    entry.updated_at = datetime.now(UTC)
+    db.commit()
+    return get_index_entry(db, index_entry_id), True
 
 
 def record_embedding_error(db: Session, index_entry_id: str, message: str) -> None:
