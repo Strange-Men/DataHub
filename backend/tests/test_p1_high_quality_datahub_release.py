@@ -413,7 +413,10 @@ class P1HighQualityDataHubReleaseTest(unittest.TestCase):
         self.assertEqual(ignored_check.returncode, 0, ignored_check.stderr)
 
         routes = {route.path.lower() for route in app.routes}
-        self.assertFalse(any("embedding" in route for route in routes))
+        # P2-M7 adds one isolated management listing; P1 still exposes no
+        # embedding or vector-management route of its own.
+        embedding_routes = {route for route in routes if "embedding" in route}
+        self.assertEqual(embedding_routes, {"/api/knowledge-embeddings"})
         self.assertFalse(any("vector" in route for route in routes))
         self.assertFalse(any("qdrant" in route for route in routes))
         self.assertFalse(any("pgvector" in route for route in routes))

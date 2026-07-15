@@ -1858,9 +1858,45 @@ P2-M6 is complete when:
 
 P2-M7 entry gate:
 
-- [ ] Obtain explicit authorization for P2-M7 Text Bridge Semantic Index.
-- [ ] Write an ADR for P2-only provider/model/dimension, pgvector DDL/index, profile/generation, SQLite fallback, cost, rollback, and model migration.
-- [ ] Define `p2_knowledge_embeddings` without modifying or writing P1 `rag_embeddings`.
-- [ ] Freeze ready/active/fingerprint eligibility and legal `ready -> serving` semantics.
-- [ ] Add a P2 text-bridge eval set covering active-only, archive zero-hit, version replacement, OCR/Caption semantics, and Asset deduplication.
-- [ ] Keep CustomerOpsAgent, unified retrieval, RRF, image embedding, and Agent calls outside P2-M7.
+- [x] Obtain explicit authorization for P2-M7 Text Bridge Semantic Index.
+- [x] Record provider/model/dimension, pgvector index deferral, profile/generation, SQLite fallback, cost, rollback, and model migration in the M7 report.
+- [x] Define `p2_knowledge_embeddings` without modifying or writing P1 `rag_embeddings`.
+- [x] Freeze ready/active/fingerprint eligibility and legal `ready -> serving` semantics.
+- [x] Add a P2 text-bridge eval set covering active-only, archive zero-hit, version replacement, OCR/Caption semantics, and Asset deduplication inputs.
+- [x] Keep CustomerOpsAgent, unified retrieval, RRF, image embedding, and Agent calls outside P2-M7.
+
+## P2-M7 Text Bridge Semantic Index
+
+P2-M7 is complete when:
+
+- [x] `p2_knowledge_embeddings` stores Index/Chunk/Knowledge Asset ids, immutable text snapshot, vector, provider, model, dimension, profile, fingerprint, trace metadata, and timestamp.
+- [x] Each row belongs to one governed Chunk; profile/fingerprint history is preserved instead of overwritten.
+- [x] PostgreSQL uses an isolated P2 pgvector column and SQLite uses JSON text; P1 `Vector(1536)` remains unchanged.
+- [x] Existing `EmbeddingProvider` supports deterministic mock and current OpenAI-compatible SiliconFlow configuration.
+- [x] Provider/model/dimension are recorded from the provider actually used.
+- [x] Provider result count and every vector dimension are validated before persistence.
+- [x] Safe provider/dimension failures are persisted on the P2 Index Entry and create no partial rows.
+- [x] Only active Knowledge Assets with ready Index Entries can generate a new embedding build.
+- [x] Exact fingerprint replay skips provider execution and creates no duplicate row.
+- [x] Successful rows and `ready -> serving` activation are committed atomically.
+- [x] Archived/non-active sources and non-ready generations are rejected.
+- [x] `POST /api/knowledge-index/{id}/embed` provides build management only.
+- [x] `GET /api/knowledge-embeddings` provides paginated/filterable metadata and complete trace without returning full vectors.
+- [x] No search or retrieval API is added.
+- [x] `samples/p2_rag_eval_queries.json` covers product, policy, FAQ, version, archive, and Caption text bridge.
+- [x] P2 semantic smoke verifies generation, dimension, provider/model, serving state, and complete source trace.
+- [x] Focused P2-M7 tests pass 9/9; M4/M6/M7 regression passes 23/23.
+- [x] Authoritative clean-workspace full pytest passes 291/291.
+- [x] Frontend `tsc && vite build`, Python compile, and diff checks pass.
+- [x] P1 online Pipeline Harness passes 10/10.
+- [x] PostgreSQL and pgvector remain healthy; P1 SiliconFlow sync reports 39/39 embeddings at 1536 dimensions.
+- [x] CustomerOpsAgent remains `customerops_vector_retrieval` with no fallback.
+- [x] P1 `rag_chunks`, `rag_embeddings`, provider behavior, retrieval endpoint, and schema remain unchanged.
+- [x] No unified retrieval, RRF, image/multimodal embedding, Agent integration, P3, P4, secret, local database, uploaded binary, or tag is included.
+
+P2-M8 entry gate:
+
+- [ ] Obtain explicit authorization for a Unified Retrieval Planning Gate; M7 completion alone does not authorize implementation.
+- [ ] Decide P2 serving profile, dimension-specific pgvector index, archive filters, and P2-only retrieval eval before exposing a query route.
+- [ ] Design an additive versioned P1/P2 query contract, shadow mode, partial failure, latency budget, rollback, and score-fusion evaluation.
+- [ ] Preserve the existing P1 CustomerOpsAgent endpoint until a separately approved implementation and release gate.

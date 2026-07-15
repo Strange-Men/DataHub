@@ -1,0 +1,49 @@
+{
+  "version": "p2-m7-text-bridge-v1",
+  "scope": "offline-eval-fixtures-only-no-retrieval-api",
+  "queries": [
+    {
+      "id": "p2_product_001",
+      "category": "product_knowledge",
+      "query": "SKU DH-100 的主要材质和适用场景是什么？",
+      "expected_asset_ids": ["eval_asset_product_dh100"],
+      "expected_terms": ["再生铝", "室内"]
+    },
+    {
+      "id": "p2_policy_001",
+      "category": "policy_knowledge",
+      "query": "促销海报中的七天价保政策适用于哪些订单？",
+      "expected_asset_ids": ["eval_asset_policy_price_protection"],
+      "expected_terms": ["七天", "价保"]
+    },
+    {
+      "id": "p2_faq_001",
+      "category": "faq",
+      "query": "商品图片与实物存在轻微色差时如何处理？",
+      "expected_asset_ids": ["eval_asset_faq_color_difference"],
+      "expected_terms": ["色差", "售后"]
+    },
+    {
+      "id": "p2_version_001",
+      "category": "version_content",
+      "query": "DH-200 当前包装清单包含哪些配件？",
+      "expected_asset_ids": ["eval_asset_version_dh200_v2"],
+      "forbidden_asset_ids": ["eval_asset_version_dh200_v1"],
+      "expected_terms": ["V2", "转接头"]
+    },
+    {
+      "id": "p2_archive_001",
+      "category": "archive_boundary",
+      "query": "已撤下活动海报中的旧满减规则是什么？",
+      "expected_asset_ids": [],
+      "forbidden_asset_ids": ["eval_asset_archived_campaign"]
+    },
+    {
+      "id": "p2_caption_001",
+      "category": "caption_text_bridge",
+      "query": "哪张商品图展示了可折叠支架？",
+      "expected_asset_ids": ["eval_asset_caption_foldable_stand"],
+      "expected_terms": ["可折叠", "支架"]
+    }
+  ]
+}

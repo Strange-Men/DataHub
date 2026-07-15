@@ -67,6 +67,19 @@ def _embedding_column():
         return Column("embedding", Text, nullable=True)
 
 
+def _p2_embedding_column():
+    """Return the isolated P2 vector column.
+
+    P2 stores the dimension on every immutable embedding row and deliberately
+    leaves the PostgreSQL vector typmod open.  This lets a later model profile
+    use a different dimension without rewriting historical rows.  M7 does not
+    create a vector index or expose similarity search.
+    """
+    if _HAS_PGVECTOR and _is_postgresql():
+        return Column("embedding", Vector(), nullable=False)
+    return Column("embedding", Text, nullable=False)
+
+
 def _utcnow() -> datetime.datetime:
     return datetime.datetime.now(datetime.UTC)
 
@@ -399,6 +412,37 @@ class P2KnowledgeChunk(Base):
     chunk_text = Column(Text, nullable=False)
     chunk_hash = Column(String, nullable=False, index=True)
     chunk_order = Column(Integer, nullable=False, default=0)
+    metadata_json = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+
+
+# ── P2-M7: Text Bridge Semantic Index ───────────────────────────────────────
+
+
+class P2KnowledgeEmbedding(Base):
+    """Immutable P2 text-bridge vector for one governed chunk/profile."""
+
+    __tablename__ = "p2_knowledge_embeddings"
+    __table_args__ = (
+        UniqueConstraint(
+            "chunk_id",
+            "embedding_profile",
+            "fingerprint",
+            name="uq_p2_knowledge_embedding_build",
+        ),
+    )
+
+    id = Column(String, primary_key=True)
+    index_entry_id = Column(String, nullable=False, index=True)
+    chunk_id = Column(String, nullable=False, index=True)
+    knowledge_asset_id = Column(String, nullable=False, index=True)
+    chunk_text = Column(Text, nullable=False)
+    embedding = _p2_embedding_column()
+    provider = Column(String, nullable=False, index=True)
+    model = Column(String, nullable=False)
+    dimension = Column(Integer, nullable=False)
+    embedding_profile = Column(String, nullable=False, index=True)
+    fingerprint = Column(String, nullable=False, unique=True, index=True)
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=_utcnow)
 
