@@ -1936,7 +1936,7 @@ P2-M8.1 entry gate:
 - [x] Freeze one current P2 provider/model/dimension/profile per query and reject incompatible serving data.
 - [x] Use exact pgvector cosine query over the isolated P2 vector column without touching P1 vector storage; production ANN DDL remains deferred until corpus/query-plan evidence exists.
 - [x] Implement P2-only retrieval and active/archive/source-trace gates before any P1 fan-out or RRF.
-- [ ] Pass online P2 eval, archive leakage `0`, and P1 Harness 10/10 after deployment.
+- [ ] Pass online P2 eval, archive leakage `0`, and P1 Harness 10/10 after deployment. P1 is 10/10 and leakage is 0, but P2 Eval cannot pass until Render Asset persistent storage is configured and a serving corpus exists.
 
 ## P2-M8.1 P2-only Retrieval Foundation
 
@@ -1968,6 +1968,8 @@ P2-M8.1 is complete when:
 - [x] Python compileall and frontend production build pass.
 - [ ] Online SiliconFlow P2 smoke proves ready zero-hit -> explicit serve hit -> archive zero-hit.
 - [ ] Online P2 eval meets release thresholds with archive leakage `0`.
-- [ ] Sealed P1 online Harness passes 10/10 with vector retrieval and no fallback.
+- [x] Sealed P1 online Harness passes 10/10 with vector retrieval and no fallback (`p1-harness-20260715-142112-c48ac6`, 41 embeddings, SiliconFlow/1536).
 - [x] P1 tables, P1 retrieval service, CustomerOpsAgent endpoint, frontend source, database schema, and P3/P4 remain unchanged.
 - [x] No unified API, P1/P2 fan-out, RRF, shadow mode, Agent integration, secret, local DB, storage object, or tag is committed.
+
+Online gate note (2026-07-15): feature commit `bebf92c` is deployed and the P2 route returns only `p2_vector_retrieval`, but Render upload fails closed with `ASSET_STORAGE_UNAVAILABLE` because `ASSET_STORAGE_ROOT`/the attached persistent disk is not configured. No P2 ids were created. The empty-corpus Eval reports 10 queries, `query_hit_rate@5=0.0`, `candidate_recall@5=n/a`, `MRR=n/a`, `archived_leakage_count=0`, duplicate rate `0.0`, average latency `9.643 ms`, and p95 `48.596 ms`. M8.2 remains blocked until the storage prerequisite is fixed and the complete ready -> serve -> archive online proof and >=0.75 query-hit gate pass.

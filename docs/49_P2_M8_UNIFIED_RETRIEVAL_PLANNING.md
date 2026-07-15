@@ -531,3 +531,9 @@ P2-M8.1 implemented the isolated prerequisite without entering unified retrieval
 - No P1 fan-out, RRF, shadow execution, CustomerOpsAgent integration, or frontend retrieval surface was added.
 
 M8.2 remains separately gated by P2 online eval, archive leakage `0`, P1 Harness 10/10, and explicit authorization.
+
+## 17. P2-M8.1 Online Gate Outcome
+
+The M8.1 feature commit `bebf92c` is deployed. The sealed P1 Harness passed 10/10 with PostgreSQL/pgvector healthy, 41 SiliconFlow embeddings at 1536 dimensions, `customerops_vector_retrieval`, and no fallback. The deployed P2-only Eval remained isolated (`semantic_mode_count=10`, no P1 fallback) and reported `archived_leakage_count=0`.
+
+The online P2 retrieval-quality gate did not pass: Render rejected the initial Asset upload with `ASSET_STORAGE_UNAVAILABLE` because the P2-M1-required persistent disk root is not configured. With no serving P2 corpus, `query_hit_rate@5=0.0` and formal recall/MRR are unavailable. M8.2 shadow work is therefore not authorized until deployment storage is fixed and the complete ready-zero-hit -> explicit-serve-hit -> archive-zero-hit proof plus the >=0.75 query-hit threshold pass.

@@ -170,7 +170,7 @@ It reports total queries, expected-term coverage proxy (`hit_rate@k`), term-labe
 
 The committed online fixture has no stable production-generated ids, so candidate recall and MRR must report `n/a`; keyword evidence is explicitly labeled as a proxy and is never promoted to formal recall.
 
-Online results are recorded in Section 12 after deployment.
+Online results and the deployment gate outcome are recorded in Section 12.
 
 ## 11. Local Verification
 
@@ -187,7 +187,50 @@ The direct workspace full run was stopped because ignored historical `backend/st
 
 ## 12. Online P2 Smoke, Eval, and P1 Regression
 
-Pending deployment of the feature commit. This section will be updated with real ids, SiliconFlow profile, ready/serve/archive results, Eval metrics, and the P1 Harness trace after the Render deployment is verified.
+The feature commit `bebf92c` deployed successfully. `/api/health` reports `phase=P1-M24.3`, `p2_phase=P2-M8.1`, PostgreSQL healthy, and pgvector available with extension creation successful.
+
+### 12.1 P2 end-to-end smoke
+
+The first operation, `POST /api/assets/upload`, failed closed with HTTP 503 and the safe code `ASSET_STORAGE_UNAVAILABLE`: the Render service does not have `ASSET_STORAGE_ROOT` configured for an attached persistent disk. This is the production gate defined by the P2-M1 storage ADR; writing to Render's ephemeral filesystem is intentionally prohibited.
+
+The rejected upload created no Asset, so no `asset_id`, Extraction, Review, Snapshot, Knowledge Asset, Index Entry, Chunk, or P2 Embedding id exists for this attempted smoke. Consequently the online chain could not honestly proceed to a SiliconFlow build, ready-state search, explicit serve, serving hit, or archive search. No database row or binary object was inserted to manufacture a result, and no P1 endpoint was used as a substitute.
+
+Result: the code is deployed, but the online P2 end-to-end smoke is **BLOCKED by Render storage deployment configuration**. Configure an attached persistent disk and an absolute root such as `ASSET_STORAGE_ROOT=/var/data/datahub-assets`, redeploy, and repeat the complete chain before M8.2.
+
+### 12.2 P2 online Eval
+
+The Eval ran against the deployed P2-only route with no serving corpus:
+
+| Metric | Result |
+|---|---:|
+| total_queries | 10 |
+| hit_rate@5 | 0.0 (expected-term coverage proxy, not recall) |
+| query_hit_rate@5 | 0.0 |
+| candidate_recall@5 | n/a (no stable expected ids) |
+| MRR | n/a (no stable expected ids) |
+| semantic_mode_count | 10 |
+| no_hit_count | 10 |
+| archived_leakage_count | 0 |
+| duplicate_asset_rate | 0.0 |
+| avg_top1_score | 0.0 |
+| avg_top5_score | 0.0 |
+| avg_latency_ms | 9.643 |
+| p95_latency_ms | 48.596 |
+| failed_queries | 0 |
+
+All ten responses remained `p2_vector_retrieval`, never fell back to P1, and leaked no archived ids. However, `query_hit_rate@5=0.0` is below the required `0.75`; zero leakage alone is not a retrieval-quality pass. Formal recall and MRR remain unavailable because the committed fixture intentionally contains no environment-specific ids.
+
+### 12.3 Sealed P1 regression
+
+The first 30-second Harness attempt reached `/api/rag/build` and timed out after its first six PASS steps. Re-running the unchanged Harness with its supported `--timeout 120` option completed **10/10 PASS**:
+
+- trace: `p1-harness-20260715-142112-c48ac6`;
+- PostgreSQL healthy and pgvector available;
+- vector sync: 41 Chunks and 41 Embeddings, SiliconFlow, 1536 dimensions;
+- CustomerOpsAgent: `customerops_vector_retrieval`, `fallback_used=false`;
+- Bad Case submission and draft creation: PASS.
+
+This verifies that the deployed additive P2 route did not regress sealed P1 behavior. It does not override the blocked P2 smoke/Eval gate.
 
 ## 13. Known Boundaries
 
@@ -197,6 +240,7 @@ Pending deployment of the feature commit. This section will be updated with real
 - Profile migration history exists, but automated multi-generation rollout remains deferred.
 - Reusing `retrieval_logs.metadata_json` is sufficient for M8.1 volume; shadow-scale retention/queryability must be re-evaluated in M8.2.
 - Online stable expected ids are not available in the committed fixture, so formal recall/MRR may be `n/a`.
+- The current Render service has no attached/configured Asset persistent disk. Until that deployment prerequisite is fixed, no online P2 serving corpus can be built through the governed public APIs.
 
 ## 14. Why Unified Retrieval Is Not Included
 
@@ -214,3 +258,5 @@ The next proposed stage is **P2-M8.2 Unified Retrieval Shadow Gate**, only after
 - P1 online Harness remains 10/10 vector retrieval with no fallback;
 - the final worktree is clean and M8.1 is pushed;
 - M8.2 receives separate explicit authorization.
+
+Those gates are not yet all satisfied: the P1 gate and local implementation gates pass, but the online P2 smoke and retrieval-quality Eval remain blocked/failed. Therefore M8.2 is **not authorized** by this report.
