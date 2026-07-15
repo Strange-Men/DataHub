@@ -1896,7 +1896,44 @@ P2-M7 is complete when:
 
 P2-M8 entry gate:
 
-- [ ] Obtain explicit authorization for a Unified Retrieval Planning Gate; M7 completion alone does not authorize implementation.
-- [ ] Decide P2 serving profile, dimension-specific pgvector index, archive filters, and P2-only retrieval eval before exposing a query route.
-- [ ] Design an additive versioned P1/P2 query contract, shadow mode, partial failure, latency budget, rollback, and score-fusion evaluation.
-- [ ] Preserve the existing P1 CustomerOpsAgent endpoint until a separately approved implementation and release gate.
+- [x] Obtain explicit authorization for a Unified Retrieval Planning Gate; M7 completion alone did not authorize implementation.
+- [x] Decide P2 serving profile, dimension-specific pgvector index, archive filters, and P2-only retrieval eval before exposing a query route.
+- [x] Design an additive versioned P1/P2 query contract, shadow mode, partial failure, latency budget, rollback, and score-fusion evaluation.
+- [x] Preserve the existing P1 CustomerOpsAgent endpoint until a separately approved implementation and release gate.
+
+## P2-M8 Unified Retrieval Planning Gate
+
+P2-M8 is complete when:
+
+- [x] P2-M7 commit `02bc72bd67d10a299bf0b73a289c522424bb0c9d` is pushed to `origin/main` without force push, rebase, or history rewrite.
+- [x] `docs/49_P2_M8_UNIFIED_RETRIEVAL_PLANNING.md` records the final architecture, gates, rollback, eval, and three-stage roadmap.
+- [x] P1 `rag_chunks`, `rag_embeddings`, fixed 1536-dimensional SiliconFlow profile, and `customerops_vector_retrieval` are documented as sealed.
+- [x] P2 Knowledge Asset, Index Entry, Chunk, Embedding profile/dimension, and complete source trace boundaries are documented.
+- [x] Physical dual indexes plus logical versioned retrieval and RRF late fusion are selected.
+- [x] A unified vector table and default single-route query classifier are rejected.
+- [x] `POST /api/v2/retrieval/search` request/response, source selection, debug, fallback, and latency contracts are designed but not implemented.
+- [x] The old `/api/customer-ops-agent/retrieve` endpoint remains permanently P1-only through P2 and behaviorally unchanged.
+- [x] RRF uses rank-only fusion with initial `k0=60`, equal weights, bounded per-route candidate depth, and no cross-index raw cosine comparison.
+- [x] P2 active/serving/sync/fingerprint/profile/dimension/source-trace gates are required at query and response time.
+- [x] M7 technical `ready -> serving` completion is separated from eval-approved profile activation and retrieval feature enablement.
+- [x] Archive removes logical visibility immediately; stale physical vectors cannot be returned and leakage target is exactly zero.
+- [x] Version/Asset/chunk deduplication, per-Asset quota, source diversity, and no-answer behavior are defined.
+- [x] P2 timeout, P1 timeout, fusion failure, profile mismatch, index anomaly, and full failure behaviors are defined.
+- [x] P2-only eval precedes fusion; P1 control/P2 candidate shadow precedes explicit Agent opt-in.
+- [x] Eval covers P1-only, P2-only, mixed, archived, conflicting-version, no-answer, and injected-failure queries.
+- [x] Recall@k, MRR, source coverage, archive leakage, duplicate rate, fallback, latency, trace completeness, and P1 regression gates are defined.
+- [x] `UNIFIED_RETRIEVAL_ENABLED`, `P2_RETRIEVAL_ENABLED`, and `UNIFIED_RETRIEVAL_SHADOW_MODE` are planned only, not added to env or code.
+- [x] Existing `retrieval_logs`/`metadata_json` reuse is preferred subject to P1-reader compatibility; no new table is added in M8.
+- [x] The roadmap is limited to M8.1 P2-only Retrieval, M8.2 Unified Shadow, and M8.3 CustomerOpsAgent explicit opt-in.
+- [x] The M7 alternate-profile generation/activation gap is recorded for M8.1 review and is not repaired in this planning gate.
+- [x] Every future implementation stage requires full regression and P1 Harness 10/10.
+- [x] Only `docs/49_P2_M8_UNIFIED_RETRIEVAL_PLANNING.md`, `docs/08_DEV_STATUS.md`, and `docs/09_STAGE_CHECKLIST.md` are changed.
+- [x] No business code, database schema/table/index, retrieval API, RRF, parallel recall, CustomerOpsAgent, frontend, secret, dependency, or tag is changed.
+
+P2-M8.1 entry gate:
+
+- [ ] Obtain separate explicit authorization for P2-M8.1 P2-only Retrieval Foundation.
+- [ ] Freeze one eval-approved P2 serving profile/dimension and the alternate-profile generation/activation lifecycle.
+- [ ] Review profile-specific pgvector index DDL/query plan/rollback without touching P1 vector storage.
+- [ ] Implement P2-only retrieval and active/archive/source-trace gates before any P1 fan-out or RRF.
+- [ ] Pass P2 eval, archive leakage `0`, full regression, frontend build, and P1 Harness 10/10.

@@ -1895,3 +1895,22 @@ This is a planning and documentation checkpoint only.
 - No P2 search/retrieval route, unified retrieval, RRF, score fusion, Agent call, image/multimodal embedding, P3, or P4 implementation is included.
 - PostgreSQL stores profile-versioned P2 vectors; SQLite uses JSON text. No ANN index is created before a gated retrieval design.
 - The next allowed step is P2-M8 Unified Retrieval Planning Gate only; M7 does not authorize implementation.
+
+## Completed In P2-M8
+
+- Pushed P2-M7 commit `02bc72bd67d10a299bf0b73a289c522424bb0c9d` to `origin/main` with a normal fast-forward push; no force push, rebase, or history rewrite was used.
+- Added `docs/49_P2_M8_UNIFIED_RETRIEVAL_PLANNING.md` as a documentation-only architecture and release gate.
+- Selected physical P1/P2 dual indexes with an additive logical `POST /api/v2/retrieval/search` contract and rank-level RRF late fusion.
+- Permanently preserved the existing P1-only `/api/customer-ops-agent/retrieve` contract as control and rollback path.
+- Defined P2 serving/profile/fingerprint/source-trace gates, archive zero-recall enforcement, route-local scoring, Asset/version deduplication, and partial-failure behavior.
+- Defined P2-only eval before fusion, P1/P2 shadow comparison before Agent use, and explicit default-off CustomerOpsAgent opt-in only after both gates pass.
+- Defined eval datasets, release thresholds, feature-flag rollback, observability fields, and a three-stage implementation path: M8.1, M8.2, and M8.3.
+- Recorded the M7 audit constraint that alternate-profile generation/activation still requires an implementation review before it can serve.
+
+### P2-M8 Boundaries
+
+- Planning only: no Python, TypeScript, database schema/table/index, migration, API, RRF, parallel recall, feature flag, frontend, Embedding, or Agent implementation changed.
+- P1 `rag_chunks`, `rag_embeddings`, `customerops_vector_retrieval`, endpoint, response contract, and runtime behavior remain unchanged.
+- No P2 retrieval route exists yet; `serving` records remain invisible to search until a separately authorized M8.1 implementation passes its gates.
+- No secret, `.env`, API key, `DATABASE_URL`, dependency, uploaded binary, tag, force push, rebase, or history rewrite is included.
+- The next suggested stage is P2-M8.1 P2-only Retrieval Foundation. P2-M8 completion does not itself authorize implementation.
