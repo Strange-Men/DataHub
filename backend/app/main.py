@@ -1,3 +1,4 @@
+import os
 from uuid import uuid4
 
 from fastapi import FastAPI, Header, HTTPException
@@ -84,13 +85,33 @@ def _startup_init_database() -> None:
         # health check will report the error status.
         pass
 
+_DEFAULT_CORS_ALLOWED_ORIGINS = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://data-hub-flame.vercel.app",
+)
+
+
+def _cors_allowed_origins() -> list[str]:
+    """Return explicit CORS origins while preserving the sealed defaults."""
+
+    configured = os.getenv("CORS_ALLOWED_ORIGINS", "").strip()
+    if not configured:
+        return list(_DEFAULT_CORS_ALLOWED_ORIGINS)
+
+    origins: list[str] = []
+    for item in configured.split(","):
+        origin = item.strip().rstrip("/")
+        if not origin.startswith(("http://", "https://")):
+            continue
+        if origin not in origins:
+            origins.append(origin)
+    return origins or list(_DEFAULT_CORS_ALLOWED_ORIGINS)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://data-hub-flame.vercel.app",
-    ],
+    allow_origins=_cors_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

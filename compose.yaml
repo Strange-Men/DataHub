@@ -1,0 +1,163 @@
+name: datahub
+
+x-backend-image: &backend-image
+  image: datahub-backend:${DATAHUB_IMAGE_TAG:-local}
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+
+x-backend-environment: &backend-environment
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:-datahub}
+  POSTGRES_USER: ${POSTGRES_USER:-datahub}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+  DATAHUB_ENV: docker
+  ASSET_STORAGE_BACKEND: local
+  ASSET_STORAGE_ROOT: /data/assets
+  ASSET_MAX_UPLOAD_BYTES: ${ASSET_MAX_UPLOAD_BYTES:-10485760}
+  EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-mock}
+  EMBEDDING_MODEL: ${EMBEDDING_MODEL:-mock-deterministic}
+  EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
+  EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+  EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+  EMBEDDING_TIMEOUT_SECONDS: ${EMBEDDING_TIMEOUT_SECONDS:-30}
+  EMBEDDING_MAX_RETRIES: ${EMBEDDING_MAX_RETRIES:-3}
+  P2_EMBEDDING_PROFILE: ${P2_EMBEDDING_PROFILE:-}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:${FRONTEND_PORT:-5173},http://127.0.0.1:${FRONTEND_PORT:-5173},https://data-hub-flame.vercel.app}
+  LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_MODEL: ${LLM_MODEL:-mock}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DEBUG: ${DEBUG:-false}
+
+x-backend-volumes: &backend-volumes
+  - asset_storage:/data/assets
+  - backend_storage:/app/backend/storage
+  - runtime_manifest:/app/.local-data
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-datahub}
+      POSTGRES_USER: ${POSTGRES_USER:-datahub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init/001-enable-vector.sql:/docker-entrypoint-initdb.d/001-enable-vector.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          PGPASSWORD="$${POSTGRES_PASSWORD}"
+          pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+          && test "$$(PGPASSWORD="$${POSTGRES_PASSWORD}"
+          psql -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" -tAc
+          "SELECT 1 FROM pg_available_extensions WHERE name = 'vector'")" = "1"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - datahub
+
+  volume-init:
+    <<: *backend-image
+    user: "0:0"
+    entrypoint: []
+    network_mode: none
+    command:
+      - sh
+      - -c
+      - >-
+        install -d -o 10001 -g 10001 /data/assets /app/backend/storage /app/.local-data
+        && chown -R 10001:10001 /data/assets /app/backend/storage /app/.local-data
+    volumes: *backend-volumes
+    restart: "no"
+
+  db-init:
+    <<: *backend-image
+    command:
+      - sh
+      - -c
+      - python scripts/check_pgvector_support.py && python scripts/init_database.py
+    environment: *backend-environment
+    volumes: *backend-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+      volume-init:
+        condition: service_completed_successfully
+    restart: "no"
+    networks:
+      - datahub
+
+  backend:
+    <<: *backend-image
+    environment: *backend-environment
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    volumes: *backend-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+      volume-init:
+        condition: service_completed_successfully
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          data = json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5));
+          assert data['status'] == 'ok';
+          assert data['database_status']['status'] == 'ok';
+          assert data['pgvector_status']['pgvector_available'];
+          assert data['pgvector_status']['extension_create_ok']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - datahub
+
+  frontend:
+    image: datahub-frontend:${DATAHUB_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - datahub
+
+volumes:
+  postgres_data:
+  asset_storage:
+  backend_storage:
+  runtime_manifest:
+
+networks:
+  datahub:
+    driver: bridge

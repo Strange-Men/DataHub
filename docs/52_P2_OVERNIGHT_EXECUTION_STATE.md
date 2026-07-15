@@ -17,7 +17,7 @@ Continue from **Next Exact Action**. Do not roll back or redesign a completed ph
 
 - Initialized: 2026-07-16 Asia/Shanghai
 - Last updated: 2026-07-16 Asia/Shanghai
-- Recovery ledger version: 1
+- Recovery ledger version: 3
 - Hard stop active: **no**
 
 ## 2. Fixed Baseline
@@ -74,16 +74,17 @@ Explicitly excluded:
 
 | Field | Current value |
 |---|---|
-| current unit | A. Overnight Execution Planning |
-| status | verified; awaiting commit/push |
-| current HEAD | `935fc04e5b6fda2fe3079afcf218922b2b8cfc61` |
-| modified files | `docs/52_P2_OVERNIGHT_EXECUTION_STATE.md` only |
-| tests completed in this unit | Git preflight; required document/code/Docker audits |
+| current unit | B. Docker Foundation |
+| status | Docker Foundation implementation and all acceptance gates completed; exact phase commit/push pending |
+| current HEAD | `cbf0e3d [P2-Overnight] docs: initialize final closure execution state` |
+| modified files | Docker/Compose/entrypoint/nginx assets, backend CORS registration, requirements, Docker tests, `.env.example`, README, and docs 08/09/52/53 |
+| tests completed in this unit | Compose/runtime/durability; real P2 acceptance/Eval; sealed P1 Harness; 9 focused tests; 336-test clean-runtime suite; compileall; frontend build; diff/security audit |
 | blockers | none |
 | hard stop | no |
-| phase commit | not yet created |
-| phase pushed | no |
-| next phase entry | Docker Foundation after this ledger commit reaches `origin/main` |
+| planning commit | `cbf0e3d`, pushed to `origin/main` |
+| Docker phase commit | not yet created |
+| Docker phase pushed | no |
+| next phase entry | P2-M8.2 only after final Docker tests/audits and the Docker phase commit/push |
 
 ## 5. Master Execution Plan
 
@@ -300,12 +301,25 @@ Exit condition: final commit and annotated tag are pushed, `main` is synchronize
 | A | Git branch/status/origin/tag/ignore preflight | host | PASS |
 | A | required docs and code audits | read-only host audit | PASS |
 | A | Docker host availability | Docker Desktop 29.5.3 / Compose 5.1.4 | PASS; no Hard Stop |
+| A | phase commit/push | Git | PASS; `cbf0e3d` synchronized to `origin/main` |
+| B | Compose config/build/up and health | local Docker | PASS; PostgreSQL/backend/frontend healthy |
+| B | PostgreSQL/pgvector/schema | local Docker | PASS; pgvector 0.8.5; 20 tables |
+| B | non-root backend | local Docker | PASS; UID 10001 |
+| B | Asset upload/restart durability | local Docker | PASS; `asset_19c63ea6f3c746649aef` row/object survived backend and PostgreSQL restart |
+| B | governed P2 acceptance | local Docker + real SiliconFlow | PASS; `p2-local-20260715-192631-5058fcd7`; ready/serve/archive/version gates |
+| B | P2 exact-id Eval | local Docker | PASS; 12 queries; recall 1.0; MRR 0.95; leakage 0; failed 0 |
+| B | sealed P1 Harness | local Docker | PASS 10/10; `p1-harness-20260715-192652-456d0f` |
+| B | Docker-focused tests | host | PASS; 9 passed in 0.54 s |
+| B | full backend suite | authoritative clean runtime | PASS; 336 passed, 44 existing warnings, 119.35 s |
+| B | compileall/frontend build | host | PASS |
+| B | diff/ignore/secret audit | Git/host | PASS; `.env`/`.local-data/` ignored; no scope violation or secret |
+| B | phase commit/push | Git | PENDING |
 
-Later phase commands and exact metrics are appended here; summaries are not inferred from older phases.
+P2 Eval detail: `hit_rate@5=1.0`, `query_hit_rate@5=1.0`, `candidate_recall@5=1.0`, `MRR=0.95`, semantic 12, no-hit 2, archive leakage 0, duplicate rate 0.0, average top-1/top-5 0.712/0.6195, average/p95 latency 296.388/373.805 ms, and zero failures.
 
 ## 7. Current Diff Audit
 
-- Expected current change: this Markdown ledger only.
+- Expected current change: audited Docker Foundation files only — `.dockerignore`, `.env.example`, `README.md`, `compose.yaml`, backend/frontend Dockerfiles, nginx/entrypoint/pgvector init assets, minimal backend CORS registration, pinned Harness dependency, Docker tests, and docs 08/09/52/53.
 - Forbidden files changed: none.
 - `.env`, `.local-data/`, runtime manifest, Assets, databases, credentials, `node_modules`, and `dist`: ignored/untracked.
 - Secret values must never be printed by Compose config or committed.
@@ -351,4 +365,4 @@ Ordinary implementation, Compose, test, type, lint, or configuration failures ar
 
 ## 10. Next Exact Action
 
-Run Markdown/diff/secret checks for this ledger, commit it as `[P2-Overnight] docs: initialize final closure execution state`, push `main`, update this ledger with that commit in the Docker phase, and immediately implement Docker Foundation.
+Stage only the exact audited Docker phase files, commit them as `[P2-Docker] chore: add reproducible local docker environment`, push `main`, record the resulting hash after it exists, and immediately enter P2-M8.2 Unified Retrieval Shadow Gate.

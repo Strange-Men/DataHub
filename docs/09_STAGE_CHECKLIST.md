@@ -2009,3 +2009,37 @@ Acceptance split:
 - **M8.1 Development Acceptance: PASS** for the real local governed P2 chain and semantic retrieval evidence.
 - **M8.1 Render Deployment Acceptance: BLOCKED** because persistent Asset storage is not configured.
 - Local M8.2 Shadow development/testing is eligible only under a separately authorized scope. Render Shadow, online P2 Retrieval enablement, and CustomerOpsAgent switching remain unauthorized.
+
+## P2 Docker Foundation
+
+Runtime and durability gates:
+
+- [x] Commit and push the autonomous execution plan as `cbf0e3d [P2-Overnight] docs: initialize final closure execution state`.
+- [x] Add `postgres`, `volume-init`, `db-init`, `backend`, and `frontend` services with health/completion dependencies.
+- [x] Use PostgreSQL/pgvector rather than SQLite for Docker semantic acceptance.
+- [x] Create/verify pgvector before SQLAlchemy table initialization.
+- [x] Keep PostgreSQL, Asset objects, compatibility storage, and runtime manifests in named volumes.
+- [x] Run the backend as non-root UID 10001.
+- [x] Require a local PostgreSQL password, URL-encode URL-reserved characters in the backend entrypoint, document Compose dotenv quoting rules, and never print an expanded `DATABASE_URL`.
+- [x] Keep `.env`, API keys, databases, Assets, runtime manifests, `dist`, and `node_modules` outside images and Git.
+- [x] Pass `docker compose config --quiet`, image build, Compose startup, and service health gates.
+- [x] Prove PostgreSQL, backend, and frontend healthy; pgvector 0.8.5 available; 20 application tables initialized.
+- [x] Upload Asset `asset_19c63ea6f3c746649aef` through the public API.
+- [x] Prove its database row and named-volume object survive backend restart.
+- [x] Prove its database row and named-volume object survive PostgreSQL restart.
+- [x] Run real-SiliconFlow P2 acceptance under trace `p2-local-20260715-192631-5058fcd7`.
+- [x] Prove ready -> explicit Serve -> retrieval -> Archive, archive zero recall, and old-version zero recall in Docker.
+- [x] Pass the 12-query exact-id P2 Eval with candidate recall 1.0, MRR 0.95, archive leakage 0, duplicate rate 0.0, and zero failures.
+- [x] Pass the sealed P1 Harness 10/10 under trace `p1-harness-20260715-192652-456d0f`.
+- [x] Document clone-style Docker operation, Mock/real provider boundaries, persistence, safe cleanup, troubleshooting, and Render limitations in README.
+- [x] Pass Docker-focused tests: 9 passed in 0.54 s.
+- [x] Pass authoritative clean-runtime full backend tests: 336 passed with 44 existing warnings in 119.35 s.
+- [x] Pass Python compileall and frontend production build.
+- [x] Pass final diff, ignored-data, and secret audit; `.env`/`.local-data/` remain ignored and no out-of-scope file or secret exists.
+- [ ] Commit as `[P2-Docker] chore: add reproducible local docker environment` and push `main`.
+
+Phase boundary:
+
+- Local Docker Runtime Acceptance and all Docker Foundation implementation/automated/security gates are PASS. Only the audited commit/push remains pending.
+- Render Deployment Acceptance remains BLOCKED by missing Persistent Disk.
+- M8.2 starts only after the Docker phase commit is pushed; Docker Foundation itself does not implement Unified Retrieval, RRF, Shadow, or CustomerOpsAgent opt-in.
