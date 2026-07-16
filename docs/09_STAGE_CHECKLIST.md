@@ -2149,3 +2149,26 @@ Release boundary:
 - **P2 Local Docker Release Closure: PASS**, including the final Git/tag closure recorded by this release commit and tag.
 - **Render Deployment Acceptance: BLOCKED** due missing Persistent Disk.
 - P2 final definition is governed OCR/Caption/Metadata text-bridge knowledge plus independent P2 retrieval, Unified Shadow RRF, and explicit default-off Agent opt-in.
+
+## P1/P2 Post-Release Audit Gate
+
+- [x] Verify clean synchronized `main` at `45bb23e` and confirm both release tags remain at their sealed commits.
+- [x] Cross-check early plans, ADRs, phase reports, release reports, code, routes, schemas, frontend callers, configuration and Docker wiring.
+- [x] Build evidence-backed P1/P2 requirement traceability matrices: P1 23/23 Complete; P2 38 Complete, 2 Partial, 0 Missing.
+- [x] Confirm P1/P2 physical index isolation and default CustomerOpsAgent independence from P2.
+- [x] Collect 379 backend tests and run the authoritative ignored clean export: 379 passed with 44 existing warnings.
+- [x] Run compileall and frontend production build successfully; record the absence of frontend automated tests as a gap.
+- [x] Revalidate Docker P1 Harness 10/10, real-SiliconFlow P2 lifecycle, ready/serve/archive/version gates and restart persistence.
+- [x] Revalidate P2 Eval: exact recall@5 1.0, MRR 0.52, archived leakage 0, failures 0.
+- [x] Revalidate Unified Shadow and Agent opt-in/default/fallback contracts without changing runtime defaults.
+- [x] Record accumulated-corpus Unified exact recall 0.7143 versus historical approximately 0.8571 as an Eval isolation/stability gap; do not misclassify it as index pollution or leakage.
+- [x] Inventory confirmed gaps, test gaps, coupling risks, lifecycle/API/frontend/config risks, dead/obsolete candidates and measured/inferred performance opportunities.
+- [x] Create `docs/57_P1_P2_POST_RELEASE_AUDIT_STATE.md` through `docs/60_P1_P2_OPTIMIZATION_PLAN.md`.
+- [x] Keep all audit changes Markdown-only; do not implement a fix or move a release tag.
+- [ ] Execute the proposed maintenance tests/optimizations. These are planning outputs and require a separate authorized phase.
+
+Audit conclusion:
+
+- **Release safety revalidation: PASS**; no P0 defect and no emergency tag rollback are recommended.
+- **Maintenance recommended** before broader exposure: authorization/RBAC, run-scoped Eval isolation, real PostgreSQL failure/concurrency coverage, no-answer calibration, and frontend effectiveness/E2E.
+- P1/P2 release closure remains historical fact; Render Deployment Acceptance remains **BLOCKED** and is not changed by this local Docker audit.

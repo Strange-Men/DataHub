@@ -2034,3 +2034,16 @@ This is a planning and documentation checkpoint only.
 - No CustomerOpsAgent opt-in, default Unified cutover, native multimodal embedding, Render storage change, P3, or P4 capability is included.
 - **Render Deployment Acceptance: BLOCKED** by missing Persistent Disk; Docker evidence is not Render online evidence.
 - M8.3 may start after the final staged audit and `[P2-M8.2] feat: add unified retrieval shadow gate` commit are pushed.
+
+## P1/P2 Post-Release Completeness, Coupling and Effectiveness Audit
+
+- **Audit status: COMPLETED (documentation and planning gate)** against `45bb23e` / `p2-m9-local-docker-release`; the P1 and P2 release-closure facts and tags remain unchanged.
+- P1 traceability: **23 Complete / 0 Partial / 0 Missing**. P2 traceability: **38 Complete / 2 Partial / 0 Missing**; the Partial items are production OCR/Caption/Metadata provider effectiveness and repeat-run Unified exact-ID Eval stability.
+- Runtime revalidation: clean-export backend **379 passed, 44 warnings**; compileall PASS; frontend production build PASS; P1 Harness **10/10**; P2 exact recall@5 **1.0**, MRR **0.52**, archived leakage **0**; Docker restart persistence PASS.
+- Current accumulated-corpus Unified Shadow result: candidate query hit **1.0** versus control **0.5556**, exact recall **0.7143** versus control **0**, MRR **0.25** versus control **0**, source coverage **1.0**, archived leakage **0**, failures/contract violations **0**.
+- Unified exact recall changed from the historical release evidence (approximately **0.8571**) because repeated acceptance data was retained. This is recorded as an **Eval corpus isolation and repeat-run stability gap**, not as P1/P2 index pollution, archive leakage, or a Unified outage.
+- Findings: **0 confirmed defects, 4 confirmed gaps, 10 test-gap categories, 4 coupling risks, 5 dead/obsolete candidates**; severity distribution is **P0=0, P1=1, P2=8, P3=6**.
+- No confirmed P1/P2 index pollution, unreviewed-content retrieval, archived leakage, default Agent mode change, secret disclosure, or Docker persistence failure was found.
+- No business code, schema, frontend, Docker configuration, test code, README, runtime data or release tag was changed by this audit.
+- Recommendation: keep both releases sealed; start additive **P1/P2-Maintenance M9.1 Release Safety and Eval Isolation** before wider governance-API exposure or any default Unified cutover. Planned optimization is not implemented work.
+- Evidence and follow-up plans: `docs/57_P1_P2_POST_RELEASE_AUDIT_STATE.md`, `docs/58_P1_P2_POST_RELEASE_COMPLETENESS_AND_COUPLING_AUDIT.md`, `docs/59_P1_P2_SUPPLEMENTARY_TEST_PLAN.md`, and `docs/60_P1_P2_OPTIMIZATION_PLAN.md`.
