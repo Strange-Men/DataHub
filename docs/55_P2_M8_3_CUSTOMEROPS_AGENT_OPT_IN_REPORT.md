@@ -167,3 +167,7 @@ M8.3 does not implement default Agent cutover, answer generation, native image e
 Render Deployment Acceptance remains **BLOCKED** by missing Persistent Disk and `ASSET_STORAGE_UNAVAILABLE`. All evidence in this report is local Docker development acceptance, not Render online acceptance.
 
 M8.3 implementation, acceptance, and the final 18-file diff/ignore/secret audit are complete. Only the phase commit and normal push remain. After that Git closure, the next and only phase is P2-M9 Final Local Docker Release Closure.
+
+## 11. Git Closure
+
+The audited phase was committed as `8113150 [P2-M8.3] feat: add customerops unified retrieval opt-in` and pushed normally to `origin/main`. M9 began only after `main == origin/main` and a clean worktree were confirmed. This closure note does not change the M8.3 runtime metrics above.

@@ -17,7 +17,7 @@ Continue from **Next Exact Action**. Do not roll back or redesign a completed ph
 
 - Initialized: 2026-07-16 Asia/Shanghai
 - Last updated: 2026-07-16 Asia/Shanghai
-- Recovery ledger version: 7
+- Recovery ledger version: 9
 - Hard stop active: **no**
 
 ## 2. Fixed Baseline
@@ -74,11 +74,11 @@ Explicitly excluded:
 
 | Field | Current value |
 |---|---|
-| current unit | D. P2-M8.3 CustomerOpsAgent Explicit Opt-in |
-| status | M8.3 implementation and local Docker acceptance complete; final diff/security audit and commit/push pending |
-| current HEAD | `e0eb6b6 [P2-M8.2] feat: add unified retrieval shadow gate` |
-| modified files | additive versioned Agent schemas/service/routes, optional payload-aware P1 adapter factory, route registration/phase, default-off Agent flag, Docker smoke runner/tests, README/config, docs 08/09/49/52/54/55 |
-| tests completed in current unit | recovery compatibility 31 PASS; M8.3 14 PASS; focused 98 PASS; clean-export full 379 PASS; compile/frontend PASS; Docker default/active/fault smoke PASS; P1 Harness 10/10; P2 and Unified Eval PASS |
+| current unit | E. P2-M9 Final Docker Acceptance and Release Closure |
+| status | M9 final local Docker acceptance complete; release commit/push/tag is the terminal operation recorded by this ledger revision |
+| current HEAD | `8113150 [P2-M8.3] feat: add customerops unified retrieval opt-in` |
+| modified files | README plus docs 08/09/52/55/56 release closure only; no business code |
+| tests completed in current unit | M8.2 29 PASS; M8.3 14 PASS; lifecycle 55 PASS; clean-HEAD full 379 PASS; compile/frontend/Docker PASS; final P1/P2/Unified/Agent/persistence gates PASS |
 | blockers | none |
 | hard stop | no |
 | planning commit | `cbf0e3d`, pushed to `origin/main` |
@@ -86,7 +86,9 @@ Explicitly excluded:
 | Docker phase pushed | yes, `origin/main` synchronized |
 | M8.2 phase commit | `e0eb6b6` |
 | M8.2 phase pushed | yes, `origin/main` synchronized |
-| next phase entry | final diff/ignore/secret audit -> exact M8.3 commit/push -> enter P2-M9 |
+| M8.3 phase commit | `8113150` |
+| M8.3 phase pushed | yes, `origin/main` synchronized |
+| next phase entry | none; P2 closes at the pushed `[P2-M9]` commit and annotated `p2-m9-local-docker-release` tag |
 
 ## 5. Master Execution Plan
 
@@ -344,17 +346,32 @@ Exit condition: final commit and annotated tag are pushed, `main` is synchronize
 | D | independent P2 Eval | local Docker | PASS; recall 1.0, MRR 0.95, leakage 0, failed 0 |
 | D | Unified Shadow Eval | local Docker | PASS 11/11; candidate recall 1.0 >= control 0; candidate MRR 0.6071; coverage 1.0; leakage/violations 0 |
 | D | phase diff/ignore/secret audit | Git/host | PASS; 18 audited files; no secret/runtime/prohibited P1 file |
-| D | phase commit/push | Git | PENDING |
+| D | phase commit/push | Git | PASS; `8113150` synchronized to `origin/main` |
+| E | post-commit M8.2/M8.3 targeted | host | PASS; 29 / 14 tests |
+| E | P1/P2 lifecycle regression | host | PASS; 55 tests |
+| E | authoritative full backend suite | clean tracked HEAD | PASS; 379 tests, 44 existing warnings, 135.30 s |
+| E | compileall/frontend build | host | PASS |
+| E | Compose config/build/up and health | local Docker | PASS; PostgreSQL/backend/frontend healthy; flags false |
+| E | governed P2 lifecycle | local Docker + real SiliconFlow | PASS; `p2-local-20260716-034412-258b8ba0`; ready/serve/archive/version gates |
+| E | P2 exact-id Eval | local Docker | PASS; recall 1.0; MRR 0.525; leakage 0; duplicate 0; failed 0 |
+| E | Asset/DB restart durability | local Docker | PASS; `asset_7788ab58f2174634ab7c` row/object retained across backend/PostgreSQL restart; pgvector 0.8.5 |
+| E | sealed P1 Harness | local Docker | PASS 10/10; `p1-harness-20260716-034452-187174`; vector mode, fallback false, Bad Case PASS |
+| E | expanded-corpus Unified Shadow Eval | local Docker | PASS 11/11; candidate recall 0.8571 >= control 0; MRR 0.4286; coverage 1; leakage/violations/failures 0 |
+| E | Agent active/default-off smoke | local Docker | PASS; `agent-opt-in-smoke-20260716-034826-d5dd31` / `agent-opt-in-smoke-20260716-034915-889151` |
+| E | Agent fault fallback/default restoration | local Docker | PASS; 50 ms dual timeout -> sealed P1; four flags restored false |
+| E | retrieval-log safety | PostgreSQL | PASS; successful Unified namespace/native ids/source distribution; unsafe rows 0 |
+| E | phase diff/secret audit | Git | PASS; only README plus docs 08/09/52/55/56, protected P1 diff empty, ignored runtime paths confirmed, current/history strong-secret scans clean |
+| E | commit/push/tag | Git | terminal release operation: `[P2-M9]` on `main`, then annotated `p2-m9-local-docker-release`; exact hashes are verified in the final handoff |
 
 P2 Eval detail: `hit_rate@5=1.0`, `query_hit_rate@5=1.0`, `candidate_recall@5=1.0`, `MRR=0.95`, semantic 12, no-hit 2, archive leakage 0, duplicate rate 0.0, average top-1/top-5 0.712/0.6195, average/p95 latency 296.388/373.805 ms, and zero failures.
 
 ## 7. Current Diff Audit
 
-- Expected current change: additive M8.3 versioned CustomerOps schemas/service/routes, optional payload-aware adapter extension, route registration/phase, default-off Agent kill switch, public smoke runner/tests, README/config, and docs 08/09/49/52/54/55.
+- Expected current change: final public README calibration plus docs 08/09/52/55/56 release status/report only. No business code, schema, frontend source, Docker runtime, or Eval script change is expected.
 - Forbidden files changed: none.
 - `.env`, `.local-data/`, runtime manifest, Assets, databases, credentials, `node_modules`, and `dist`: ignored/untracked.
 - P1 `rag_chunks`, `rag_embeddings`, legacy retrieval endpoint/service, and CustomerOpsAgent default behavior: unchanged.
-- Secret values must never be printed or committed; the final M8.3 added-content audit passed.
+- Secret values were neither printed nor committed; the final M9 added-content/history scan found no strong secret candidates, and Git history contains no tracked `.env`.
 
 ## 8. Blockers and Hard Stops
 
@@ -397,4 +414,4 @@ Ordinary implementation, Compose, test, type, lint, or configuration failures ar
 
 ## 10. Next Exact Action
 
-Perform the final M8.3 diff/ignored-data/secret audit, stage only the exact audited M8.3 files, commit as `[P2-M8.3] feat: add customerops unified retrieval opt-in`, push `main`, record the resulting hash only after it exists, and immediately enter P2-M9 Final Local Docker Release Closure.
+No further development phase is authorized. The terminal operation stages only README and docs 08/09/52/55/56, commits `[P2-M9] release: close local docker release`, pushes `main`, verifies clean synchronization, and creates/pushes the annotated `p2-m9-local-docker-release` tag. Render Deployment Acceptance remains separately blocked.

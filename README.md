@@ -20,9 +20,11 @@ English version: [README.en.md](./README.en.md)
 
 当前线上 Demo 已支持 P1 主流程演示。P1 数据库持久化链路已完成线上 smoke test，覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。Approved knowledge can be synced into the sealed P1 vector RAG table，CustomerOpsAgent 默认保持 `customerops_vector_retrieval`。P1 正式版本为 `p1-m24.3-real-embedding-online-release`。
 
-DataHub 是一个面向 AI Agent 集群的数据资产中心。P1 治理客服文本知识；P2 将图片、商品素材及其 OCR、Caption、Metadata 文本投影治理为可追溯的知识资产。两者使用独立物理索引，P1 合约保持封板，后续统一检索只在逻辑查询层融合证据。
+DataHub 是一个面向 AI Agent 集群的数据资产中心。P1 治理客服文本知识；P2 将图片、商品素材及其 OCR、Caption、Metadata 文本投影治理为可追溯的知识资产。两者使用独立物理索引，P1 合约保持封板；版本化 Unified Retrieval 只在逻辑查询层通过 rank-only RRF 融合证据。
 
-当前实现包含 P1 文本治理闭环，以及 P2 的 Asset、Extraction、Human Review、Snapshot、Knowledge Asset、独立 Chunk/Embedding、显式 Serving Gate 和 P2-only Retrieval。P2 的“多模态”边界是 OCR、Caption、Metadata 的文本桥接；原生图片向量、CLIP、多模态 reranker、S3/R2 Adapter 和 Render Persistent Disk 均为延期项。前端保持全中文暗色管理台，不把本地 Docker 验收描述为 Render 线上验收。
+当前实现包含 P1 文本治理闭环，以及 P2 的 Asset、Extraction、Human Review、Snapshot、Knowledge Asset、独立 Chunk/Embedding、显式 Serving Gate、P2-only Retrieval、Unified Shadow/RRF 和默认关闭的 CustomerOpsAgent 显式 opt-in。P2 的“多模态”边界是 OCR、Caption、Metadata 的文本桥接；原生图片向量、CLIP、多模态 reranker、S3/R2 Adapter 和 Render Persistent Disk 均为延期项。前端保持全中文暗色管理台，不把本地 Docker 验收描述为 Render 线上验收。
+
+当前封板目标为 `p2-m9-local-docker-release`：它表示本地 Docker Release Closure，不表示 Render online release。CustomerOpsAgent 默认仍为 P1-only；Unified 只能通过版本化接口和显式 opt-in 使用。
 
 ## 目录
 

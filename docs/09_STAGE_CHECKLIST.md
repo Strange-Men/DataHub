@@ -2108,11 +2108,44 @@ P2-M8.3 is complete when:
 - [x] M8.3-only tests pass 14/14; focused P1/P2/M8.2/M8.3 regression passes 98/98.
 - [x] Authoritative ignored clean-export backend suite passes 379/379 with 44 existing warnings; compileall and frontend build pass.
 - [x] Add `docs/55_P2_M8_3_CUSTOMEROPS_AGENT_OPT_IN_REPORT.md` and public README/config instructions without claiming Render online acceptance.
-- [ ] Complete final M8.3 diff/ignore/secret audit, exact staging, commit, and push.
+- [x] Complete final M8.3 diff/ignore/secret audit, exact staging, commit, and push (`8113150`).
 
 Phase boundary:
 
-- **M8.3 local Docker implementation and acceptance: PASS, Git closure pending**.
+- **M8.3 local Docker implementation and acceptance: PASS and pushed** as `8113150`.
 - Agent default and the old endpoint remain P1-only; default Unified cutover is deferred.
 - Render Deployment Acceptance remains **BLOCKED** by missing Persistent Disk.
 - After the audited M8.3 commit/push, proceed directly to P2-M9 Final Local Docker Release Closure.
+
+## P2-M9 Final Local Docker Release Closure
+
+P2-M9 is complete when:
+
+- [x] Run post-M8.3-commit M8.2 targeted tests: 29 passed.
+- [x] Run post-M8.3-commit M8.3 targeted tests: 14 passed.
+- [x] Run P1/P2 lifecycle regression: 55 passed.
+- [x] Run authoritative clean-HEAD full backend suite: 379 passed, 44 existing warnings, 135.30 seconds.
+- [x] Pass root Python compileall and frontend TypeScript/Vite production build.
+- [x] Pass `docker compose config --quiet`, full image build, Compose up, and healthy PostgreSQL/backend/frontend.
+- [x] Verify pgvector 0.8.5 and default Agent/Unified/P2/Shadow flags all false.
+- [x] Run fresh public-API P2 lifecycle `p2-local-20260716-034412-258b8ba0` with real SiliconFlow/Qwen3/1536.
+- [x] Prove ready zero recall, explicit Serve hit, Archive zero recall, physical-vector retention, and version replacement.
+- [x] Run final P2 Eval: recall@5 1.0, MRR 0.525, archive leakage 0, duplicate rate 0.0, failed queries 0.
+- [x] Prove fresh Asset `asset_7788ab58f2174634ab7c` row/object survives backend and PostgreSQL restart.
+- [x] Run final P1 Harness 10/10 under trace `p1-harness-20260716-034452-187174`, vector mode/fallback false, Bad Case PASS.
+- [x] Run final expanded-corpus Unified Shadow Eval: candidate recall 0.8571 >= control 0.0, candidate MRR 0.4286, coverage 1.0, leakage 0, violations 0, failures 0.
+- [x] Run final active Agent smoke `agent-opt-in-smoke-20260716-034826-d5dd31`: old/default P1, explicit opt-in Unified P1+P2, fallback false, archive leakage 0.
+- [x] Run final default-off Agent smoke `agent-opt-in-smoke-20260716-034915-889151`: old/default/flag-off opt-in P1 with safe disabled reason.
+- [x] Inject a 50 ms branch timeout, prove safe P1 fallback, then restore all four flags false.
+- [x] Verify Unified/P2 log namespaces and successful native ids/source distribution; scan database logs for raw vectors and secret patterns with zero unsafe rows.
+- [x] Complete README Docker/Unified/Agent usage and `docs/56_P2_FINAL_LOCAL_DOCKER_RELEASE_REPORT.md`.
+- [x] Keep Render Deployment Acceptance BLOCKED and keep all native multimodal/cloud-storage/P3/P4/default-Agent-cutover items deferred.
+- [x] Pass final release diff/ignore/secret/protected-P1 audit: only README plus docs 08/09/52/55/56 changed; protected P1 diff empty; `.env`/`.local-data` ignored; current and historical strong-secret scans clean.
+- [x] Commit `[P2-M9] release: close local docker release`, push `main`, and confirm clean synchronization as the final release operation.
+- [x] Create and push annotated `p2-m9-local-docker-release` without replacing any existing tag as the final release operation.
+
+Release boundary:
+
+- **P2 Local Docker Release Closure: PASS**, including the final Git/tag closure recorded by this release commit and tag.
+- **Render Deployment Acceptance: BLOCKED** due missing Persistent Disk.
+- P2 final definition is governed OCR/Caption/Metadata text-bridge knowledge plus independent P2 retrieval, Unified Shadow RRF, and explicit default-off Agent opt-in.
