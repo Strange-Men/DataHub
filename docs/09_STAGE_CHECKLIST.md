@@ -2070,12 +2070,49 @@ Implementation and runtime gates:
 - [x] Pass authoritative clean-runtime backend pytest: 365 passed, 44 existing warnings, 251.11 seconds; Python compileall and frontend production build also pass.
 - [x] Reconfirm Docker config/build/healthy-up, P1 Harness, P2 exact baseline (recall 1.0, MRR 0.95, leakage 0), and Unified Eval after the final code state.
 - [x] With all three flags at default false, Unified API returns HTTP 503 safely with retrieval/request ids while the P1 endpoint remains healthy.
-- [ ] Pass final diff, ignored-data, and secret audit.
-- [ ] Commit as `[P2-M8.2] feat: add unified retrieval shadow gate` and push `main`.
+- [x] Pass final diff, ignored-data, and secret audit.
+- [x] Commit as `[P2-M8.2] feat: add unified retrieval shadow gate` and push `main` (`e0eb6b6`).
 
 Phase boundary:
 
 - **Local Docker Shadow runtime/Eval gate: PASS**.
-- **M8.2 implementation and acceptance: COMPLETED**. Only the final staged diff/ignored-data/secret audit and audited commit/push remain; no uncreated commit hash is recorded.
-- CustomerOpsAgent default remains P1-only. M8.3 explicit opt-in cannot begin until the M8.2 commit is pushed.
+- **M8.2 implementation and acceptance: COMPLETED and pushed** as `e0eb6b6`.
+- CustomerOpsAgent default remains P1-only. M8.3 explicit opt-in began only after the M8.2 commit was pushed.
 - Render Deployment Acceptance remains BLOCKED by missing Persistent Disk; the local Docker evidence is not Render online acceptance.
+
+## P2-M8.3 CustomerOpsAgent Explicit Opt-in
+
+P2-M8.3 is complete when:
+
+- [x] Resume from `e0eb6b6` without discarding the interrupted three-module M8.3 implementation or recovery-ledger update.
+- [x] Add only `POST /api/v2/customer-ops-agent/retrieve`; leave the old endpoint, legacy request/response models, P1 retrieval implementation, and P1 vector tables unchanged.
+- [x] Default `retrieval_strategy` to `p1`; require an explicit `unified` value for opt-in.
+- [x] Add independent `CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED=false` and keep the general Unified/P2/Shadow flags fail closed.
+- [x] Require Agent flag on, Unified flag on, P2 flag on, Shadow off, and explicit request opt-in before returning active Unified evidence.
+- [x] Keep default requests P1 even when every server flag is active.
+- [x] Keep explicit opt-in P1 when the Agent flag is off and return reason `customerops_unified_retrieval_disabled`.
+- [x] Prevent Shadow control output from being presented as active Agent Unified evidence.
+- [x] Fail unsupported P1-only filters safely to the original filtered P1 retrieval instead of silently dropping them.
+- [x] Preserve conversation/session context in the P1 Unified branch through an optional payload-aware M8.2 adapter factory.
+- [x] Accept only a healthy `unified_rrf` candidate for active Agent evidence; degrade partial P1/P2 results to sealed P1.
+- [x] Return P1/P2 evidence with rank, ids, content type, metadata, and complete source trace without returning a vector.
+- [x] On Unified timeout/failure, execute sealed P1, set `fallback_used=true`, and expose only a bounded safe reason.
+- [x] Prove the old endpoint ignores a supplied v2 strategy field, never calls Unified, and returns the old P1 response shape/mode.
+- [x] Add a public-API Docker Agent smoke runner with ignored runtime-manifest archive labels.
+- [x] Docker default-off smoke passes under trace `agent-opt-in-smoke-20260716-025833-409038`.
+- [x] Docker active opt-in smoke passes under trace `agent-opt-in-smoke-20260716-025912-83cfd3`, returns P1+P2 evidence, and has archive leakage 0.
+- [x] Docker 50 ms branch-timeout injection falls back to `customerops_vector_retrieval` with a safe reason; all four flags are restored false.
+- [x] Latest P1 Harness passes 10/10 under trace `p1-harness-20260716-030109-dbcb8c`, vector mode/fallback false, and Bad Case PASS.
+- [x] Independent P2 Eval retains exact recall 1.0, MRR 0.95, duplicate rate 0.0, archive leakage 0, and zero failures.
+- [x] Unified Shadow Eval retains candidate exact recall 1.0 >= control 0.0, MRR 0.6071, source coverage 1.0, archive leakage 0, and zero contract violations.
+- [x] M8.3-only tests pass 14/14; focused P1/P2/M8.2/M8.3 regression passes 98/98.
+- [x] Authoritative ignored clean-export backend suite passes 379/379 with 44 existing warnings; compileall and frontend build pass.
+- [x] Add `docs/55_P2_M8_3_CUSTOMEROPS_AGENT_OPT_IN_REPORT.md` and public README/config instructions without claiming Render online acceptance.
+- [ ] Complete final M8.3 diff/ignore/secret audit, exact staging, commit, and push.
+
+Phase boundary:
+
+- **M8.3 local Docker implementation and acceptance: PASS, Git closure pending**.
+- Agent default and the old endpoint remain P1-only; default Unified cutover is deferred.
+- Render Deployment Acceptance remains **BLOCKED** by missing Persistent Disk.
+- After the audited M8.3 commit/push, proceed directly to P2-M9 Final Local Docker Release Closure.

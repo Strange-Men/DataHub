@@ -48,6 +48,7 @@ def test_compose_defines_health_gated_runtime_and_one_shot_initializers() -> Non
         "UNIFIED_RETRIEVAL_ENABLED",
         "P2_RETRIEVAL_ENABLED",
         "UNIFIED_RETRIEVAL_SHADOW_MODE",
+        "CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED",
     ):
         assert f"{flag}: ${{{flag}:-false}}" in compose
         assert f"{flag}=false" in _read(".env.example")

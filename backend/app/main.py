@@ -28,6 +28,7 @@ from app.knowledge_index_routes import router as knowledge_index_router
 from app.knowledge_embedding_routes import router as knowledge_embedding_router
 from app.p2_retrieval_routes import router as p2_retrieval_router
 from app.unified_retrieval_routes import router as unified_retrieval_router
+from app.customerops_unified_routes import router as customerops_unified_router
 from app.storage import (
     apply_review_decision,
     build_rag_chunks,
@@ -68,6 +69,7 @@ app.include_router(knowledge_index_router)
 app.include_router(knowledge_embedding_router)
 app.include_router(p2_retrieval_router)
 app.include_router(unified_retrieval_router)
+app.include_router(customerops_unified_router)
 
 # Ensure tables exist on module load (idempotent, safe for both tests and production).
 # Also runs on startup event for environments where module-level init is insufficient.
@@ -196,7 +198,7 @@ def health() -> dict[str, object]:
         "status": "ok",
         "service": "datahub-api",
         "phase": "P1-M24.3",
-        "p2_phase": "P2-M8.2",
+        "p2_phase": "P2-M8.3",
         "database_status": check_database_connection(),
         "pgvector_status": {
             "pgvector_available": pgvec.get("pgvector_available", False),

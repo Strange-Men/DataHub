@@ -559,4 +559,10 @@ The no-answer cases returned two low-confidence vector results. M8.2 does not cl
 
 Independent gates remained healthy: the P2-only exact-recall/MRR/archive-leakage baseline is 1.0/0.95/0, and the sealed P1 Harness passed 10/10 under trace `p1-harness-20260715-195829-e346cd` with legacy `customerops_vector_retrieval` behavior.
 
-At this documentation update, focused/full final tests, compile/build, final Docker rechecks, diff/security audit, and the M8.2 commit/push are still pending. M8.3 CustomerOpsAgent explicit opt-in remains blocked until those gates pass and `[P2-M8.2] feat: add unified retrieval shadow gate` is pushed. No uncreated commit hash is recorded.
+The final M8.2 gates subsequently passed: focused/full tests, compile/build, Docker rechecks, diff/security audit, and default-off P1 safety all remained healthy. Commit `e0eb6b6 [P2-M8.2] feat: add unified retrieval shadow gate` is pushed to `origin/main`. M8.3 began only after that Git closure; the legacy P1 endpoint remained unchanged.
+
+## 19. P2-M8.3 Explicit Agent Opt-in Outcome
+
+M8.3 implements the final stage from this plan through additive `POST /api/v2/customer-ops-agent/retrieve`. The old endpoint stays P1-only. The v2 request defaults to P1 and requires explicit `retrieval_strategy=unified`, the independent default-off Agent kill switch, enabled Unified/P2 branches, and Shadow disabled before active RRF evidence can be returned. Unified failure or partial output falls back to sealed P1 with a safe observable reason. No P1/P2 table boundary, raw-score rule, or archive gate is changed.
+
+The authoritative local Docker gates retained P1 Harness 10/10, P2 exact recall/MRR/leakage 1.0/0.95/0, and Unified candidate recall/MRR/leakage 1.0/0.6071/0. Default, flag-off, explicit active, archive, and injected branch-timeout behavior passed. Render Deployment Acceptance remains blocked and is not represented by these local results.

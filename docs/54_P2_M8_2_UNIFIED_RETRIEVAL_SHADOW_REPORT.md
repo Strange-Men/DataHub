@@ -188,9 +188,9 @@ Final verification on the completed implementation produced:
 - latest sealed P1 Harness: **10/10 PASS**;
 - P2 exact baseline: recall 1.0, MRR 0.95, archive leakage 0.
 
-M8.2 implementation and acceptance are therefore **COMPLETED**. Before the execution ledger enters M8.3, the root task still must perform the final staged diff/ignored-data/secret audit, create `[P2-M8.2] feat: add unified retrieval shadow gate`, and push it normally to `origin/main`.
+M8.2 implementation and acceptance are therefore **COMPLETED**. The final diff/ignored-data/secret audit passed, commit `e0eb6b6 [P2-M8.2] feat: add unified retrieval shadow gate` was created, and `main` was pushed normally to `origin/main` without history rewriting.
 
-No M8.2 commit hash is recorded until that commit exists. M8.3 CustomerOpsAgent explicit opt-in may begin only after the commit and push pass.
+M8.3 CustomerOpsAgent explicit opt-in began only after that Git closure. This outcome note does not alter the M8.2 Eval evidence above.
 
 ## 13. Boundaries and Deferred Work
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import re
 import time
-from typing import Literal
+from typing import Callable, Literal
 
 from app.database import SessionLocal
 from app.p2_retrieval_schemas import P2RetrievalRequest
@@ -76,6 +76,16 @@ class P1RetrievalAdapter:
 
     source_index: Literal["p1"] = "p1"
 
+    def __init__(
+        self,
+        request_factory: Callable[[str, int], CustomerOpsRetrievalRequest]
+        | None = None,
+    ) -> None:
+        # M8.2 uses the default factory. M8.3 may inject the versioned Agent
+        # payload so conversation/session context is retained without changing
+        # the sealed P1 request type or retrieval implementation.
+        self.request_factory = request_factory
+
     def search(
         self,
         *,
@@ -86,7 +96,11 @@ class P1RetrievalAdapter:
         del request_id  # The sealed P1 request has no correlation-id field.
         started = time.perf_counter()
         try:
-            payload = CustomerOpsRetrievalRequest(query=query, top_k=top_k)
+            payload = (
+                self.request_factory(query, top_k)
+                if self.request_factory is not None
+                else CustomerOpsRetrievalRequest(query=query, top_k=top_k)
+            )
             response = run_customerops_retrieval(payload, query, top_k)
             candidates = tuple(
                 NormalizedCandidate(

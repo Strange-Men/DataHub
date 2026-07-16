@@ -17,7 +17,7 @@ Continue from **Next Exact Action**. Do not roll back or redesign a completed ph
 
 - Initialized: 2026-07-16 Asia/Shanghai
 - Last updated: 2026-07-16 Asia/Shanghai
-- Recovery ledger version: 5
+- Recovery ledger version: 7
 - Hard stop active: **no**
 
 ## 2. Fixed Baseline
@@ -74,17 +74,19 @@ Explicitly excluded:
 
 | Field | Current value |
 |---|---|
-| current unit | C. P2-M8.2 Unified Retrieval Shadow Gate |
-| status | M8.2 implementation and acceptance complete; final staged diff/security audit and commit/push pending |
-| current HEAD | `64c95c0 [P2-Docker] chore: add reproducible local docker environment` |
-| modified files | additive Unified Retrieval schemas/adapters/service/routes, route registration/phase, default-off flags, Docker test calibration, Unified Eval fixture/runner/manifest builder/tests, and docs 08/09/49/52/54 |
-| tests completed in current unit | focused matrix 81 PASS; final M8.2 suite 28 PASS; clean full 365 PASS; compile/frontend PASS; Docker config/build/up PASS; Unified Eval 11/11; P2 baseline retained; latest sealed P1 Harness 10/10 |
+| current unit | D. P2-M8.3 CustomerOpsAgent Explicit Opt-in |
+| status | M8.3 implementation and local Docker acceptance complete; final diff/security audit and commit/push pending |
+| current HEAD | `e0eb6b6 [P2-M8.2] feat: add unified retrieval shadow gate` |
+| modified files | additive versioned Agent schemas/service/routes, optional payload-aware P1 adapter factory, route registration/phase, default-off Agent flag, Docker smoke runner/tests, README/config, docs 08/09/49/52/54/55 |
+| tests completed in current unit | recovery compatibility 31 PASS; M8.3 14 PASS; focused 98 PASS; clean-export full 379 PASS; compile/frontend PASS; Docker default/active/fault smoke PASS; P1 Harness 10/10; P2 and Unified Eval PASS |
 | blockers | none |
 | hard stop | no |
 | planning commit | `cbf0e3d`, pushed to `origin/main` |
 | Docker phase commit | `64c95c0` |
 | Docker phase pushed | yes, `origin/main` synchronized |
-| next phase entry | final staged diff/ignore/secret audit -> commit/push M8.2 -> enter M8.3 |
+| M8.2 phase commit | `e0eb6b6` |
+| M8.2 phase pushed | yes, `origin/main` synchronized |
+| next phase entry | final diff/ignore/secret audit -> exact M8.3 commit/push -> enter P2-M9 |
 
 ## 5. Master Execution Plan
 
@@ -327,18 +329,32 @@ Exit condition: final commit and annotated tag are pushed, `main` is synchronize
 | C | compileall/frontend build | host | PASS |
 | C | Docker config/build/up | local Docker | PASS |
 | C | default-off feature/API safety | local Docker | PASS; all three flags false; Unified API HTTP 503 with retrieval/request ids; P1 healthy |
-| C | diff/ignore/secret audit | Git/host | PENDING |
-| C | phase commit/push | Git | PENDING |
+| C | diff/ignore/secret audit | Git/host | PASS; no prohibited P1/secret/runtime file |
+| C | phase commit/push | Git | PASS; `e0eb6b6` synchronized to `origin/main` |
+| D | recovery preflight / interrupted-file audit | host + Git | PASS; HEAD/origin `e0eb6b6`; one ledger edit plus three untracked modules preserved; no divergence/conflict/secret |
+| D | Docker engine/volume/corpus recovery | local Docker | PASS; four required named volumes restored; pgvector 0.8.5; Assets/P1/P2 corpus present |
+| D | versioned default/flag gate/legacy compatibility | unit | PASS; M8.3-only 14 tests |
+| D | focused P1/P2/M8.2/M8.3 regression | host | PASS; 98 tests |
+| D | authoritative full backend suite | ignored clean export | PASS; 379 tests, 44 existing warnings, 139.19 s |
+| D | compileall/frontend build | host | PASS |
+| D | Docker default-off Agent smoke | local Docker | PASS; `agent-opt-in-smoke-20260716-025833-409038`; actual P1 and safe disabled reason |
+| D | Docker active Agent smoke/archive gate | local Docker | PASS; `agent-opt-in-smoke-20260716-025912-83cfd3`; P1+P2; leakage 0 |
+| D | Docker Unified fault fallback | local Docker | PASS; 50 ms dual timeout -> sealed P1; flags restored false |
+| D | sealed P1 Harness | local Docker | PASS 10/10; `p1-harness-20260716-030109-dbcb8c`; vector mode, fallback false, Bad Case PASS |
+| D | independent P2 Eval | local Docker | PASS; recall 1.0, MRR 0.95, leakage 0, failed 0 |
+| D | Unified Shadow Eval | local Docker | PASS 11/11; candidate recall 1.0 >= control 0; candidate MRR 0.6071; coverage 1.0; leakage/violations 0 |
+| D | phase diff/ignore/secret audit | Git/host | PASS; 18 audited files; no secret/runtime/prohibited P1 file |
+| D | phase commit/push | Git | PENDING |
 
 P2 Eval detail: `hit_rate@5=1.0`, `query_hit_rate@5=1.0`, `candidate_recall@5=1.0`, `MRR=0.95`, semantic 12, no-hit 2, archive leakage 0, duplicate rate 0.0, average top-1/top-5 0.712/0.6195, average/p95 latency 296.388/373.805 ms, and zero failures.
 
 ## 7. Current Diff Audit
 
-- Expected current change: additive M8.2 Unified Retrieval schemas, adapters, service, routes, route registration/phase, default-off environment documentation, minimal Docker-test calibration, Unified Eval fixture/runner/manifest/tests, and docs 08/09/49/52/54.
+- Expected current change: additive M8.3 versioned CustomerOps schemas/service/routes, optional payload-aware adapter extension, route registration/phase, default-off Agent kill switch, public smoke runner/tests, README/config, and docs 08/09/49/52/54/55.
 - Forbidden files changed: none.
 - `.env`, `.local-data/`, runtime manifest, Assets, databases, credentials, `node_modules`, and `dist`: ignored/untracked.
 - P1 `rag_chunks`, `rag_embeddings`, legacy retrieval endpoint/service, and CustomerOpsAgent default behavior: unchanged.
-- Secret values must never be printed or committed; final audit remains pending.
+- Secret values must never be printed or committed; the final M8.3 added-content audit passed.
 
 ## 8. Blockers and Hard Stops
 
@@ -381,4 +397,4 @@ Ordinary implementation, Compose, test, type, lint, or configuration failures ar
 
 ## 10. Next Exact Action
 
-Perform the final staged diff/ignored-data/secret audit, stage only the exact M8.2 files, commit as `[P2-M8.2] feat: add unified retrieval shadow gate`, push `main`, record the resulting hash only after it exists, and immediately enter P2-M8.3 CustomerOpsAgent Explicit Opt-in.
+Perform the final M8.3 diff/ignored-data/secret audit, stage only the exact audited M8.3 files, commit as `[P2-M8.3] feat: add customerops unified retrieval opt-in`, push `main`, record the resulting hash only after it exists, and immediately enter P2-M9 Final Local Docker Release Closure.

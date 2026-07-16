@@ -344,6 +344,49 @@ python scripts/run_p1_pipeline_harness.py \
 
 门禁是 10/10 PASS，并保持 `retrieval_mode=customerops_vector_retrieval`、`fallback_used=false`。P2 不能修改或写入 P1 `rag_chunks` / `rag_embeddings`。
 
+### Unified Retrieval 与 CustomerOpsAgent 显式 opt-in
+
+旧接口 `POST /api/customer-ops-agent/retrieve` 永久保持 P1-only。新增的版本化接口 `POST /api/v2/customer-ops-agent/retrieve` 默认同样走 P1；只有服务端开关与请求显式 opt-in 同时满足时，才返回 P1/P2 RRF evidence。
+
+所有开关默认关闭：
+
+```text
+UNIFIED_RETRIEVAL_ENABLED=false
+P2_RETRIEVAL_ENABLED=false
+UNIFIED_RETRIEVAL_SHADOW_MODE=false
+CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED=false
+```
+
+本地 Active 验证时，在未提交的 `.env` 中将 `UNIFIED_RETRIEVAL_ENABLED`、`P2_RETRIEVAL_ENABLED` 和 `CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED` 设为 `true`，保持 `UNIFIED_RETRIEVAL_SHADOW_MODE=false`，然后重建 backend：
+
+```bash
+docker compose up -d --force-recreate backend
+```
+
+显式 opt-in 请求示例：
+
+```bash
+curl -X POST http://localhost:8000/api/v2/customer-ops-agent/retrieve \
+  -H 'Content-Type: application/json' \
+  -H 'X-DataHub-Client: CustomerOpsAgent' \
+  -d '{"query":"How long is the warranty?","top_k":5,"retrieval_strategy":"unified","request_id":"local-agent-smoke"}'
+```
+
+不传 `retrieval_strategy`、请求 `p1`、Agent开关关闭、Shadow开启、Unified降级或显式关闭时，实际结果都安全保持/回退 P1，并在 v2 响应中记录实际策略与安全 fallback reason。Shadow 结果不会被当成 Active Agent evidence。
+
+已有 P2 runtime manifest 时可运行可复现 Smoke：
+
+```bash
+docker compose exec backend python scripts/run_customerops_unified_opt_in_smoke.py \
+  --base-url http://127.0.0.1:8000 \
+  --expected-manifest /app/.local-data/p2-eval-expected-manifest.json \
+  --sample-file /app/samples/p2_rag_eval_queries.json \
+  --expect-opt-in-active \
+  --verbose
+```
+
+完成 Active 验证后应将四个开关恢复为 `false` 并重建 backend。该能力目前只通过本地 Docker 验收；Render 仍因缺少 Persistent Disk 而处于 P2 Deployment Acceptance BLOCKED 状态。
+
 ### 日志、停止与数据清理
 
 查看全部或单个服务日志：
