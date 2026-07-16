@@ -11,6 +11,19 @@ from typing import Any
 from urllib import error, request
 from uuid import uuid4
 
+try:
+    from eval_run_scope import (
+        collect_p2_scope_ids,
+        filter_p2_results,
+        load_run_scope,
+    )
+except ModuleNotFoundError:  # imported as scripts module in tests
+    from scripts.eval_run_scope import (
+        collect_p2_scope_ids,
+        filter_p2_results,
+        load_run_scope,
+    )
+
 
 def _post(base_url: str, path: str, payload: dict[str, object], timeout: float) -> dict[str, Any]:
     body = json.dumps(payload).encode("utf-8")
@@ -95,9 +108,15 @@ def _ids(results: list[dict[str, Any]], field: str) -> set[str]:
 
 def run(args: argparse.Namespace) -> dict[str, object]:
     active, archived = _load_cases(args.expected_manifest, args.sample_file)
+    manifest_payload = json.loads(args.expected_manifest.read_text(encoding="utf-8"))
+    run_scope = load_run_scope(manifest_payload)
+    scope_ids = collect_p2_scope_ids(manifest_payload.get("queries", [])) if run_scope else set()
     trace = f"agent-opt-in-smoke-{time.strftime('%Y%m%d-%H%M%S')}-{uuid4().hex[:6]}"
+    request_scope = str(run_scope.get("run_id")) if run_scope else trace
     query = str(active["query"])
-    common = {"query": query, "top_k": args.top_k, "request_id": trace}
+    common = {"query": query, "top_k": args.top_k, "request_id": request_scope}
+    if run_scope is not None:
+        common["evaluation_scope"] = str(run_scope["namespace"])
 
     legacy = _data(
         _post(
@@ -134,7 +153,12 @@ def run(args: argparse.Namespace) -> dict[str, object]:
     if "unified" in str(default_v2.get("retrieval_mode", "")):
         failures.append("v2_default_mode_changed")
 
-    opt_results = [item for item in opt_in.get("results", []) if isinstance(item, dict)]
+    raw_opt_results = [item for item in opt_in.get("results", []) if isinstance(item, dict)]
+    opt_results = (
+        filter_p2_results(raw_opt_results, scope_ids, keep_non_p2=True)
+        if scope_ids
+        else raw_opt_results
+    )
     source_indexes = sorted({str(item.get("source_index")) for item in opt_results})
     if args.expect_opt_in_active:
         if opt_in.get("actual_retrieval_strategy") != "unified":
@@ -167,14 +191,24 @@ def run(args: argparse.Namespace) -> dict[str, object]:
                     "top_k": args.top_k,
                     "retrieval_strategy": "unified",
                     "request_id": f"{trace}-archive",
+                    **(
+                        {"evaluation_scope": str(run_scope["namespace"])}
+                        if run_scope is not None
+                        else {}
+                    ),
                 },
                 args.timeout,
             )
         )
         archived_mode = str(archived_data.get("retrieval_mode"))
-        archived_results = [
+        raw_archived_results = [
             item for item in archived_data.get("results", []) if isinstance(item, dict)
         ]
+        archived_results = (
+            filter_p2_results(raw_archived_results, scope_ids, keep_non_p2=True)
+            if scope_ids
+            else raw_archived_results
+        )
         forbidden_knowledge = set(
             map(str, archived.get("expected_knowledge_asset_ids", []))
         ) | set(map(str, archived.get("forbidden_knowledge_asset_ids", [])))
@@ -198,6 +232,8 @@ def run(args: argparse.Namespace) -> dict[str, object]:
 
     summary: dict[str, object] = {
         "trace_id": trace,
+        "run_scope": run_scope,
+        "run_scope_isolation_enabled": bool(scope_ids),
         "expected_opt_in_active": args.expect_opt_in_active,
         "legacy_retrieval_mode": legacy.get("retrieval_mode"),
         "default_actual_strategy": default_v2.get("actual_retrieval_strategy"),

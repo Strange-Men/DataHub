@@ -187,6 +187,18 @@ class TestSampleData(unittest.TestCase):
             "Sample data should include at least one low-quality / noise message",
         )
 
+    def test_scoped_payload_keeps_meaning_but_changes_identifiers(self):
+        from run_p1_pipeline_harness import scoped_import_payload
+
+        first = scoped_import_payload("p1-harness-20260716-120000-aaaaaa")
+        second = scoped_import_payload("p1-harness-20260716-120001-bbbbbb")
+        self.assertNotEqual(first["source_name"], second["source_name"])
+        self.assertNotEqual(
+            first["conversations"][0]["conversation_id"],
+            second["conversations"][0]["conversation_id"],
+        )
+        self.assertIn("refund", json.dumps(first).lower())
+
 
 class TestNowIso(unittest.TestCase):
     """Verify _now_iso returns valid ISO 8601."""

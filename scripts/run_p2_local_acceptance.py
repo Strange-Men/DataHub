@@ -21,6 +21,11 @@ from urllib.parse import urlencode, urlsplit
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
+try:
+    from eval_run_scope import load_run_scope, make_run_scope, normalize_run_id
+except ModuleNotFoundError:  # imported as scripts.run_p2_local_acceptance in tests
+    from scripts.eval_run_scope import load_run_scope, make_run_scope, normalize_run_id
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT_DIR / ".local-data" / "p2-eval-expected-manifest.json"
@@ -145,17 +150,32 @@ class AcceptanceClient:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         return self._request("PATCH", path, body=body, content_type="application/json")
 
-    def upload_asset(self, file_name: str, content: bytes) -> dict[str, Any]:
+    def upload_asset(
+        self,
+        file_name: str,
+        content: bytes,
+        *,
+        eval_run_scope: str | None = None,
+    ) -> dict[str, Any]:
         boundary = f"----DataHubP2Acceptance{uuid4().hex}"
         parts = [
             f"--{boundary}\r\n"
             'Content-Disposition: form-data; name="asset_type"\r\n\r\n'
             "image\r\n",
+            *(
+                [
+                    f"--{boundary}\r\n"
+                    'Content-Disposition: form-data; name="eval_run_scope"\r\n\r\n'
+                    f"{eval_run_scope}\r\n"
+                ]
+                if eval_run_scope
+                else []
+            ),
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="file"; filename="{file_name}"\r\n'
             "Content-Type: image/png\r\n\r\n",
         ]
-        body = parts[0].encode() + parts[1].encode() + content
+        body = b"".join(part.encode() for part in parts[:-1]) + parts[-1].encode() + content
         body += f"\r\n--{boundary}--\r\n".encode()
         return self._request(
             "POST",
@@ -201,11 +221,13 @@ class LocalAcceptanceRunner:
         client: AcceptanceClient,
         *,
         trace_id: str,
+        run_id: str,
         verbose: bool,
         keep_data: bool,
     ) -> None:
         self.client = client
         self.trace_id = trace_id
+        self.run_id = normalize_run_id(run_id)
         self.verbose = verbose
         self.keep_data = keep_data
         self._request_counter = 0
@@ -221,7 +243,11 @@ class LocalAcceptanceRunner:
     def upload(self, label: str) -> str:
         file_name = f"{label}-{self.trace_id[-12:]}.png"
         data = _response_data(
-            self.client.upload_asset(file_name, unique_png(self.trace_id, label))
+            self.client.upload_asset(
+                file_name,
+                unique_png(self.trace_id, label),
+                eval_run_scope=f"datahub-eval:{self.run_id}",
+            )
         )
         asset_id = str(data.get("id", ""))
         if not asset_id:
@@ -238,6 +264,7 @@ class LocalAcceptanceRunner:
                     "top_k": top_k,
                     "debug": False,
                     "request_id": self._request_id(label),
+                    "evaluation_scope": f"datahub-eval:{self.run_id}",
                 },
             )
         )
@@ -324,7 +351,10 @@ class LocalAcceptanceRunner:
         if index_detail.get("status") != "ready" or index_detail.get("sync_state") != "ready":
             raise AcceptanceError("INDEX_NOT_READY: expected ready/ready before serve.")
 
-        before = self.search(probe_query, f"{label}-before-serve")
+        # Acceptance validates the current run's exact ID. Request the maximum
+        # supported management pool so retained, semantically similar test runs
+        # cannot hide a newly served candidate from the proof.
+        before = self.search(probe_query, f"{label}-before-serve", top_k=20)
         before_ids = {str(item.get("knowledge_asset_id")) for item in before.get("results", [])}
         if str(knowledge.get("id")) in before_ids:
             raise AcceptanceError("READY_LEAKAGE: ready content was retrieved before serve.")
@@ -337,7 +367,7 @@ class LocalAcceptanceRunner:
         self._validate_profile(served)
         if served.get("index_status") != "serving":
             raise AcceptanceError("SERVING_GATE_FAILED: Entry did not become serving.")
-        after = self.search(probe_query, f"{label}-after-serve")
+        after = self.search(probe_query, f"{label}-after-serve", top_k=20)
         hit = next(
             (
                 item
@@ -561,14 +591,52 @@ class LocalAcceptanceRunner:
             smoke_query=smoke_query,
         )
         manifest = {
-            "version": "p2-m8.1.1-local-runtime-v1",
+            "version": "p1-p2-m9.1-local-runtime-v2",
             "trace_id": self.trace_id,
+            "run_scope": make_run_scope(
+                self.run_id,
+                trace_id=self.trace_id,
+                creator="run_p2_local_acceptance",
+            ),
             "generated_at_epoch_ms": int(time.time() * 1000),
+            "created_resources": {
+                "asset_ids": [
+                    smoke.asset_id,
+                    policy.asset_id,
+                    caption.asset_id,
+                    metadata.asset_id,
+                    old_version.asset_id,
+                ],
+                "knowledge_asset_ids": [
+                    smoke.knowledge_asset_id,
+                    policy.knowledge_asset_id,
+                    caption.knowledge_asset_id,
+                    metadata.knowledge_asset_id,
+                    old_version.knowledge_asset_id,
+                    current_version.knowledge_asset_id,
+                ],
+                "chunk_ids": [
+                    smoke.chunk_id,
+                    policy.chunk_id,
+                    caption.chunk_id,
+                    metadata.chunk_id,
+                    old_version.chunk_id,
+                    current_version.chunk_id,
+                ],
+                "cleanup_knowledge_asset_ids": [
+                    policy.knowledge_asset_id,
+                    caption.knowledge_asset_id,
+                    metadata.knowledge_asset_id,
+                    current_version.knowledge_asset_id,
+                ],
+            },
             "queries": entries,
         }
         summary = {
             "success": True,
             "trace_id": self.trace_id,
+            "run_id": self.run_id,
+            "namespace": f"datahub-eval:{self.run_id}",
             "retrieval_mode": "p2_vector_retrieval",
             "fallback_used": False,
             "embedding": {
@@ -707,6 +775,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument(
+        "--run-id",
+        help="Optional stable test-run id; auto-generated when omitted.",
+    )
+    parser.add_argument(
         "--keep-data",
         action="store_true",
         help="Record that the generated local Eval corpus is retained for follow-up inspection.",
@@ -716,6 +788,14 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=DEFAULT_MANIFEST,
         help="Ignored runtime expected-ID manifest for run_p2_rag_eval.py.",
+    )
+    parser.add_argument(
+        "--cleanup-manifest",
+        type=Path,
+        help=(
+            "Explicitly archive only the active test Knowledge Assets listed by a "
+            "validated DataHub Eval manifest, then exit."
+        ),
     )
     return parser
 
@@ -727,11 +807,14 @@ def run_acceptance(
     keep_data: bool,
     output_manifest: Path,
     trace_id: str | None = None,
+    run_id: str | None = None,
 ) -> dict[str, Any]:
     trace = trace_id or f"p2-local-{time.strftime('%Y%m%d-%H%M%S')}-{uuid4().hex[:8]}"
+    scope_id = normalize_run_id(run_id or trace)
     summary, manifest = LocalAcceptanceRunner(
         client,
         trace_id=trace,
+        run_id=scope_id,
         verbose=verbose,
         keep_data=keep_data,
     ).run()
@@ -744,18 +827,72 @@ def run_acceptance(
     return summary
 
 
+def cleanup_manifest_corpus(
+    *, client: AcceptanceClient, manifest_path: Path
+) -> dict[str, Any]:
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    scope = load_run_scope(payload)
+    if scope is None or scope.get("creator") != "run_p2_local_acceptance":
+        raise AcceptanceError(
+            "CLEANUP_SCOPE_INVALID: manifest is not an acceptance test corpus."
+        )
+    created = payload.get("created_resources")
+    targets = created.get("cleanup_knowledge_asset_ids") if isinstance(created, dict) else None
+    if not isinstance(targets, list) or any(
+        not isinstance(value, str) or not value.strip() for value in targets
+    ):
+        raise AcceptanceError(
+            "CLEANUP_SCOPE_INVALID: explicit cleanup targets are missing."
+        )
+    unique_targets = list(dict.fromkeys(value.strip() for value in targets))
+    archived: list[str] = []
+    already_archived: list[str] = []
+    for knowledge_asset_id in unique_targets:
+        detail = _response_data(
+            client.get(f"/api/knowledge-assets/{knowledge_asset_id}")
+        )
+        if detail.get("status") == "archived":
+            already_archived.append(knowledge_asset_id)
+            continue
+        result = _response_data(
+            client.post(f"/api/knowledge-assets/{knowledge_asset_id}/archive")
+        )
+        if result.get("status") != "archived":
+            raise AcceptanceError(
+                "CLEANUP_FAILED: a scoped test Knowledge Asset was not archived."
+            )
+        archived.append(knowledge_asset_id)
+    return {
+        "success": True,
+        "run_id": scope["run_id"],
+        "namespace": scope["namespace"],
+        "cleanup_mode": "logical_archive_only",
+        "archived_knowledge_asset_ids": archived,
+        "already_archived_knowledge_asset_ids": already_archived,
+        "deleted_records": 0,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
     try:
-        summary = run_acceptance(
-            client=AcceptanceClient(args.base_url, args.timeout),
-            verbose=args.verbose,
-            keep_data=args.keep_data,
-            output_manifest=args.output_manifest,
-        )
+        client = AcceptanceClient(args.base_url, args.timeout)
+        if args.cleanup_manifest is not None:
+            summary = cleanup_manifest_corpus(
+                client=client,
+                manifest_path=args.cleanup_manifest,
+            )
+        else:
+            summary = run_acceptance(
+                client=client,
+                verbose=args.verbose,
+                keep_data=args.keep_data,
+                output_manifest=args.output_manifest,
+                run_id=args.run_id,
+            )
     except (AcceptanceError, OSError, ValueError) as exc:
         print(
             json.dumps(

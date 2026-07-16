@@ -47,6 +47,7 @@ class P2ServingEmbeddingRow:
     embedding_metadata: dict[str, object]
     index_fingerprint: str
     generation: int
+    evaluation_scope: str | None
     score: float | None = None
 
 
@@ -54,7 +55,9 @@ def _metadata(value: object) -> dict[str, object]:
     return value if isinstance(value, dict) else {}
 
 
-def list_serving_embedding_rows(db: Session) -> list[P2ServingEmbeddingRow]:
+def list_serving_embedding_rows(
+    db: Session, *, evaluation_scope: str | None = None
+) -> list[P2ServingEmbeddingRow]:
     """Return only rows whose primary P2 governance states are serving/active."""
     rows = (
         db.query(P2KnowledgeEmbedding, P2KnowledgeChunk, P2KnowledgeIndexEntry, KnowledgeAsset)
@@ -75,7 +78,7 @@ def list_serving_embedding_rows(db: Session) -> list[P2ServingEmbeddingRow]:
         )
         .all()
     )
-    return [
+    mapped = [
         P2ServingEmbeddingRow(
             embedding_id=embedding.id,
             index_entry_id=entry.id,
@@ -94,9 +97,18 @@ def list_serving_embedding_rows(db: Session) -> list[P2ServingEmbeddingRow]:
             embedding_metadata=_metadata(embedding.metadata_json),
             index_fingerprint=entry.fingerprint,
             generation=int(entry.generation),
+            evaluation_scope=(
+                str(knowledge_asset.metadata_json.get("eval_run_scope"))
+                if isinstance(knowledge_asset.metadata_json, dict)
+                and knowledge_asset.metadata_json.get("eval_run_scope")
+                else None
+            ),
         )
         for embedding, chunk, entry, knowledge_asset in rows
     ]
+    if evaluation_scope is not None:
+        return [row for row in mapped if row.evaluation_scope == evaluation_scope]
+    return mapped
 
 
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
@@ -119,10 +131,13 @@ def _sqlite_search(
     model: str,
     dimension: int,
     limit: int,
+    evaluation_scope: str | None,
 ) -> list[P2ServingEmbeddingRow]:
     eligible = [
         row
-        for row in list_serving_embedding_rows(db)
+        for row in list_serving_embedding_rows(
+            db, evaluation_scope=evaluation_scope
+        )
         if row.embedding_profile == embedding_profile
         and row.provider == provider
         and row.model == model
@@ -163,6 +178,7 @@ def _postgres_search(
     model: str,
     dimension: int,
     limit: int,
+    evaluation_scope: str | None,
 ) -> list[P2ServingEmbeddingRow]:
     if not _HAS_PGVECTOR:
         raise P2PgvectorUnavailableError("pgvector is unavailable for P2 retrieval.")
@@ -209,6 +225,10 @@ def _postgres_search(
           AND e.dimension = :dimension
           AND e.metadata_json ->> 'index_fingerprint' = ie.fingerprint
           AND e.metadata_json ->> 'chunk_hash' = c.chunk_hash
+          AND (
+            CAST(:evaluation_scope AS text) IS NULL
+            OR ka.metadata_json ->> 'eval_run_scope' = :evaluation_scope
+          )
         ORDER BY e.embedding <=> CAST(:query_vector AS vector)
         LIMIT :limit
         """
@@ -223,6 +243,7 @@ def _postgres_search(
                 "model": model,
                 "dimension": dimension,
                 "limit": limit,
+                "evaluation_scope": evaluation_scope,
             },
         )
         records = result.mappings().all()
@@ -248,6 +269,7 @@ def _postgres_search(
             embedding_metadata=_metadata(row["embedding_metadata"]),
             index_fingerprint=str(row["index_fingerprint"]),
             generation=int(row["generation"]),
+            evaluation_scope=evaluation_scope,
             score=float(row["score"]),
         )
         for row in records
@@ -263,6 +285,7 @@ def search_serving_embeddings(
     model: str,
     dimension: int,
     limit: int,
+    evaluation_scope: str | None = None,
 ) -> list[P2ServingEmbeddingRow]:
     if _is_postgresql():
         return _postgres_search(
@@ -273,6 +296,7 @@ def search_serving_embeddings(
             model=model,
             dimension=dimension,
             limit=limit,
+            evaluation_scope=evaluation_scope,
         )
     return _sqlite_search(
         db,
@@ -282,4 +306,5 @@ def search_serving_embeddings(
         model=model,
         dimension=dimension,
         limit=limit,
+        evaluation_scope=evaluation_scope,
     )

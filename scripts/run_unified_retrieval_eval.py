@@ -19,6 +19,19 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+try:
+    from eval_run_scope import (
+        collect_p2_scope_ids,
+        filter_p2_results,
+        load_run_scope,
+    )
+except ModuleNotFoundError:  # imported as scripts.run_unified_retrieval_eval in tests
+    from scripts.eval_run_scope import (
+        collect_p2_scope_ids,
+        filter_p2_results,
+        load_run_scope,
+    )
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_EVAL_FILE = ROOT_DIR / "samples" / "unified_retrieval_eval_queries.json"
@@ -321,8 +334,23 @@ def run_eval(
     verbose: bool,
     eval_file: Path = DEFAULT_EVAL_FILE,
     expected_manifest: Path | None = None,
+    isolate_run_scope: bool = True,
 ) -> dict[str, Any]:
     queries = _load_queries(eval_file, expected_manifest)
+    run_scope: dict[str, object] | None = None
+    scope_ids: set[str] = set()
+    if expected_manifest is not None:
+        manifest_payload = json.loads(expected_manifest.read_text(encoding="utf-8"))
+        run_scope = load_run_scope(manifest_payload)
+        entries = (
+            manifest_payload.get("queries", [])
+            if isinstance(manifest_payload, dict)
+            else []
+        )
+        if run_scope is not None and isolate_run_scope:
+            scope_ids = collect_p2_scope_ids(entries)
+            if not scope_ids:
+                raise ValueError("Scoped Unified manifest contains no P2 identifiers.")
     endpoint = base_url.rstrip("/") + "/api/v2/retrieval/search"
 
     control_keyword_rates: list[float] = []
@@ -350,19 +378,24 @@ def run_eval(
     branch_status_counts: dict[str, int] = {}
     request_failure_count = 0
     failed_queries: list[dict[str, object]] = []
+    scope_filtered_result_count = 0
+    retrieval_pool_k = 20 if scope_ids else top_k
+    request_scope = str(run_scope.get("run_id")) if run_scope else "legacy"
 
     for item in queries:
         query_id = str(item.get("id", "")).strip()
         query = str(item.get("query", "")).strip()
         request_payload: dict[str, object] = {
             "query": query,
-            "top_k": top_k,
+            "top_k": retrieval_pool_k,
             "sources": item.get("sources", "all"),
             "fusion_enabled": bool(item.get("fusion_enabled", True)),
             "shadow_mode": bool(item.get("shadow_mode", True)),
             "debug": bool(item.get("debug", verbose)),
-            "request_id": f"unified-eval-{query_id}",
+            "request_id": f"unified-eval-{request_scope}-{query_id}",
         }
+        if run_scope is not None and isolate_run_scope:
+            request_payload["evaluation_scope"] = str(run_scope["namespace"])
         try:
             status, envelope = _post_json(endpoint, request_payload, timeout)
         except (URLError, TimeoutError, OSError) as exc:
@@ -384,8 +417,24 @@ def run_eval(
                 {"query_id": query_id, "reason": "invalid_results_contract"}
             )
             continue
-        control_results = [dict(result) for result in control[:top_k] if isinstance(result, dict)]
-        candidate_results = [dict(result) for result in candidate[:top_k] if isinstance(result, dict)]
+        raw_control = [dict(result) for result in control if isinstance(result, dict)]
+        raw_candidate = [dict(result) for result in candidate if isinstance(result, dict)]
+        if scope_ids:
+            scoped_control = filter_p2_results(
+                raw_control, scope_ids, keep_non_p2=True
+            )
+            scoped_candidate = filter_p2_results(
+                raw_candidate, scope_ids, keep_non_p2=True
+            )
+            scope_filtered_result_count += (
+                len(raw_control) - len(scoped_control)
+                + len(raw_candidate) - len(scoped_candidate)
+            )
+            control_results = scoped_control[:top_k]
+            candidate_results = scoped_candidate[:top_k]
+        else:
+            control_results = raw_control[:top_k]
+            candidate_results = raw_candidate[:top_k]
         is_shadow = data.get("retrieval_mode") == "shadow_control"
         if is_shadow:
             shadow_response_count += 1
@@ -587,6 +636,10 @@ def run_eval(
         if branch_latencies["fusion"]
         else None,
         "failed_queries": failed_queries,
+        "run_scope": run_scope,
+        "run_scope_isolation_enabled": bool(scope_ids),
+        "retrieval_pool_k": retrieval_pool_k,
+        "scope_filtered_result_count": scope_filtered_result_count,
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return summary
@@ -603,6 +656,11 @@ def main() -> int:
         type=Path,
         help="Optional runtime exact P1/P2 identifier labels.",
     )
+    parser.add_argument(
+        "--no-run-scope-isolation",
+        action="store_true",
+        help="Use the legacy global-corpus metric view for a scoped manifest.",
+    )
     args = parser.parse_args()
     if args.top_k < 1 or args.top_k > 20:
         parser.error("--top-k must be between 1 and 20")
@@ -615,6 +673,7 @@ def main() -> int:
             timeout=args.timeout,
             verbose=args.verbose,
             expected_manifest=args.expected_manifest,
+            isolate_run_scope=not args.no_run_scope_isolation,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         parser.error(str(exc))

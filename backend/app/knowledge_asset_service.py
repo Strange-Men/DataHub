@@ -67,6 +67,9 @@ class KnowledgeAssetService:
             )
 
         try:
+            asset_metadata = (
+                asset.metadata_json if isinstance(asset.metadata_json, dict) else {}
+            )
             return publish_knowledge_asset(
                 self.db,
                 source_snapshot_id=snapshot.id,
@@ -82,6 +85,11 @@ class KnowledgeAssetService:
                     "governance_layer": "p2_knowledge_asset",
                     "rag_synced": False,
                     "embedding_status": "not_started",
+                    **(
+                        {"eval_run_scope": asset_metadata["eval_run_scope"]}
+                        if asset_metadata.get("eval_run_scope")
+                        else {}
+                    ),
                 },
             )
         except KnowledgeSourceTraceError as exc:

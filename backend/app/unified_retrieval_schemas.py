@@ -31,6 +31,12 @@ class UnifiedRetrievalRequest(BaseModel):
     include_archived: Literal[False] = False
     debug: bool = False
     request_id: str | None = Field(default=None, max_length=160)
+    evaluation_scope: str | None = Field(
+        default=None,
+        pattern=r"^datahub-eval:[A-Za-z0-9][A-Za-z0-9._-]{5,95}$",
+        max_length=110,
+        description="Optional run-scoped P2 Eval namespace; never changes P1 control.",
+    )
 
     @field_validator("query")
     @classmethod

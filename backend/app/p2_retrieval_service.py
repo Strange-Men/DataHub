@@ -98,6 +98,7 @@ class P2RetrievalService:
             embedding_profile=embedding_profile_for_provider(self.provider),
             latency_ms=round((time.perf_counter() - started) * 1000, 3),
             request_id=payload.request_id,
+            evaluation_scope=payload.evaluation_scope,
             created_at=created_at,
             error_code=error_code,
             error_message=error_message,
@@ -108,6 +109,7 @@ class P2RetrievalService:
         trace = {
             "retrieval_id": response.retrieval_id,
             "request_id": response.request_id,
+            "evaluation_scope": response.evaluation_scope,
             "query": response.query,
             "retrieval_mode": response.retrieval_mode,
             "top_k": response.top_k,
@@ -231,7 +233,9 @@ class P2RetrievalService:
         dimension = int(self.provider.dimension)
         profile = embedding_profile_for_provider(self.provider)
 
-        serving_rows = list_serving_embedding_rows(self.db)
+        serving_rows = list_serving_embedding_rows(
+            self.db, evaluation_scope=payload.evaluation_scope
+        )
         if not serving_rows:
             response = self._response(
                 retrieval_id=retrieval_id,
@@ -331,6 +335,7 @@ class P2RetrievalService:
                 model=model_name,
                 dimension=dimension,
                 limit=candidate_limit,
+                evaluation_scope=payload.evaluation_scope,
             )
         except P2PgvectorUnavailableError:
             self._raise(
@@ -405,6 +410,7 @@ class P2RetrievalService:
                 "serving_row_count": len(profile_rows),
                 "asset_chunk_quota": 2,
                 "minimum_score": minimum_score,
+                "evaluation_scope": payload.evaluation_scope,
             },
         )
         self._log(response)

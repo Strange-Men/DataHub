@@ -20,6 +20,7 @@ import sys
 import textwrap
 import time
 import traceback
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
@@ -104,6 +105,22 @@ IMPORT_PAYLOAD: dict[str, Any] = {
     "source_name": "p1_harness_test",
     "conversations": SAMPLE_CONVERSATIONS,
 }
+
+
+def scoped_import_payload(trace_id: str) -> dict[str, Any]:
+    """Create unique P1 test corpus identifiers without changing sample meaning."""
+    suffix = "".join(ch for ch in trace_id.lower() if ch.isalnum())[-20:]
+    if len(suffix) < 6:
+        raise ValueError("trace_id is too short to create a safe run scope")
+    payload = deepcopy(IMPORT_PAYLOAD)
+    payload["source_name"] = f"p1_harness_test::{trace_id}"
+    for conversation in payload["conversations"]:
+        conversation["conversation_id"] = (
+            f"{conversation['conversation_id']}__{suffix}"
+        )
+        for message in conversation["messages"]:
+            message["message_id"] = f"{message['message_id']}__{suffix}"
+    return payload
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -301,7 +318,7 @@ class PipelineHarness:
     def step_import_sample_data(self) -> StepResult:
         result = self._call_and_record(
             "import_sample_data", "POST", "/api/sources/import-json",
-            json_data=IMPORT_PAYLOAD,
+            json_data=scoped_import_payload(self.trace_id),
             key_extractor=lambda j: {"batch_id": str((j.get("data") or {}).get("batch_id", ""))},
         )
         bid = result.key_ids.get("batch_id", "")
@@ -371,9 +388,18 @@ class PipelineHarness:
             data = resp.json()
             wrapper = data.get("data") or data
             candidates = wrapper.get("candidates", [])
-            if not candidates:
-                return self._record("approve_knowledge", "SKIP", message="No pending review candidates found")
-            c = candidates[0]
+            scoped_candidates = [
+                candidate
+                for candidate in candidates
+                if str(candidate.get("source_batch_id", "")) == self.batch_id
+            ]
+            if not scoped_candidates:
+                return self._record(
+                    "approve_knowledge",
+                    "FAIL",
+                    message="No pending candidate belongs to this Harness run.",
+                )
+            c = scoped_candidates[0]
             cid = c.get("candidate_id", "")
             if not cid:
                 return self._record("approve_knowledge", "SKIP", message="First pending candidate has no candidate_id")

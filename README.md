@@ -291,15 +291,16 @@ docker compose exec backend python scripts/run_p2_local_acceptance.py \
   --base-url http://127.0.0.1:8000 \
   --timeout 120 \
   --verbose \
+  --run-id p2-local-20260717-run-001 \
   --keep-data \
-  --output-manifest /app/.local-data/p2-eval-expected-manifest.json
+  --output-manifest /app/.local-data/p2-local-20260717-run-001.json
 
 docker compose exec backend python scripts/run_p2_rag_eval.py \
   --base-url http://127.0.0.1:8000 \
   --top-k 5 \
   --timeout 120 \
   --verbose \
-  --expected-manifest /app/.local-data/p2-eval-expected-manifest.json
+  --expected-manifest /app/.local-data/p2-local-20260717-run-001.json
 ```
 
 需要从宿主机运行时，可使用 Python 3.11+ 与被 Git 忽略的 `.local-data/`：
@@ -309,16 +310,30 @@ python scripts/run_p2_local_acceptance.py \
   --base-url http://127.0.0.1:8000 \
   --timeout 120 \
   --verbose \
+  --run-id p2-local-20260717-run-001 \
   --keep-data \
-  --output-manifest .local-data/p2-eval-expected-manifest.json
+  --output-manifest .local-data/p2-local-20260717-run-001.json
 
 python scripts/run_p2_rag_eval.py \
   --base-url http://127.0.0.1:8000 \
   --top-k 5 \
   --timeout 120 \
   --verbose \
-  --expected-manifest .local-data/p2-eval-expected-manifest.json
+  --expected-manifest .local-data/p2-local-20260717-run-001.json
 ```
+
+M9.1 manifest 会记录 `run_id`、`datahub-eval:<run_id>` namespace、trace 和当前 run 的精确 ID。提供 scoped manifest 时，P2/Unified Eval 只计算当前 run 的 P2 结果；P1 control 保持不变。旧 manifest 仍按历史全局 corpus 模式运行；需要显式负对照时可增加 `--no-run-scope-isolation`，不要为改善 Eval 指标修改 RRF 或生产排名。
+
+Eval 完成后可按 manifest 逻辑归档本次测试 Knowledge Asset：
+
+```bash
+docker compose exec backend python scripts/run_p2_local_acceptance.py \
+  --base-url http://127.0.0.1:8000 \
+  --timeout 120 \
+  --cleanup-manifest /app/.local-data/p2-local-20260717-run-001.json
+```
+
+cleanup 只接受带 `test_corpus=true` 的 Acceptance manifest，只归档其中明确列出的 ID，不删除数据库记录、素材、向量或 Docker volume，也不会清理业务 corpus。
 
 验收报告必须区分 Mock 启动成功与真实 SiliconFlow 语义验收。Archive 内容即便物理向量尚未清理，也必须零召回。
 

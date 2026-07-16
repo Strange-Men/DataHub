@@ -20,6 +20,12 @@ class CustomerOpsUnifiedRetrievalRequest(BaseModel):
     agent_session_id: str | None = Field(default=None, max_length=160)
     retrieval_strategy: Literal["p1", "unified"] = "p1"
     request_id: str | None = Field(default=None, max_length=160)
+    evaluation_scope: str | None = Field(
+        default=None,
+        pattern=r"^datahub-eval:[A-Za-z0-9][A-Za-z0-9._-]{5,95}$",
+        max_length=110,
+        description="Optional maintenance Eval namespace for the P2 branch only.",
+    )
 
     @field_validator("query")
     @classmethod
@@ -98,4 +104,3 @@ class CustomerOpsUnifiedRetrievalResponse(BaseModel):
     legacy_fallback_reason: str | None = None
     source_modes: dict[str, UnifiedRetrievalSourceMode] = Field(default_factory=dict)
     request_id: str | None = None
-

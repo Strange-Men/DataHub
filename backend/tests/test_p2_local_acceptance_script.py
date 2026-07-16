@@ -41,10 +41,17 @@ class FakePublicApiClient:
         self.counter += 1
         return f"{prefix}_{self.counter}"
 
-    def upload_asset(self, file_name: str, content: bytes) -> dict[str, object]:
+    def upload_asset(
+        self,
+        file_name: str,
+        content: bytes,
+        *,
+        eval_run_scope: str | None = None,
+    ) -> dict[str, object]:
         self.calls.append(("POST", "/api/assets/upload"))
         assert file_name.endswith(".png")
         assert content.startswith(b"\x89PNG\r\n\x1a\n")
+        assert eval_run_scope and eval_run_scope.startswith("datahub-eval:")
         return envelope({"id": self._id("asset")})
 
     def post(self, path: str, payload: dict[str, object] | None = None) -> dict[str, object]:
@@ -276,6 +283,15 @@ class P2LocalAcceptanceScriptTest(unittest.TestCase):
         self.assertEqual(summary["ready_serve_archive"]["after_archive_matched_count"], 0)
         self.assertTrue(summary["ready_serve_archive"]["embedding_physically_retained"])
         self.assertFalse(summary["version_replacement"]["old_version_retrieved"])
+        self.assertEqual(summary["run_id"], "p2-local-test-12345678")
+        self.assertEqual(
+            manifest["run_scope"]["namespace"],
+            "datahub-eval:p2-local-test-12345678",
+        )
+        self.assertTrue(manifest["run_scope"]["test_corpus"])
+        self.assertEqual(
+            len(manifest["created_resources"]["cleanup_knowledge_asset_ids"]), 4
+        )
         self.assertEqual(len(manifest["queries"]), 12)
         self.assertEqual(
             {item["query_id"] for item in manifest["queries"]},

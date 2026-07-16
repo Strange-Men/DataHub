@@ -12,6 +12,12 @@ class P2RetrievalRequest(BaseModel):
     top_k: int = Field(default=5, ge=1, le=20)
     debug: bool = False
     request_id: str | None = Field(default=None, max_length=160)
+    evaluation_scope: str | None = Field(
+        default=None,
+        pattern=r"^datahub-eval:[A-Za-z0-9][A-Za-z0-9._-]{5,95}$",
+        max_length=110,
+        description="Optional test-corpus namespace; omitted for normal retrieval.",
+    )
 
 
 class P2RetrievalResult(BaseModel):
@@ -42,6 +48,7 @@ class P2RetrievalResponse(BaseModel):
     embedding_profile: str | None = None
     latency_ms: float = Field(ge=0)
     request_id: str | None = None
+    evaluation_scope: str | None = None
     created_at: str
     error_code: str | None = None
     error_message: str | None = None

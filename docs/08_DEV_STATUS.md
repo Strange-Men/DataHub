@@ -2047,3 +2047,15 @@ This is a planning and documentation checkpoint only.
 - No business code, schema, frontend, Docker configuration, test code, README, runtime data or release tag was changed by this audit.
 - Recommendation: keep both releases sealed; start additive **P1/P2-Maintenance M9.1 Release Safety and Eval Isolation** before wider governance-API exposure or any default Unified cutover. Planned optimization is not implemented work.
 - Evidence and follow-up plans: `docs/57_P1_P2_POST_RELEASE_AUDIT_STATE.md`, `docs/58_P1_P2_POST_RELEASE_COMPLETENESS_AND_COUPLING_AUDIT.md`, `docs/59_P1_P2_SUPPLEMENTARY_TEST_PLAN.md`, and `docs/60_P1_P2_OPTIMIZATION_PLAN.md`.
+
+## P1/P2-M9.1 Eval Isolation and Release Safety
+
+- **M9.1 implementation and local Docker acceptance: COMPLETE**. Added a versioned `run_id` / `datahub-eval:<run_id>` scope across P1 Harness identifiers, P2 Acceptance metadata/manifests, P2 retrieval, Unified Eval and Agent smoke without changing RRF or normal retrieval defaults.
+- Cleanup is guarded by a validated test-corpus manifest and only archives explicit current-run Knowledge Asset IDs through the public lifecycle. Three cleanups reported `deleted_records=0`; non-test Assets remained 24 uploaded and non-test Knowledge Assets remained 13 active / 13 archived.
+- M9.1 focused tests passed 37/37. The authoritative ignored clean-export backend suite passed 387/387 with 44 warnings in 112.77 seconds. Python compileall and frontend production build passed.
+- Docker P1 Harness passed 10/10 with real SiliconFlow/pgvector and no fallback. P2 Acceptance retained Ready/Serve/Archive and superseded-version zero-recall gates.
+- Three independent P2 Evals each produced query hit 1.0, exact recall 1.0, MRR 0.95, duplicate rate 0 and archive leakage 0.
+- Three independent Unified Evals each produced candidate query hit 1.0, exact recall 1.0, MRR 0.6071, source coverage 1.0, duplicate rate 0 and archive leakage 0 while filtering three historical P2 results per run and retaining the P1 control.
+- Agent smoke passed: old/default P1-only, explicit opt-in Unified P1+P2, fallback false, archive leakage 0. All four runtime flags were restored false.
+- Secret/ignored-artifact/diff audits passed. See `docs/62_M9_1_EVAL_ISOLATION_AND_RELEASE_SAFETY_REPORT.md`.
+- M9.2 has not started.

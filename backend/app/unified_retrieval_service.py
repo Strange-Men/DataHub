@@ -459,11 +459,14 @@ class UnifiedRetrievalService:
         payload: UnifiedRetrievalRequest,
         candidate_k: int,
     ) -> BranchResult:
-        result = adapter.search(  # type: ignore[attr-defined]
-            query=payload.query,
-            top_k=candidate_k,
-            request_id=payload.request_id,
-        )
+        search_kwargs = {
+            "query": payload.query,
+            "top_k": candidate_k,
+            "request_id": payload.request_id,
+        }
+        if source == "p2":
+            search_kwargs["evaluation_scope"] = payload.evaluation_scope
+        result = adapter.search(**search_kwargs)  # type: ignore[attr-defined]
         if source != "p2" or result.status != "ok" or not result.candidates:
             return result
         try:
@@ -846,6 +849,7 @@ class UnifiedRetrievalService:
                     "raw_scores_compared": False,
                     "p2_post_filter": True,
                     "server_forced_shadow": effective_shadow,
+                    "evaluation_scope": payload.evaluation_scope,
                 }
                 if payload.debug
                 else None

@@ -8,6 +8,11 @@ from datetime import UTC, datetime
 import json
 from pathlib import Path
 
+try:
+    from eval_run_scope import collect_p2_scope_ids, load_run_scope
+except ModuleNotFoundError:  # imported as scripts.build_unified_eval_manifest in tests
+    from scripts.eval_run_scope import collect_p2_scope_ids, load_run_scope
+
 
 QUERY_MAP = {
     "unified_p2_only_001": "p2_product_001",
@@ -91,12 +96,17 @@ def build_manifest(source: dict[str, object]) -> dict[str, object]:
             )
         entries.append(entry)
 
-    return {
-        "version": "p2-m8.2-unified-runtime-v1",
+    output: dict[str, object] = {
+        "version": "p1-p2-m9.1-unified-runtime-v2",
         "source_trace_id": source.get("trace_id"),
         "generated_at": datetime.now(UTC).isoformat(),
         "queries": entries,
     }
+    run_scope = load_run_scope(source)
+    if run_scope is not None:
+        output["run_scope"] = run_scope
+        output["p2_scope_ids"] = sorted(collect_p2_scope_ids(entries))
+    return output
 
 
 def main() -> int:

@@ -30,6 +30,7 @@ def _request_id() -> str:
 async def upload_asset(
     file: Annotated[UploadFile, File(description="JPEG, PNG, or WebP material")],
     asset_type: Annotated[str, Form()] = "image",
+    eval_run_scope: Annotated[str | None, Form(max_length=110)] = None,
     db: Session = Depends(get_db),
 ) -> ApiResponse:
     limit = max_upload_bytes()
@@ -46,6 +47,7 @@ async def upload_asset(
             declared_mime_type=file.content_type,
             content=content,
             asset_type=asset_type.strip().lower(),
+            eval_run_scope=eval_run_scope,
         )
     except AssetValidationFailure as exc:
         raise HTTPException(

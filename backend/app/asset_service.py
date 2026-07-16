@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
@@ -25,6 +26,9 @@ ALLOWED_IMAGE_TYPES: dict[str, tuple[str, ...]] = {
     "image/png": (".png",),
     "image/webp": (".webp",),
 }
+_EVAL_RUN_SCOPE_PATTERN = re.compile(
+    r"^datahub-eval:[A-Za-z0-9][A-Za-z0-9._-]{5,95}$"
+)
 
 
 @dataclass(frozen=True)
@@ -47,6 +51,20 @@ def max_upload_bytes() -> int:
     except ValueError:
         return DEFAULT_MAX_UPLOAD_BYTES
     return value if value > 0 else DEFAULT_MAX_UPLOAD_BYTES
+
+
+def validate_eval_run_scope(value: str | None) -> str | None:
+    """Validate an optional test-only logical namespace stored as metadata."""
+    if value is None or not value.strip():
+        return None
+    normalized = value.strip()
+    if not _EVAL_RUN_SCOPE_PATTERN.fullmatch(normalized):
+        raise AssetValidationFailure(
+            "EVAL_RUN_SCOPE_INVALID",
+            "Evaluation run scope is invalid.",
+            400,
+        )
+    return normalized
 
 
 def _validate_file_name(file_name: str | None) -> str:
@@ -125,6 +143,7 @@ def ingest_asset(
     declared_mime_type: str | None,
     content: bytes,
     asset_type: str,
+    eval_run_scope: str | None = None,
 ) -> AssetRecord:
     safe_name, detected_mime, extension = validate_asset_upload(
         file_name=file_name,
@@ -133,6 +152,7 @@ def ingest_asset(
         asset_type=asset_type,
     )
     content_hash = hashlib.sha256(content).hexdigest()
+    normalized_eval_scope = validate_eval_run_scope(eval_run_scope)
     duplicate = get_asset_by_hash(db, content_hash)
     if duplicate is not None:
         raise DuplicateAssetFailure(duplicate.id)
@@ -156,6 +176,11 @@ def ingest_asset(
                 "file_extension": extension,
                 "hash_algorithm": "sha256",
                 "validation_version": "p2-m1-v1",
+                **(
+                    {"eval_run_scope": normalized_eval_scope}
+                    if normalized_eval_scope
+                    else {}
+                ),
             },
         )
     except DuplicateAssetHashError as exc:

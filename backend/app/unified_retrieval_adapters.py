@@ -175,6 +175,7 @@ class P2RetrievalAdapter:
         query: str,
         top_k: int,
         request_id: str | None = None,
+        evaluation_scope: str | None = None,
     ) -> BranchResult:
         started = time.perf_counter()
         db = None
@@ -186,6 +187,7 @@ class P2RetrievalAdapter:
                     top_k=top_k,
                     debug=False,
                     request_id=request_id,
+                    evaluation_scope=evaluation_scope,
                 )
             )
             candidates = tuple(

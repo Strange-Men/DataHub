@@ -2172,3 +2172,30 @@ Audit conclusion:
 - **Release safety revalidation: PASS**; no P0 defect and no emergency tag rollback are recommended.
 - **Maintenance recommended** before broader exposure: authorization/RBAC, run-scoped Eval isolation, real PostgreSQL failure/concurrency coverage, no-answer calibration, and frontend effectiveness/E2E.
 - P1/P2 release closure remains historical fact; Render Deployment Acceptance remains **BLOCKED** and is not changed by this local Docker audit.
+
+## P1/P2-M9.1 Eval Isolation and Release Safety
+
+- [x] Preserve all interrupted M9.1 worktree files and synchronized `main` baseline.
+- [x] Add strict, optional run scope with `run_id`, namespace, trace, creator and `test_corpus=true`.
+- [x] Propagate P2 scope from Asset metadata to Knowledge Asset and P2/Unified/Agent Eval requests without changing normal retrieval or RRF.
+- [x] Keep legacy manifests/global-corpus mode compatible and expose an explicit negative-control switch.
+- [x] Make P1 Harness identifiers unique per run without changing its P1-only contract.
+- [x] Restrict cleanup to explicit IDs in a validated Acceptance test manifest; use logical archive only and delete zero records.
+- [x] Replace the reload-sensitive exception assertion with runtime module-class lookup; retain exact exception and `EVAL_RUN_SCOPE_INVALID` assertions; use no `pytest.raises(Exception)`.
+- [x] Pass M9.1 focused tests: 37 passed.
+- [x] Pass authoritative ignored clean-export backend suite: 387 passed, 44 warnings, 112.77 seconds.
+- [x] Pass compileall and frontend production build (49 modules).
+- [x] Pass Docker P1 Harness 10/10 and one real-SiliconFlow P2 Acceptance chain.
+- [x] Pass three independent P2 Evals: recall 1.0, query hit 1.0, MRR 0.95, duplicate rate 0, archive leakage 0.
+- [x] Pass three independent Unified Evals: candidate recall/query hit 1.0, MRR 0.6071, coverage 1.0, duplicate rate 0, archive leakage 0.
+- [x] Pass Agent smoke: legacy/default P1, explicit opt-in Unified P1+P2, fallback false, archive leakage 0.
+- [x] Prove cleanup leaves non-test P2 counts/states and P1 physical index counts unchanged.
+- [x] Restore all four Unified/P2/Shadow/Agent flags false.
+- [x] Keep runtime manifests, clean export, frontend dist, local data and secrets outside Git; pass `git diff --check` and secret scan.
+- [x] Add `docs/62_M9_1_EVAL_ISOLATION_AND_RELEASE_SAFETY_REPORT.md` and update M9.1 status/README usage.
+
+Phase boundary:
+
+- **M9.1: PASS and ready for the audited phase commit/push.**
+- No tag is created.
+- M9.2 authentication/RBAC has not started.

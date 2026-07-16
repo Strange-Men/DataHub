@@ -246,6 +246,7 @@ class CustomerOpsUnifiedRetrievalService:
                     include_archived=False,
                     debug=False,
                     request_id=payload.request_id,
+                    evaluation_scope=payload.evaluation_scope,
                 )
             )
             unified_id = unified.retrieval_id
