@@ -66,6 +66,7 @@ The existing console layout and governance pages were retained. A small Chinese 
 - password-type “访问令牌” input;
 - apply and clear actions;
 - role resolution through `GET /api/auth/me`;
+- page-refresh role revalidation through `GET /api/auth/me`; only the Token, never a role claim, is retained in `sessionStorage`;
 - current role display;
 - common API client Authorization Header injection;
 - current-tab-only `sessionStorage`;
@@ -119,3 +120,11 @@ The full suite initially exposed order-dependent database access in the newly ad
 Opaque environment Tokens are an operator boundary, not a complete identity lifecycle: there is no per-user audit identity, expiry, rotation protocol, JWT/OIDC federation or centralized secret manager integration. OpenAPI/docs remain public by ADR decision. Frontend role-aware button visibility and the complete Chinese governance workflow are intentionally deferred.
 
 M9.3 may build role-aware usability on the central role/permission contract after this M9.2 commit is pushed. M9.3 has not started in this phase.
+
+## 11. M9.2.1 interruption audit
+
+The post-interruption audit found no missing backend route protection, permission-matrix error, 401/403 drift, Token disclosure, Docker configuration drift or Agent/Unified compatibility change. It did confirm one frontend trust issue: the initial M9.2 UI cached and displayed a role value from editable `sessionStorage` until a Token was manually reapplied. Backend RBAC remained authoritative, but the label could be forged locally.
+
+The minimal M9.2.1 correction removes client role persistence. On initial load, a retained Token is revalidated through `/api/auth/me`; the UI accepts only one of the five server-returned roles and clears an invalid/unverifiable session. Focused/static coverage now rejects local role caching and requires refresh-time server validation. No governance workflow, database, retrieval, RRF, Agent default or Unified opt-in behavior changed.
+
+Audit verification passed 38 M9.2, CustomerOpsAgent and Unified tests with two existing FastAPI startup deprecation warnings. The frontend TypeScript/Vite production build passed with 50 modules transformed. The required clean export completed with 410 passed and one unrelated timeout: the existing rebuild CLI test called the live real-provider Docker backend on `127.0.0.1:8000` and exceeded its fixed 30-second subprocess limit. With that backend temporarily stopped, the exact failed test passed in 2.42 seconds; the backend was then restored healthy. No unrelated rebuild, provider or retrieval code was changed, and the pushed M9.2 baseline remains 411/411.

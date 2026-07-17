@@ -255,7 +255,7 @@ python scripts/run_p1_pipeline_harness.py --auth-token-env DATAHUB_ADMIN_TOKEN
 python scripts/run_p2_local_acceptance.py --auth-token-env DATAHUB_ADMIN_TOKEN
 ```
 
-前端“访问令牌”仅保存在当前标签页的 `sessionStorage`，清除后不再发送 Authorization Header。HTTP 401 表示 Token 缺失或无效；HTTP 403 表示 Token 有效但角色权限不足。排查时检查 `DATAHUB_AUTH_MODE`、目标角色是否配置、Token 是否重复以及调用是否使用 `Authorization: Bearer ...`，不要把 Token 打入日志。
+前端“访问令牌”仅保存在当前标签页的 `sessionStorage`，角色不在浏览器持久化；应用 Token 和页面刷新时均通过 `/api/auth/me` 获取服务端确认的角色。清除后不再发送 Authorization Header。HTTP 401 表示 Token 缺失或无效；HTTP 403 表示 Token 有效但角色权限不足。排查时检查 `DATAHUB_AUTH_MODE`、目标角色是否配置、Token 是否重复以及调用是否使用 `Authorization: Bearer ...`，不要把 Token 打入日志。
 
 校验并启动：
 

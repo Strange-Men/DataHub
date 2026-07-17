@@ -5,7 +5,8 @@ import {
   apiPath,
   authErrorMessage,
   clearAuthSession,
-  getStoredRole,
+  getAccessToken,
+  isAuthRole,
   setAuthSession,
   type AuthRole,
 } from "../api";
@@ -22,7 +23,7 @@ const ROLE_LABELS: Record<AuthRole, string> = {
 
 export function AuthControls({ onApplied }: { onApplied: () => void }) {
   const [tokenInput, setTokenInput] = useState("");
-  const [role, setRole] = useState<AuthRole | null>(() => getStoredRole());
+  const [role, setRole] = useState<AuthRole | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -32,6 +33,37 @@ export function AuthControls({ onApplied }: { onApplied: () => void }) {
     };
     window.addEventListener(AUTH_ERROR_EVENT, showAuthError);
     return () => window.removeEventListener(AUTH_ERROR_EVENT, showAuthError);
+  }, []);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    let cancelled = false;
+    async function restoreVerifiedRole() {
+      try {
+        const response = await apiFetch(apiPath("/api/auth/me"));
+        const body = await response.json();
+        const resolvedRole = body?.data?.role;
+        if (!response.ok || !body.success || !isAuthRole(resolvedRole)) {
+          clearAuthSession();
+          if (!cancelled) setRole(null);
+          return;
+        }
+        if (!cancelled) setRole(resolvedRole);
+      } catch {
+        clearAuthSession();
+        if (!cancelled) {
+          setRole(null);
+          setMessage("无法连接后端验证访问令牌。");
+        }
+      }
+    }
+
+    void restoreVerifiedRole();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function applyToken() {
@@ -46,14 +78,13 @@ export function AuthControls({ onApplied }: { onApplied: () => void }) {
     try {
       const response = await apiFetch(apiPath("/api/auth/me"));
       const body = await response.json();
-      if (!response.ok || !body.success) {
+      const resolvedRole = body?.data?.role;
+      if (!response.ok || !body.success || !isAuthRole(resolvedRole)) {
         clearAuthSession();
         setRole(null);
         setMessage(authErrorMessage(response.status) || "访问令牌验证失败。");
         return;
       }
-      const resolvedRole = body.data.role as AuthRole;
-      setAuthSession(token, resolvedRole);
       setRole(resolvedRole);
       setTokenInput("");
       setMessage(`令牌已应用，当前角色：${ROLE_LABELS[resolvedRole] || resolvedRole}`);

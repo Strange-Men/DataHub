@@ -2071,3 +2071,9 @@ This is a planning and documentation checkpoint only.
 - Runtime random Tokens were never written to `.env`, source, logs or Git. Final Compose state was restored to disabled with zero configured role Tokens and all services healthy.
 - ADR: `docs/63_ADR_GOVERNANCE_AUTH_RBAC.md`. Report: `docs/64_M9_2_GOVERNANCE_AUTH_RBAC_REPORT.md`.
 - M9.3 has not started.
+
+### M9.2.1 interruption audit
+
+- Confirmed no missing backend route protection, permission-matrix drift, 401/403 regression, Secret exposure, Docker drift, or Agent/Unified behavior change.
+- Fixed one frontend trust issue: the role label is no longer restored from editable browser state. Only the Token remains in `sessionStorage`; initial load and Token apply resolve an allow-listed role through `/api/auth/me`.
+- M9.2 focused plus CustomerOpsAgent/Unified compatibility tests passed 38/38; frontend production build passed. M9.3 remains not started.

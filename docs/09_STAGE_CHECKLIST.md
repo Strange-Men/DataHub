@@ -2225,3 +2225,12 @@ Phase boundary:
 - **M9.2: PASS and ready for the audited phase commit/push.**
 - No tag is created.
 - M9.3 has not started.
+
+## P1/P2-M9.2.1 Interruption Audit
+
+- [x] Verify clean synchronized `main` at the pushed M9.2 commit and unchanged historical tags.
+- [x] Enumerate every M9.2 FastAPI route dependency; confirm no public governance/retrieval/write route.
+- [x] Confirm the centralized role matrix, stable 401/403 codes, constant-time comparison, duplicate-Token failure and disabled/token boundaries.
+- [x] Remove persisted client role claims and revalidate the displayed role through `/api/auth/me` on page refresh.
+- [x] Pass 38 M9.2/CustomerOpsAgent/Unified tests and frontend production build.
+- [x] Keep M9.3, database, retrieval, RRF, Agent default and Unified opt-in behavior unchanged.

@@ -54,7 +54,7 @@ Existing `X-DataHub-Client` checks remain in addition to Bearer authorization fo
 - Tokens exist only in runtime environment variables and frontend `sessionStorage`.
 - Tokens are not accepted in query parameters, persisted in the database, printed in logs, embedded in source/build args, or returned in errors.
 - Docker Compose only passes through operator-supplied variables. Token mode with no configured tokens or duplicate values fails startup.
-- The frontend adds `Authorization: Bearer ...` in the common API client, maps 401/403 to stable Chinese guidance, displays the current role from local operator selection, and clears the session token explicitly.
+- The frontend adds `Authorization: Bearer ...` in the common API client, maps 401/403 to stable Chinese guidance, stores only the Token in `sessionStorage`, and resolves the displayed role from `/api/auth/me` after entry and page refresh. It never trusts a client-selected or cached role.
 
 ## Rejected alternatives
 
