@@ -2077,3 +2077,15 @@ This is a planning and documentation checkpoint only.
 - Confirmed no missing backend route protection, permission-matrix drift, 401/403 regression, Secret exposure, Docker drift, or Agent/Unified behavior change.
 - Fixed one frontend trust issue: the role label is no longer restored from editable browser state. Only the Token remains in `sessionStorage`; initial load and Token apply resolve an allow-listed role through `/api/auth/me`.
 - M9.2 focused plus CustomerOpsAgent/Unified compatibility tests passed 38/38; frontend production build passed. M9.3 remains not started.
+
+## P1/P2-M9.3 Frontend Governance Usability
+
+- **M9.3 implementation and local Docker browser acceptance: COMPLETE**. The Chinese console now uses task-oriented P1, P2, retrieval-validation and system-status navigation.
+- `/api/auth/me` remains the only role source. Five-role UX centrally controls visibility and disabled-state explanations while backend RBAC remains authoritative; Token storage remains session-only.
+- P1 exposes the real import/clean/revise/candidate/review/RAG sync/Agent/Bad Case flow. P2 exposes the real upload/Extraction/Review/Snapshot/publish/index/embed/ready/serve/retrieval/archive/Source Trace flow.
+- Ready and serving are visibly distinct; Serve, Archive, Reject, RAG sync and version replacement have impact-specific Chinese confirmation. Full vectors, Secrets and backend stacks are not displayed.
+- P3/P4 preview controls were removed; both remain disabled with an explicit not-open reason.
+- Focused frontend/Auth/Agent/P2 contract regression passed 99/99 with 26 warnings; frontend production build passed with 54 modules.
+- Retained-volume Docker browser checks covered admin, cleaner, reviewer, service and viewer, Token clear/reload, Chinese 401, role-denial guidance, real service Retrieval, serving/archived display, Source Trace, P3/P4 disabled and an error-free console.
+- Compose was restored to `DATAHUB_AUTH_MODE=disabled` with zero role Tokens; backend/frontend/PostgreSQL are healthy. No backend business code, schema, retrieval, RRF, Agent default or Unified opt-in change was made.
+- Report: `docs/65_M9_3_FRONTEND_GOVERNANCE_USABILITY_REPORT.md`. M9.4 has not started.

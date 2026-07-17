@@ -1,5 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { apiFetch as fetch, apiPath } from "../api";
+import { useAuth } from "../auth/AuthContext";
+import { apiErrorMessage, can, FORBIDDEN_MESSAGE, permissionHint, ROLE_LABELS, type FrontendPermission } from "../governance";
 import type {
   Asset,
   AssetExtraction,
@@ -19,11 +21,12 @@ function formatBytes(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
-function apiError(body: any, fallback: string): string {
-  return body?.detail?.message || body?.error?.message || fallback;
+function apiError(body: any, status: number, fallback: string): string {
+  return apiErrorMessage(body, status, fallback);
 }
 
 export function P2MaterialCenter() {
+  const { role } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [pagination, setPagination] = useState<AssetPagination>({
     page: 1,
@@ -36,6 +39,7 @@ export function P2MaterialCenter() {
   const [snapshots, setSnapshots] = useState<AssetReviewSnapshot[]>([]);
   const [knowledgeAssets, setKnowledgeAssets] = useState<KnowledgeAsset[]>([]);
   const [knowledgeIndexEntries, setKnowledgeIndexEntries] = useState<KnowledgeIndexEntry[]>([]);
+  const [embeddedIndexIds, setEmbeddedIndexIds] = useState<Set<string>>(new Set());
   const [activeReview, setActiveReview] = useState<ExtractionReview | null>(null);
   const [reviewer, setReviewer] = useState("");
   const [reviewComment, setReviewComment] = useState("");
@@ -44,12 +48,24 @@ export function P2MaterialCenter() {
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
   const [isKnowledgeSubmitting, setIsKnowledgeSubmitting] = useState(false);
   const [isIndexSubmitting, setIsIndexSubmitting] = useState(false);
+  const [isExtractionSubmitting, setIsExtractionSubmitting] = useState(false);
+  const [extractType, setExtractType] = useState<"ocr" | "caption" | "metadata">("ocr");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function allowed(permission: FrontendPermission): boolean {
+    return can(role, permission);
+  }
+
+  function guard(permission: FrontendPermission): boolean {
+    if (allowed(permission)) return true;
+    setError(FORBIDDEN_MESSAGE);
+    return false;
+  }
 
   useEffect(() => {
     void loadAssets(1);
@@ -62,7 +78,7 @@ export function P2MaterialCenter() {
       const response = await fetch(apiPath(`/api/assets?page=${page}&page_size=${PAGE_SIZE}`));
       const body = await response.json();
       if (!response.ok || !body.success) {
-        throw new Error(apiError(body, "素材列表加载失败。"));
+        throw new Error(apiError(body, response.status, "素材列表加载失败。"));
       }
       setAssets(body.data.assets);
       setPagination(body.data.pagination);
@@ -75,6 +91,7 @@ export function P2MaterialCenter() {
 
   async function uploadAsset(event: FormEvent) {
     event.preventDefault();
+    if (!guard("p2.asset_upload")) return;
     if (!selectedFile) {
       setError("请先选择 JPEG、PNG 或 WebP 图片。");
       return;
@@ -103,13 +120,14 @@ export function P2MaterialCenter() {
           }
           throw new Error("该文件已存在。");
         }
-        throw new Error(apiError(body, "素材上传失败。"));
+        throw new Error(apiError(body, response.status, "素材上传失败。"));
       }
       setSelectedAsset(body.data);
       setExtractions([]);
       setSnapshots([]);
       setKnowledgeAssets([]);
       setKnowledgeIndexEntries([]);
+      setEmbeddedIndexIds(new Set());
       setActiveReview(null);
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -128,7 +146,7 @@ export function P2MaterialCenter() {
       const response = await fetch(apiPath(`/api/assets/${assetId}`));
       const body = await response.json();
       if (!response.ok || !body.success) {
-        throw new Error(apiError(body, "素材详情加载失败。"));
+        throw new Error(apiError(body, response.status, "素材详情加载失败。"));
       }
       setSelectedAsset(body.data);
       await loadReviewWorkspace(assetId);
@@ -153,21 +171,31 @@ export function P2MaterialCenter() {
         indexResponse.json(),
       ]);
       if (!extractionResponse.ok || !extractionBody.success) {
-        throw new Error(apiError(extractionBody, "Extraction 结果加载失败。"));
+        throw new Error(apiError(extractionBody, extractionResponse.status, "Extraction 结果加载失败。"));
       }
       if (!snapshotResponse.ok || !snapshotBody.success) {
-        throw new Error(apiError(snapshotBody, "审核快照加载失败。"));
+        throw new Error(apiError(snapshotBody, snapshotResponse.status, "审核快照加载失败。"));
       }
       if (!knowledgeResponse.ok || !knowledgeBody.success) {
-        throw new Error(apiError(knowledgeBody, "Knowledge Asset 加载失败。"));
+        throw new Error(apiError(knowledgeBody, knowledgeResponse.status, "Knowledge Asset 加载失败。"));
       }
       if (!indexResponse.ok || !indexBody.success) {
-        throw new Error(apiError(indexBody, "Knowledge Index 状态加载失败。"));
+        throw new Error(apiError(indexBody, indexResponse.status, "Knowledge Index 状态加载失败。"));
       }
       setExtractions(extractionBody.data.extractions);
       setSnapshots(snapshotBody.data.snapshots);
       setKnowledgeAssets(knowledgeBody.data.knowledge_assets);
       setKnowledgeIndexEntries(indexBody.data.index_entries);
+      const activeIndexes = (indexBody.data.index_entries as KnowledgeIndexEntry[]).filter(
+        (item) => item.status !== "archived",
+      );
+      const embeddingChecks = await Promise.all(activeIndexes.map(async (item) => {
+        const response = await fetch(apiPath(`/api/knowledge-embeddings?page=1&page_size=1&index_entry_id=${item.id}`));
+        if (!response.ok) return null;
+        const body = await response.json();
+        return body?.success && body?.data?.pagination?.total > 0 ? item.id : null;
+      }));
+      setEmbeddedIndexIds(new Set(embeddingChecks.filter((item): item is string => Boolean(item))));
       setActiveReview(null);
       setReviewer("");
       setReviewComment("");
@@ -181,7 +209,7 @@ export function P2MaterialCenter() {
     const response = await fetch(apiPath(`/api/reviews/${reviewId}`));
     const body = await response.json();
     if (!response.ok || !body.success) {
-      throw new Error(apiError(body, "审核任务加载失败。"));
+      throw new Error(apiError(body, response.status, "审核任务加载失败。"));
     }
     const review = body.data as ExtractionReview;
     setActiveReview(review);
@@ -192,6 +220,7 @@ export function P2MaterialCenter() {
 
   async function startReview(extraction: AssetExtraction) {
     if (!selectedAsset) return;
+    if (!guard("p2.revise")) return;
     setIsReviewSubmitting(true);
     setError("");
     setMessage("");
@@ -211,7 +240,7 @@ export function P2MaterialCenter() {
             return;
           }
         }
-        throw new Error(apiError(body, "审核任务创建失败。"));
+        throw new Error(apiError(body, response.status, "审核任务创建失败。"));
       }
       const review = body.data as ExtractionReview;
       setActiveReview(review);
@@ -228,6 +257,8 @@ export function P2MaterialCenter() {
 
   async function submitReview(decision: Exclude<ExtractionReviewStatus, "pending">) {
     if (!selectedAsset || !activeReview) return;
+    if (!guard("p2.review")) return;
+    if (decision === "rejected" && !window.confirm("拒绝后本次审核不会生成快照，内容也不会进入发布链。是否继续？")) return;
     if (!reviewer.trim()) {
       setError("请填写审核人。");
       return;
@@ -248,7 +279,7 @@ export function P2MaterialCenter() {
       });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        throw new Error(apiError(body, "审核提交失败。"));
+        throw new Error(apiError(body, response.status, "审核提交失败。"));
       }
       setActiveReview(body.data.review);
       const snapshotResponse = await fetch(apiPath(`/api/assets/${selectedAsset.id}/snapshots`));
@@ -271,6 +302,8 @@ export function P2MaterialCenter() {
 
   async function publishSnapshot(snapshotId: string) {
     if (!selectedAsset) return;
+    if (!guard("p2.publish")) return;
+    if (!window.confirm("发布新知识版本可能使旧版本进入归档状态。来源链和历史记录会保留。是否继续？")) return;
     setIsKnowledgeSubmitting(true);
     setError("");
     setMessage("");
@@ -280,7 +313,7 @@ export function P2MaterialCenter() {
       });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        throw new Error(apiError(body, "Knowledge Asset 发布失败。"));
+        throw new Error(apiError(body, response.status, "Knowledge Asset 发布失败。"));
       }
       await loadReviewWorkspace(selectedAsset.id);
       setMessage(
@@ -297,6 +330,8 @@ export function P2MaterialCenter() {
 
   async function archiveKnowledgeAsset(knowledgeAssetId: string) {
     if (!selectedAsset) return;
+    if (!guard("p2.archive")) return;
+    if (!window.confirm("归档后该知识将立即停止被检索，历史记录仍会保留。是否继续？")) return;
     setIsKnowledgeSubmitting(true);
     setError("");
     setMessage("");
@@ -306,7 +341,7 @@ export function P2MaterialCenter() {
       });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        throw new Error(apiError(body, "Knowledge Asset 归档失败。"));
+        throw new Error(apiError(body, response.status, "Knowledge Asset 归档失败。"));
       }
       await loadReviewWorkspace(selectedAsset.id);
       setMessage("Knowledge Asset 已归档，历史内容和来源链保持不变。");
@@ -319,6 +354,7 @@ export function P2MaterialCenter() {
 
   async function createKnowledgeIndex(knowledgeAssetId: string) {
     if (!selectedAsset) return;
+    if (!guard("p2.index")) return;
     setIsIndexSubmitting(true);
     setError("");
     setMessage("");
@@ -328,7 +364,7 @@ export function P2MaterialCenter() {
       });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        throw new Error(apiError(body, "Knowledge Index 创建失败。"));
+        throw new Error(apiError(body, response.status, "Knowledge Index 创建失败。"));
       }
       await loadReviewWorkspace(selectedAsset.id);
       setMessage(
@@ -345,6 +381,8 @@ export function P2MaterialCenter() {
 
   async function archiveKnowledgeIndex(indexEntryId: string) {
     if (!selectedAsset) return;
+    if (!guard("p2.archive")) return;
+    if (!window.confirm("归档后该索引将立即停止被检索，不可变 Chunk 仅保留用于审计。是否继续？")) return;
     setIsIndexSubmitting(true);
     setError("");
     setMessage("");
@@ -354,7 +392,7 @@ export function P2MaterialCenter() {
       });
       const body = await response.json();
       if (!response.ok || !body.success) {
-        throw new Error(apiError(body, "Knowledge Index 归档失败。"));
+        throw new Error(apiError(body, response.status, "Knowledge Index 归档失败。"));
       }
       await loadReviewWorkspace(selectedAsset.id);
       setMessage("Index Entry 已归档；不可变文本 Chunk 仅保留审计，不提供检索。 ");
@@ -365,23 +403,104 @@ export function P2MaterialCenter() {
     }
   }
 
+  async function startExtraction() {
+    if (!selectedAsset || !guard("p2.extract")) return;
+    setIsExtractionSubmitting(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(apiPath(`/api/assets/${selectedAsset.id}/extract`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extract_type: extractType, provider: "mock" }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(apiError(body, response.status, "Extraction 执行失败。"));
+      }
+      await loadReviewWorkspace(selectedAsset.id);
+      setMessage(`${extractType.toUpperCase()} Extraction 已完成并刷新结果。`);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Extraction 执行失败。");
+    } finally {
+      setIsExtractionSubmitting(false);
+    }
+  }
+
+  async function buildEmbedding(indexEntryId: string) {
+    if (!selectedAsset || !guard("p2.embed")) return;
+    setIsIndexSubmitting(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(apiPath(`/api/knowledge-index/${indexEntryId}/embed`), { method: "POST" });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(apiError(body, response.status, "向量生成失败。"));
+      }
+      await loadReviewWorkspace(selectedAsset.id);
+      setMessage("向量已生成，尚未开放检索。请确认状态为 ready 后再显式 Serve。");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "向量生成失败。");
+    } finally {
+      setIsIndexSubmitting(false);
+    }
+  }
+
+  async function serveKnowledgeIndex(indexEntryId: string) {
+    if (!selectedAsset || !guard("p2.serve")) return;
+    if (!window.confirm("Serve 后该知识将立即开放检索。请确认内容、审核快照和来源链均正确。是否继续？")) return;
+    setIsIndexSubmitting(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(apiPath(`/api/knowledge-index/${indexEntryId}/serve`), { method: "POST" });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(apiError(body, response.status, "开放检索失败。"));
+      }
+      await loadReviewWorkspace(selectedAsset.id);
+      setMessage("已开放检索。可前往“检索验证”页面验证 P2 召回和来源链。");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "开放检索失败。");
+    } finally {
+      setIsIndexSubmitting(false);
+    }
+  }
+
   return (
     <div className="p2-page">
       <div className="page-hero">
-        <h1>AI 素材中心</h1>
-        <p>接入素材、查看 Extraction，并用人工决策形成可信且不可变的审核快照。</p>
+        <h1>P2 多模态知识治理</h1>
+        <p>按真实状态完成素材上传、Extraction、Review、Snapshot、发布、Index、Embed、Serve、检索验证与归档。</p>
       </div>
 
       <div className="roadmap-banner material-boundary-banner">
         <span className="roadmap-icon">P2</span>
         <div>
-          <strong>Knowledge Index Foundation</strong>
-          <p>P2-M6 只建立 Index Entry 与确定性文本 Chunk。Embedding、向量检索、统一检索和 Agent 调用均未接入。</p>
+          <strong>真实治理链已接入</strong>
+          <p>ready 表示“向量已生成，尚未开放检索”；只有显式 Serve 后才进入 serving。归档会立即停止召回并保留完整来源链。</p>
         </div>
+      </div>
+
+      <div className="flow-strip" aria-label="P2 治理步骤">
+        {['上传', 'Extraction', '修订与审核', 'Snapshot', '发布', 'Index', 'Embed', 'Serve', 'Retrieval', 'Archive'].map((step, index) => (
+          <span key={step}><b>{index + 1}</b>{step}</span>
+        ))}
       </div>
 
       {message && <div className="feedback success">{message}</div>}
       {error && <div className="feedback error">{error}</div>}
+      <div className="role-scope-banner">
+        <strong>当前角色：{role ? ROLE_LABELS[role] : "未认证"}</strong>
+        <span>
+          {role === "admin" ? "可执行全部 P2 治理操作。" :
+            role === "cleaner" ? "可上传、Extraction 与创建修订任务；审核、发布、Embed、Serve、Archive 无权限。" :
+            role === "reviewer" ? "可查看并审核；上传、Embed、Serve、Archive 无权限。" :
+            role === "service" ? "仅提供 Retrieval、Agent 与 Bad Case 服务入口；人工治理写操作无权限。" :
+            role === "viewer" ? "只读；所有写操作均无权限。" : "请应用有效访问令牌以确认权限。"}
+        </span>
+      </div>
 
       <section className="material-panel">
         <div className="material-panel-header">
@@ -402,10 +521,16 @@ export function P2MaterialCenter() {
           </label>
           <div className="material-upload-actions">
             <span>{selectedFile ? `${selectedFile.name} · ${formatBytes(selectedFile.size)}` : "尚未选择文件"}</span>
-            <button className="btn-primary" type="submit" disabled={isUploading || !selectedFile}>
+            <button
+              className="btn-primary"
+              type="submit"
+              disabled={isUploading || !selectedFile || !allowed("p2.asset_upload")}
+              title={permissionHint(role, "p2.asset_upload")}
+            >
               {isUploading ? "上传中..." : "上传素材"}
             </button>
           </div>
+          {!allowed("p2.asset_upload") && <small className="permission-hint">{FORBIDDEN_MESSAGE}</small>}
         </form>
       </section>
 
@@ -465,18 +590,40 @@ export function P2MaterialCenter() {
             <p className="empty-desc">从上方列表进入详情。</p>
           </div>
         ) : (
-          <dl className="asset-detail-grid">
-            <div><dt>Asset ID</dt><dd>{selectedAsset.id}</dd></div>
-            <div><dt>文件名</dt><dd>{selectedAsset.file_name}</dd></div>
-            <div><dt>素材类型</dt><dd>{selectedAsset.asset_type}</dd></div>
-            <div><dt>MIME</dt><dd>{selectedAsset.mime_type}</dd></div>
-            <div><dt>大小</dt><dd>{formatBytes(selectedAsset.size)}</dd></div>
-            <div><dt>状态</dt><dd>{selectedAsset.status}</dd></div>
-            <div className="asset-detail-wide"><dt>SHA-256</dt><dd>{selectedAsset.hash}</dd></div>
-            <div className="asset-detail-wide"><dt>Storage URI</dt><dd>{selectedAsset.storage_uri}</dd></div>
-            <div><dt>创建时间</dt><dd>{selectedAsset.created_at}</dd></div>
-            <div><dt>更新时间</dt><dd>{selectedAsset.updated_at}</dd></div>
-          </dl>
+          <>
+            <dl className="asset-detail-grid">
+              <div><dt>Asset ID</dt><dd>{selectedAsset.id}</dd></div>
+              <div><dt>文件名</dt><dd>{selectedAsset.file_name}</dd></div>
+              <div><dt>素材类型</dt><dd>{selectedAsset.asset_type}</dd></div>
+              <div><dt>MIME</dt><dd>{selectedAsset.mime_type}</dd></div>
+              <div><dt>大小</dt><dd>{formatBytes(selectedAsset.size)}</dd></div>
+              <div><dt>状态</dt><dd>{selectedAsset.status}</dd></div>
+              <div className="asset-detail-wide"><dt>SHA-256</dt><dd>{selectedAsset.hash}</dd></div>
+              <div className="asset-detail-wide"><dt>Storage URI</dt><dd>{selectedAsset.storage_uri}</dd></div>
+              <div><dt>创建时间</dt><dd>{selectedAsset.created_at}</dd></div>
+              <div><dt>更新时间</dt><dd>{selectedAsset.updated_at}</dd></div>
+            </dl>
+            <div className="inline-action-panel">
+              <label>
+                Extraction 类型
+                <select value={extractType} onChange={(event) => setExtractType(event.target.value as typeof extractType)} disabled={isExtractionSubmitting}>
+                  <option value="ocr">OCR 文字</option>
+                  <option value="caption">Caption 描述</option>
+                  <option value="metadata">Metadata 元数据</option>
+                </select>
+              </label>
+              <button
+                className="btn-primary"
+                type="button"
+                onClick={() => void startExtraction()}
+                disabled={isExtractionSubmitting || !allowed("p2.extract")}
+                title={permissionHint(role, "p2.extract")}
+              >
+                {isExtractionSubmitting ? "Extraction 执行中..." : "发起 Extraction"}
+              </button>
+              {!allowed("p2.extract") && <small className="permission-hint">{FORBIDDEN_MESSAGE}</small>}
+            </div>
+          </>
         )}
       </section>
 
@@ -511,7 +658,7 @@ export function P2MaterialCenter() {
               <h3>Extraction 结果</h3>
               {extractions.length === 0 ? (
                 <div className="review-empty-note">
-                  当前素材还没有 Extraction 结果。P2-M3 不会自动调用 OCR 或 Caption。
+                  当前素材还没有 Extraction 结果。请在素材详情中选择类型并发起真实 Extraction。
                 </div>
               ) : (
                 <div className="review-extraction-list">
@@ -525,7 +672,8 @@ export function P2MaterialCenter() {
                       <button
                         className="btn-secondary btn-sm"
                         type="button"
-                        disabled={isReviewSubmitting}
+                        disabled={isReviewSubmitting || !allowed("p2.revise")}
+                        title={permissionHint(role, "p2.revise")}
                         onClick={() => void startReview(extraction)}
                       >
                         创建 / 恢复审核
@@ -557,7 +705,7 @@ export function P2MaterialCenter() {
                     <textarea
                       value={revisedContent}
                       rows={7}
-                      disabled={activeReview.review_status !== "pending" || isReviewSubmitting}
+                      disabled={activeReview.review_status !== "pending" || isReviewSubmitting || !allowed("p2.review")}
                       onChange={(event) => setRevisedContent(event.target.value)}
                     />
                   </label>
@@ -566,7 +714,7 @@ export function P2MaterialCenter() {
                       审核人
                       <input
                         value={reviewer}
-                        disabled={activeReview.review_status !== "pending" || isReviewSubmitting}
+                        disabled={activeReview.review_status !== "pending" || isReviewSubmitting || !allowed("p2.review")}
                         onChange={(event) => setReviewer(event.target.value)}
                         placeholder="reviewer"
                       />
@@ -575,7 +723,7 @@ export function P2MaterialCenter() {
                       审核说明
                       <input
                         value={reviewComment}
-                        disabled={activeReview.review_status !== "pending" || isReviewSubmitting}
+                        disabled={activeReview.review_status !== "pending" || isReviewSubmitting || !allowed("p2.review")}
                         onChange={(event) => setReviewComment(event.target.value)}
                         placeholder="可选"
                       />
@@ -583,9 +731,9 @@ export function P2MaterialCenter() {
                   </div>
                   {activeReview.review_status === "pending" ? (
                     <div className="review-decision-actions">
-                      <button className="btn-primary" type="button" disabled={isReviewSubmitting} onClick={() => void submitReview("approved")}>通过</button>
-                      <button className="btn-secondary" type="button" disabled={isReviewSubmitting} onClick={() => void submitReview("needs_revision")}>需要修改</button>
-                      <button className="btn-danger" type="button" disabled={isReviewSubmitting} onClick={() => void submitReview("rejected")}>拒绝</button>
+                      <button className="btn-primary" type="button" disabled={isReviewSubmitting || !allowed("p2.review")} title={permissionHint(role, "p2.review")} onClick={() => void submitReview("approved")}>通过</button>
+                      <button className="btn-secondary" type="button" disabled={isReviewSubmitting || !allowed("p2.review")} title={permissionHint(role, "p2.review")} onClick={() => void submitReview("needs_revision")}>需要修改</button>
+                      <button className="btn-danger" type="button" disabled={isReviewSubmitting || !allowed("p2.review")} title={permissionHint(role, "p2.review")} onClick={() => void submitReview("rejected")}>拒绝</button>
                     </div>
                   ) : (
                     <p className="review-terminal-note">终态审核不可再次修改；需要新决策时请创建下一版 Review。</p>
@@ -614,7 +762,8 @@ export function P2MaterialCenter() {
                         <button
                           className="btn-primary btn-sm"
                           type="button"
-                          disabled={isKnowledgeSubmitting}
+                          disabled={isKnowledgeSubmitting || !allowed("p2.publish")}
+                          title={permissionHint(role, "p2.publish")}
                           onClick={() => void publishSnapshot(snapshot.id)}
                         >
                           发布为 Knowledge Asset
@@ -633,7 +782,7 @@ export function P2MaterialCenter() {
         <div className="material-panel-header">
           <div>
             <h2>Knowledge Assets</h2>
-            <p>展示可信内容、状态、版本及完整来源；本区不提供 RAG 或 Embedding 操作。</p>
+            <p>展示可信内容、不可变版本、完整 Source Trace，以及 Index → Embed → Serve 的真实可见性门禁。</p>
           </div>
         </div>
         {!selectedAsset ? (
@@ -663,11 +812,17 @@ export function P2MaterialCenter() {
                   <div><dt>Extraction</dt><dd>{knowledge.source_trace.extraction_id}</dd></div>
                   <div><dt>Asset</dt><dd>{knowledge.source_trace.asset_id}</dd></div>
                 </dl>
+                <p className="source-trace-flow" aria-label="完整来源链">
+                  Knowledge Asset → Snapshot → Review → Extraction → Asset
+                </p>
                 <div className="knowledge-index-summary">
                   <div>
                     <span>Knowledge Index</span>
                     <strong className={`knowledge-index-status status-${indexEntry?.status || "pending"}`}>
-                      {indexEntry?.status || "pending"}
+                      {indexEntry?.status === "serving" ? "serving · 已开放检索" :
+                        indexEntry?.status === "ready" && embeddedIndexIds.has(indexEntry.id) ? "ready · 向量已生成，尚未开放检索" :
+                        indexEntry?.status === "ready" ? "ready · 文本索引就绪，待生成向量" :
+                        indexEntry?.status || "pending"}
                     </strong>
                   </div>
                   {indexEntry ? (
@@ -681,17 +836,41 @@ export function P2MaterialCenter() {
                     <button
                       className="btn-primary btn-sm"
                       type="button"
-                      disabled={isIndexSubmitting}
+                      disabled={isIndexSubmitting || !allowed("p2.index")}
+                      title={permissionHint(role, "p2.index")}
                       onClick={() => void createKnowledgeIndex(knowledge.id)}
                     >
                       生成文本投影
+                    </button>
+                  )}
+                  {indexEntry?.status === "ready" && !embeddedIndexIds.has(indexEntry.id) && (
+                    <button
+                      className="btn-primary btn-sm"
+                      type="button"
+                      disabled={isIndexSubmitting || !allowed("p2.embed")}
+                      title={permissionHint(role, "p2.embed")}
+                      onClick={() => void buildEmbedding(indexEntry.id)}
+                    >
+                      生成向量
+                    </button>
+                  )}
+                  {indexEntry?.status === "ready" && embeddedIndexIds.has(indexEntry.id) && (
+                    <button
+                      className="btn-primary btn-sm"
+                      type="button"
+                      disabled={isIndexSubmitting || !allowed("p2.serve")}
+                      title={permissionHint(role, "p2.serve")}
+                      onClick={() => void serveKnowledgeIndex(indexEntry.id)}
+                    >
+                      显式 Serve
                     </button>
                   )}
                   {indexEntry && indexEntry.status !== "archived" && (
                     <button
                       className="btn-secondary btn-sm"
                       type="button"
-                      disabled={isIndexSubmitting}
+                      disabled={isIndexSubmitting || !allowed("p2.archive")}
+                      title={permissionHint(role, "p2.archive")}
                       onClick={() => void archiveKnowledgeIndex(indexEntry.id)}
                     >
                       归档 Index
@@ -702,11 +881,15 @@ export function P2MaterialCenter() {
                   <button
                     className="btn-secondary btn-sm"
                     type="button"
-                    disabled={isKnowledgeSubmitting}
+                    disabled={isKnowledgeSubmitting || !allowed("p2.archive")}
+                    title={permissionHint(role, "p2.archive")}
                     onClick={() => void archiveKnowledgeAsset(knowledge.id)}
                   >
                     归档
                   </button>
+                )}
+                {indexEntry?.status === "serving" && (
+                  <a className="btn-outline btn-sm inline-link" href="/retrieval-validation">前往 P2 Retrieval 验证</a>
                 )}
                 </article>
               );

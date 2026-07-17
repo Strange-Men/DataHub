@@ -56,7 +56,7 @@ Status: **COMPLETE**. Audit documents 58/59/60 define the evidence, test backlog
 - Correct stale P2 status/navigation and expose only real APIs.
 - Complete the Chinese P2 sequence for Extraction, Review/Snapshot, publish, index, embed, explicit serve, retrieval validation, archive and trace; preserve P1 operational flow.
 - Respect RBAC in controls, refresh state after mutation, confirm destructive operations, omit vectors/secrets, and keep P3/P4 visibly disabled.
-- Expected files: existing frontend pages/API/types/styles plus lightweight tests if the current toolchain supports them, README and docs 08/09/61/64.
+- Expected files: existing frontend pages/API/types/styles plus lightweight tests if the current toolchain supports them, README and docs 08/09/61/65.
 - Gate: production build, API contract/component checks, Docker browser/manual role checklist, no fake controls, P1/P2 backend regressions.
 - Commit: `[P1-P2-M9.3] feat: complete chinese governance workflow`.
 
@@ -89,7 +89,7 @@ Stop only for a branch/remote divergence or unknown user change; need for histor
 | Planning | COMPLETE | included in the M9.1 phase commit | pushed with M9.1 | audit/plans 58/59/60 retained | no separate planning commit required |
 | M9.1 | COMPLETE | `[P1-P2-M9.1] test: isolate eval corpus and add release safety gates` (this phase commit; see Git log for hash) | normal `main` push verified in final handoff | focused 37; clean-export 387; compile/build PASS; P1 10/10; three P2/Unified scoped Evals stable; Agent/cleanup/secret gates PASS | stop; M9.2 has not started |
 | M9.2 | COMPLETE | `[P1-P2-M9.2] feat: add governance authentication and role controls` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused 24; clean-export 411; compile/build PASS; Docker auth smoke; P1 10/10; P2 Acceptance PASS | stop; M9.3 has not started |
-| M9.3 | PENDING | PENDING | PENDING | PENDING | enter only after M9.2 push |
+| M9.3 | COMPLETE | `[P1-P2-M9.3] feat: complete chinese governance workflow` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused/contract 99; frontend build PASS; Docker five-role browser checklist PASS | stop; M9.4 has not started |
 | M9.4 | PENDING | PENDING | PENDING | PENDING | enter only after M9.3 push |
 | M9.5 | PENDING | PENDING | PENDING | PENDING | enter only after M9.4 push |
 
@@ -106,6 +106,10 @@ Historical M9.1 boundary: M9.2 was authorized to start with the authentication A
 
 M9.2 closure: centralized environment Bearer Token authentication and RBAC protect P1/P2 governance, retrieval and Agent APIs without a schema change. Disabled mode remains compatible; token mode has stable 401/403 behavior, constant-time matching and duplicate/no-Token safety validation. Docker auth smoke, P1 Harness 10/10, P2 Acceptance, 411-test clean export, compileall and frontend build passed. Runtime Tokens were removed and Compose was restored to disabled. The ADR is `docs/63_ADR_GOVERNANCE_AUTH_RBAC.md`; the report is `docs/64_M9_2_GOVERNANCE_AUTH_RBAC_REPORT.md`.
 
-Next authorized entry: M9.3 Frontend Governance Usability. M9.3 has not started in this worktree.
+Historical entry: M9.3 Frontend Governance Usability was authorized after the M9.2 push. Its completed state is recorded below.
 
-M9.2.1 interruption audit: the backend route inventory, centralized role matrix, Auth core, Docker configuration and Agent/Unified compatibility were complete. One frontend trust issue was confirmed and corrected: editable browser state can no longer supply the displayed role. Only the Token is retained in `sessionStorage`, and `/api/auth/me` revalidates the allow-listed role after page refresh and Token apply. The M9.2/Agent/Unified audit suite passed 38 tests and the frontend build passed. M9.3 remains not started.
+M9.2.1 interruption audit: the backend route inventory, centralized role matrix, Auth core, Docker configuration and Agent/Unified compatibility were complete. One frontend trust issue was confirmed and corrected: editable browser state can no longer supply the displayed role. Only the Token is retained in `sessionStorage`, and `/api/auth/me` revalidates the allow-listed role after page refresh and Token apply. The M9.2/Agent/Unified audit suite passed 38 tests and the frontend build passed. At that audit boundary M9.3 had not started.
+
+M9.3 closure: the Chinese frontend is now task-flow oriented, exposes only real P1/P2 and retrieval APIs, centralizes five-role UX from `/api/auth/me`, distinguishes P2 ready/serving, confirms retrieval-visibility changes, and displays the full Source Trace without vectors or Secrets. P3/P4 remain explicitly disabled. Focused/contract regressions passed 99 tests, the production build passed, and retained-volume Docker browser checks covered all five roles, 401, Token clear/reload, serving/archived states, Agent P1-only and Unified opt-in. Docker was restored to disabled with zero role Tokens. Report: `docs/65_M9_3_FRONTEND_GOVERNANCE_USABILITY_REPORT.md`.
+
+Next authorized entry: M9.4 Reliability and No-answer Gate. M9.4 has not started.

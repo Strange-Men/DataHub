@@ -12,34 +12,42 @@ export function HomePage({
 
   const capabilityCards = [
     {
-      title: "客服文本中台",
+      title: "P1 文本知识治理",
       icon: "💬",
-      description: "导入客服聊天数据，经过机器清洗、人工审核，沉淀为高质量 RAG 知识库。",
-      status: "已接入",
+      description: "导入、机器清洗、人工修订、知识审核、RAG 同步、Agent 验证与 Bad Case 回流。",
+      status: "可操作",
       path: "/p1-text-hub",
       disabled: false,
     },
     {
-      title: "AI 素材中心",
+      title: "P2 多模态知识治理",
       icon: "🎨",
-      description: "图片、视频、海报素材治理，OCR、Caption、标签和 SKU 绑定。",
-      status: "未接入",
+      description: "上传、Extraction、Review、Snapshot、Knowledge Asset、Index、Embed、Serve、Retrieval 与 Archive。",
+      status: "可操作",
       path: "/p2-material-center",
-      disabled: true,
+      disabled: false,
     },
     {
-      title: "数据资产复用",
+      title: "检索验证",
+      icon: "🔎",
+      description: "验证 P1、P2、Unified Retrieval 和 CustomerOpsAgent 的真实结果与来源链。",
+      status: "可操作",
+      path: "/retrieval-validation",
+      disabled: false,
+    },
+    {
+      title: "P3 数据资产复用",
       icon: "📦",
-      description: "将已审核知识复用为销售培训、SOP、FAQ 手册和微调数据集。",
-      status: "未接入",
+      description: "尚未开放：当前阶段不提供培训、SOP 或微调数据集生成。",
+      status: "尚未开放",
       path: "/p3-asset-reuse",
       disabled: true,
     },
     {
-      title: "MCP + Agent 集群",
+      title: "P4 MCP + Agent 集群",
       icon: "🤖",
-      description: "封装统一工具层，供 CustomerOpsAgent、SalesAgent 等 Agent 调用。",
-      status: "未接入",
+      description: "尚未开放：当前仅提供 CustomerOpsAgent 的已发布检索接口。",
+      status: "尚未开放",
       path: "/p4-mcp-agents",
       disabled: true,
     },
@@ -50,17 +58,16 @@ export function HomePage({
       <section className="hero-section">
         <h1 className="hero-title">DataHub 数据治理与 RAG 知识中台</h1>
         <p className="hero-desc">
-          将客服文本数据经过机器清洗、人工清洗和知识审核，沉淀为可供客服 Agent
-          使用的高质量 RAG 知识库。
+          以任务流完成 P1 文本知识与 P2 多模态知识治理，并用真实检索接口验证可见性和来源。
         </p>
         <div className="hero-status">
           <div className="hero-status-row">
-            <span className="hero-status-label">当前已接入</span>
-            <span className="hero-status-value hero-status-active">客服文本中台</span>
+            <span className="hero-status-label">当前可操作</span>
+            <span className="hero-status-value hero-status-active">P1 文本治理 / P2 多模态治理 / 检索验证</span>
           </div>
           <div className="hero-status-row">
-            <span className="hero-status-label">后续预留</span>
-            <span className="hero-status-value">AI 素材中心 / 数据资产复用 / MCP + Agent 集群</span>
+            <span className="hero-status-label">尚未开放</span>
+            <span className="hero-status-value">P3 数据资产复用 / P4 MCP + Agent 集群（当前阶段无真实接口）</span>
           </div>
           <div className="hero-status-row">
             <span className="hero-status-label">后端服务</span>
@@ -100,8 +107,9 @@ export function HomePage({
                   disabled={card.disabled}
                   onClick={() => !card.disabled && navigate(card.path)}
                 >
-                  {card.disabled ? "暂未接入" : "进入工作台"}
+                  {card.disabled ? "尚未开放" : "进入任务流"}
                 </button>
+                {card.disabled && <small className="disabled-reason">当前阶段没有可调用的真实后端能力。</small>}
               </div>
             </article>
           ))}

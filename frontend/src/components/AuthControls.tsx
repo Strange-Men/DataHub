@@ -1,108 +1,28 @@
 import { useEffect, useState } from "react";
-import {
-  AUTH_ERROR_EVENT,
-  apiFetch,
-  apiPath,
-  authErrorMessage,
-  clearAuthSession,
-  getAccessToken,
-  isAuthRole,
-  setAuthSession,
-  type AuthRole,
-} from "../api";
-
-
-const ROLE_LABELS: Record<AuthRole, string> = {
-  admin: "管理员",
-  cleaner: "清洗员",
-  reviewer: "审核员",
-  service: "服务账号",
-  viewer: "只读访客",
-};
-
+import { AUTH_ERROR_EVENT } from "../api";
+import { useAuth } from "../auth/AuthContext";
+import { ROLE_LABELS } from "../governance";
 
 export function AuthControls({ onApplied }: { onApplied: () => void }) {
+  const { role, authMode, loading, message, applyToken, clearToken, setMessage } = useAuth();
   const [tokenInput, setTokenInput] = useState("");
-  const [role, setRole] = useState<AuthRole | null>(null);
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const showAuthError = (event: Event) => {
-      setMessage((event as CustomEvent<string>).detail);
-    };
+    const showAuthError = (event: Event) => setMessage((event as CustomEvent<string>).detail);
     window.addEventListener(AUTH_ERROR_EVENT, showAuthError);
     return () => window.removeEventListener(AUTH_ERROR_EVENT, showAuthError);
-  }, []);
+  }, [setMessage]);
 
-  useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
-
-    let cancelled = false;
-    async function restoreVerifiedRole() {
-      try {
-        const response = await apiFetch(apiPath("/api/auth/me"));
-        const body = await response.json();
-        const resolvedRole = body?.data?.role;
-        if (!response.ok || !body.success || !isAuthRole(resolvedRole)) {
-          clearAuthSession();
-          if (!cancelled) setRole(null);
-          return;
-        }
-        if (!cancelled) setRole(resolvedRole);
-      } catch {
-        clearAuthSession();
-        if (!cancelled) {
-          setRole(null);
-          setMessage("无法连接后端验证访问令牌。");
-        }
-      }
-    }
-
-    void restoreVerifiedRole();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  async function applyToken() {
-    const token = tokenInput.trim();
-    if (!token) {
-      setMessage("请输入访问令牌。");
-      return;
-    }
-    setBusy(true);
-    setMessage("");
-    setAuthSession(token);
-    try {
-      const response = await apiFetch(apiPath("/api/auth/me"));
-      const body = await response.json();
-      const resolvedRole = body?.data?.role;
-      if (!response.ok || !body.success || !isAuthRole(resolvedRole)) {
-        clearAuthSession();
-        setRole(null);
-        setMessage(authErrorMessage(response.status) || "访问令牌验证失败。");
-        return;
-      }
-      setRole(resolvedRole);
+  async function handleApply() {
+    if (await applyToken(tokenInput)) {
       setTokenInput("");
-      setMessage(`令牌已应用，当前角色：${ROLE_LABELS[resolvedRole] || resolvedRole}`);
       onApplied();
-    } catch {
-      clearAuthSession();
-      setRole(null);
-      setMessage("无法连接后端验证访问令牌。");
-    } finally {
-      setBusy(false);
     }
   }
 
-  function clearToken() {
-    clearAuthSession();
+  async function handleClear() {
     setTokenInput("");
-    setRole(null);
-    setMessage("访问令牌已清除。");
+    await clearToken();
     onApplied();
   }
 
@@ -114,18 +34,21 @@ export function AuthControls({ onApplied }: { onApplied: () => void }) {
           type="password"
           value={tokenInput}
           onChange={(event) => setTokenInput(event.target.value)}
-          placeholder="Bearer Token"
+          placeholder={authMode === "disabled" ? "认证已关闭" : "Bearer Token"}
           autoComplete="off"
           aria-label="访问令牌"
         />
       </label>
-      <button type="button" className="btn-small" onClick={applyToken} disabled={busy}>
-        {busy ? "验证中" : "应用令牌"}
+      <button type="button" className="btn-small" onClick={() => void handleApply()} disabled={loading}>
+        {loading ? "验证中" : "应用令牌"}
       </button>
-      <button type="button" className="btn-small" onClick={clearToken}>
+      <button type="button" className="btn-small" onClick={() => void handleClear()} disabled={loading}>
         清除
       </button>
-      <span className="auth-role">角色：{role ? ROLE_LABELS[role] : "未认证"}</span>
+      <span className="auth-role">
+        角色：{loading ? "确认中" : role ? ROLE_LABELS[role] : "未认证"}
+        {authMode === "disabled" ? "（兼容模式）" : ""}
+      </span>
       {message && <span className="auth-message" role="status">{message}</span>}
     </div>
   );

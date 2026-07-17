@@ -324,22 +324,25 @@ def test_frontend_uses_session_token_and_chinese_auth_errors() -> None:
     controls_source = (
         ROOT / "frontend" / "src" / "components" / "AuthControls.tsx"
     ).read_text(encoding="utf-8")
+    context_source = (
+        ROOT / "frontend" / "src" / "auth" / "AuthContext.tsx"
+    ).read_text(encoding="utf-8")
 
     assert "sessionStorage" in api_source
     assert "localStorage" not in api_source
     assert "AUTH_ROLE_KEY" not in api_source
-    assert "getStoredRole" not in api_source + controls_source
+    assert "getStoredRole" not in api_source + controls_source + context_source
     assert "Authorization" in api_source and "Bearer ${token}" in api_source
     assert "身份验证失败，请检查访问令牌。" in api_source
     assert "当前角色没有执行此操作的权限。" in api_source
     assert ".removeItem(AUTH_TOKEN_KEY)" in api_source
-    assert 'useState<AuthRole | null>(null)' in controls_source
-    assert "getAccessToken()" in controls_source
-    assert 'apiPath("/api/auth/me")' in controls_source
-    assert "isAuthRole(resolvedRole)" in controls_source
+    assert 'useState<AuthRole | null>(null)' in context_source
+    assert 'apiPath("/api/auth/me")' in context_source
+    assert "isAuthRole(resolvedRole)" in context_source
+    assert "ROLE_LABELS[role]" in controls_source
     assert "type=\"password\"" in controls_source
     assert "访问令牌" in controls_source
-    assert "console.log" not in api_source + controls_source
+    assert "console.log" not in api_source + controls_source + context_source
 
 
 def test_harness_clients_load_token_only_from_named_environment(

@@ -2234,3 +2234,26 @@ Phase boundary:
 - [x] Remove persisted client role claims and revalidate the displayed role through `/api/auth/me` on page refresh.
 - [x] Pass 38 M9.2/CustomerOpsAgent/Unified tests and frontend production build.
 - [x] Keep M9.3, database, retrieval, RRF, Agent default and Unified opt-in behavior unchanged.
+
+## P1/P2-M9.3 Frontend Governance Usability
+
+- [x] Make `/api/auth/me` the only role source and centralize five-role frontend permissions.
+- [x] Add task-oriented P1, P2, retrieval-validation and system-status navigation.
+- [x] Wire every enabled control to a real API; remove 18 P3/P4 preview-style fake buttons.
+- [x] Complete the P1 import/clean/revise/candidate/review/RAG sync/Agent/Bad Case UX.
+- [x] Complete the P2 upload/Extraction/Review/Snapshot/publish/index/embed/ready/serve/retrieval/archive/Source Trace UX.
+- [x] Distinguish ready from serving and add impact-specific confirmation for retrieval-visibility changes.
+- [x] Add centralized Chinese 401/403/404/409/422/503 handling, operation locking and state refresh.
+- [x] Keep vectors, Tokens, database connection details and debug stacks out of the UI.
+- [x] Keep P3/P4 disabled with clear reasons and no empty-page navigation.
+- [x] Pass 99 focused/contract tests and the 54-module frontend production build.
+- [x] Complete retained-volume Docker browser checks for five roles, Token clear/reload, 401, permission guidance, serving/archived states, Source Trace and P3/P4.
+- [x] Restore Docker to auth disabled with zero configured role Tokens and healthy services.
+- [x] Preserve CustomerOpsAgent P1-only default, Unified explicit opt-in and the archived-leakage-zero baseline.
+- [x] Add `docs/65_M9_3_FRONTEND_GOVERNANCE_USABILITY_REPORT.md` and update README/status/ledger.
+
+Phase boundary:
+
+- **M9.3: PASS and ready for the audited phase commit/push.**
+- No tag is created.
+- M9.4 has not started.

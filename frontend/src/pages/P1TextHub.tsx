@@ -28,16 +28,27 @@ import type {
   SourceType,
 } from "../types";
 import { Metric, RuleBox, SectionHeader, StepIndicator } from "../components/Shared";
+import { useAuth } from "../auth/AuthContext";
+import { can, FORBIDDEN_MESSAGE, permissionHint, ROLE_LABELS, type FrontendPermission } from "../governance";
 
 const P1_STEPS = [
-  { number: 1, label: "导入数据" },
-  { number: 2, label: "清洗数据" },
-  { number: 3, label: "生成并审核知识" },
-  { number: 4, label: "更新知识库并测试 Agent" },
+  { number: 1, label: "数据导入" },
+  { number: 2, label: "机器与人工清洗" },
+  { number: 3, label: "候选知识与审核" },
+  { number: 4, label: "RAG / Agent / Bad Case" },
 ];
 
 const MANUAL_PAGE_SIZE = 10;
 const REVIEW_PAGE_SIZE = 10;
+
+type BadCaseSummary = {
+  bad_case_id: string;
+  user_query: string;
+  issue_type: string;
+  severity: string;
+  status: string;
+  created_at: string;
+};
 
 function toCandidateEdit(candidate: KnowledgeCandidate): CandidateEditState {
   return {
@@ -57,6 +68,7 @@ export function P1TextHub({
   backendStatus: BackendStatus;
   onCheckBackend: () => void;
 }) {
+  const { role } = useAuth();
   // ---- current main step ----
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -114,11 +126,22 @@ export function P1TextHub({
     expected_answer: "",
   });
   const [badCaseSubmitted, setBadCaseSubmitted] = useState(false);
+  const [badCases, setBadCases] = useState<BadCaseSummary[]>([]);
 
   // ---- shared ----
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+
+  function allowed(permission: FrontendPermission): boolean {
+    return can(role, permission);
+  }
+
+  function guard(permission: FrontendPermission): boolean {
+    if (allowed(permission)) return true;
+    setError(FORBIDDEN_MESSAGE);
+    return false;
+  }
 
   // ================================================================
   // Step 1 helpers
@@ -187,6 +210,7 @@ export function P1TextHub({
 
   async function importJson(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!guard("p1.import")) return;
     setError("");
     setMessage("");
     let parsed: unknown;
@@ -233,6 +257,7 @@ export function P1TextHub({
   // Step 2 helpers
   // ================================================================
   async function runCleaning(batchId = selectedBatchId) {
+    if (!guard("p1.clean")) return;
     if (!batchId.trim()) {
       setError("请先选择或导入数据批次。");
       return;
@@ -345,6 +370,7 @@ export function P1TextHub({
   }
 
   async function saveManualClean(item: SanitizedMessage) {
+    if (!guard("p1.revise")) return;
     if (!sanitizedBatch) return;
     const edit = manualEdits[item.message_id];
     if (!edit?.content.trim()) {
@@ -382,6 +408,7 @@ export function P1TextHub({
   // Step 3 helpers
   // ================================================================
   async function runExtraction() {
+    if (!guard("p1.revise")) return;
     if (!sanitizedBatch) {
       setError("请先在 Step 2 完成机器清洗。");
       return;
@@ -486,6 +513,7 @@ export function P1TextHub({
   }
 
   async function saveCandidate(candidate: KnowledgeCandidate) {
+    if (!guard("p1.revise")) return;
     const edit = candidateEdits[candidate.candidate_id];
     if (!edit) return;
     const qs = Number(edit.quality_score);
@@ -528,6 +556,8 @@ export function P1TextHub({
   }
 
   async function reviewCandidate(candidate: KnowledgeCandidate, action: "approve" | "reject" | "needs-revision") {
+    if (!guard("p1.review")) return;
+    if (action === "reject" && !window.confirm("拒绝后该候选知识不会进入 RAG，同一来源仍保留用于审计。是否继续？")) return;
     const decision = reviewDecisions[candidate.candidate_id] || { reviewer: "reviewer_01", review_note: "" };
     if (!decision.reviewer.trim()) {
       setError("请填写审核人。");
@@ -569,6 +599,8 @@ export function P1TextHub({
   // Step 4 helpers
   // ================================================================
   async function syncRag() {
+    if (!guard("p1.rag_sync")) return;
+    if (!window.confirm("RAG 同步会改变 Agent 可检索的知识范围，仅已审核通过内容会进入索引。是否继续？")) return;
     setError("");
     setMessage("");
     setIsBusy(true);
@@ -591,6 +623,7 @@ export function P1TextHub({
   }
 
   async function agentRetrieve() {
+    if (!guard("agent.customerops")) return;
     if (!searchQuery.trim()) {
       setError("请输入测试问题。");
       return;
@@ -638,6 +671,7 @@ export function P1TextHub({
   }
 
   async function submitBadCase() {
+    if (!guard("badcase.submit")) return;
     if (!retrievalId) {
       setError("请先执行 Agent 测试获取 retrieval_id。");
       return;
@@ -679,14 +713,41 @@ export function P1TextHub({
     }
   }
 
+  async function loadBadCases() {
+    if (!guard("p1.read")) return;
+    setIsBusy(true);
+    setError("");
+    try {
+      const response = await fetch(apiPath("/api/bad-cases"));
+      const body = await response.json();
+      if (!response.ok || !body.success) throw new Error("Bad Case 列表加载失败。");
+      setBadCases(body.data.bad_cases || []);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Bad Case 列表加载失败。");
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
   // ================================================================
   // RENDER
   // ================================================================
   return (
     <div className="p1-page">
       <div className="page-hero">
-        <h1>客服文本中台</h1>
-        <p>导入数据 → 清洗数据 → 生成并审核知识 → 更新知识库并测试 Agent。四个主流程，简单高效。</p>
+        <h1>P1 文本知识治理</h1>
+        <p>数据导入 → 机器清洗 → 手工修订 → 候选知识 → 人工审核 → RAG 同步 → Agent 验证 → Bad Case 回流。</p>
+      </div>
+
+      <div className="role-scope-banner">
+        <strong>当前角色：{role ? ROLE_LABELS[role] : "未认证"}</strong>
+        <span>
+          {role === "admin" ? "可执行全部 P1 治理和服务操作。" :
+            role === "cleaner" ? "可导入、清洗和修订；审核与 RAG 同步无权限。" :
+            role === "reviewer" ? "可查看并审核；导入、清洗与 RAG 同步无权限。" :
+            role === "service" ? "仅可执行 Retrieval、Agent 与 Bad Case；人工治理写操作无权限。" :
+            role === "viewer" ? "只读；所有写操作均无权限。" : "请应用有效访问令牌以确认权限。"}
+        </span>
       </div>
 
       <StepIndicator steps={P1_STEPS} currentStep={currentStep} />
@@ -718,13 +779,13 @@ export function P1TextHub({
               style={{ display: "none" }}
               onChange={handleFileSelect}
             />
-            <button type="button" className="btn-primary" onClick={() => fileInputRef.current?.click()}>
+            <button type="button" className="btn-primary" onClick={() => fileInputRef.current?.click()} disabled={!allowed("p1.import")} title={permissionHint(role, "p1.import")}>
               上传 JSON
             </button>
-            <button type="button" className="btn-secondary" onClick={loadSampleData}>
+            <button type="button" className="btn-secondary" onClick={loadSampleData} disabled={!allowed("p1.import")} title={permissionHint(role, "p1.import")}>
               使用示例数据
             </button>
-            <button type="button" className="btn-outline" onClick={() => setShowPasteArea(!showPasteArea)}>
+            <button type="button" className="btn-outline" onClick={() => setShowPasteArea(!showPasteArea)} disabled={!allowed("p1.import")} title={permissionHint(role, "p1.import")}>
               {showPasteArea ? "收起" : "高级粘贴 JSON"}
             </button>
           </div>
@@ -745,7 +806,7 @@ export function P1TextHub({
                 placeholder="在此粘贴 JSON 数据..."
               />
             </label>
-            <button type="submit" className="btn-primary" disabled={isBusy}>
+            <button type="submit" className="btn-primary" disabled={isBusy || !allowed("p1.import")} title={permissionHint(role, "p1.import")}>
               {isBusy ? "导入中..." : "导入数据"}
             </button>
           </form>
@@ -755,7 +816,7 @@ export function P1TextHub({
               <strong>已加载数据预览：</strong>
               <pre>{jsonText.length > 500 ? jsonText.slice(0, 500) + "..." : jsonText}</pre>
             </div>
-            <button type="submit" className="btn-primary" disabled={isBusy}>
+            <button type="submit" className="btn-primary" disabled={isBusy || !allowed("p1.import")} title={permissionHint(role, "p1.import")}>
               {isBusy ? "导入中..." : "确认导入"}
             </button>
           </form>
@@ -842,7 +903,8 @@ export function P1TextHub({
               <button
                 type="button"
                 className="btn-primary btn-lg"
-                disabled={isBusy || !selectedBatchId}
+                disabled={isBusy || !selectedBatchId || !allowed("p1.clean")}
+                title={permissionHint(role, "p1.clean")}
                 onClick={() => runCleaning()}
               >
                 {isBusy ? "清洗中..." : "执行机器清洗"}
@@ -1040,7 +1102,7 @@ export function P1TextHub({
                                       onChange={(e) => updateManualEdit(item.message_id, { cleaning_note: e.target.value })}
                                     />
                                   </label>
-                                  <button type="button" className="btn-primary btn-sm" onClick={() => saveManualClean(item)} disabled={isBusy}>
+                                  <button type="button" className="btn-primary btn-sm" onClick={() => saveManualClean(item)} disabled={isBusy || !allowed("p1.revise")} title={permissionHint(role, "p1.revise")}>
                                     保存
                                   </button>
                                 </div>
@@ -1146,7 +1208,8 @@ export function P1TextHub({
               <button
                 type="button"
                 className="btn-primary btn-lg"
-                disabled={isBusy || !sanitizedBatch}
+                disabled={isBusy || !sanitizedBatch || !allowed("p1.revise")}
+                title={permissionHint(role, "p1.revise")}
                 onClick={runExtraction}
               >
                 {isBusy ? "生成中..." : "生成待审核知识"}
@@ -1371,16 +1434,16 @@ export function P1TextHub({
                       </div>
 
                       <div className="candidate-actions">
-                        <button type="button" className="btn-secondary btn-sm" onClick={() => saveCandidate(candidate)} disabled={isBusy}>
+                        <button type="button" className="btn-secondary btn-sm" onClick={() => saveCandidate(candidate)} disabled={isBusy || !allowed("p1.revise")} title={permissionHint(role, "p1.revise")}>
                           保存修改
                         </button>
-                        <button type="button" className="btn-primary btn-sm" onClick={() => reviewCandidate(candidate, "approve")} disabled={isBusy}>
+                        <button type="button" className="btn-primary btn-sm" onClick={() => reviewCandidate(candidate, "approve")} disabled={isBusy || !allowed("p1.review")} title={permissionHint(role, "p1.review")}>
                           审核通过
                         </button>
-                        <button type="button" className="btn-danger btn-sm" onClick={() => reviewCandidate(candidate, "reject")} disabled={isBusy}>
+                        <button type="button" className="btn-danger btn-sm" onClick={() => reviewCandidate(candidate, "reject")} disabled={isBusy || !allowed("p1.review")} title={permissionHint(role, "p1.review")}>
                           驳回
                         </button>
-                        <button type="button" className="btn-outline btn-sm" onClick={() => reviewCandidate(candidate, "needs-revision")} disabled={isBusy}>
+                        <button type="button" className="btn-outline btn-sm" onClick={() => reviewCandidate(candidate, "needs-revision")} disabled={isBusy || !allowed("p1.review")} title={permissionHint(role, "p1.review")}>
                           打回修改
                         </button>
                       </div>
@@ -1459,7 +1522,8 @@ export function P1TextHub({
               <button
                 type="button"
                 className="btn-primary btn-lg"
-                disabled={isBusy || reviewStatusCounts.approved === 0}
+                disabled={isBusy || reviewStatusCounts.approved === 0 || !allowed("p1.rag_sync")}
+                title={permissionHint(role, "p1.rag_sync")}
                 onClick={syncRag}
               >
                 {isBusy ? "同步中..." : "同步已审核知识到 RAG 知识库"}
@@ -1493,7 +1557,7 @@ export function P1TextHub({
                 placeholder="例如：发货到德国需要多长时间？"
                 onKeyDown={(e) => { if (e.key === "Enter") agentRetrieve(); }}
               />
-              <button type="button" className="btn-primary" onClick={agentRetrieve} disabled={isBusy}>
+              <button type="button" className="btn-primary" onClick={agentRetrieve} disabled={isBusy || !allowed("agent.customerops")} title={permissionHint(role, "agent.customerops")}>
                 {isBusy ? "检索中..." : "测试 Agent 回答"}
               </button>
             </div>
@@ -1621,13 +1685,38 @@ export function P1TextHub({
                       </select>
                     </label>
                   </div>
-                  <button type="button" className="btn-primary" onClick={submitBadCase} disabled={isBusy}>
+                  <button type="button" className="btn-primary" onClick={submitBadCase} disabled={isBusy || !allowed("badcase.submit")} title={permissionHint(role, "badcase.submit")}>
                     提交 Bad Case
                   </button>
                 </div>
               )}
             </div>
           ) : null}
+
+          <div className="sub-section">
+            <div className="material-panel-header">
+              <div>
+                <h3 className="sub-section-title">D. 查看 Bad Case 队列</h3>
+                <p className="sub-section-desc">查看真实后端记录；不会用前端假状态代替处理结果。</p>
+              </div>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => void loadBadCases()} disabled={isBusy || !allowed("p1.read")} title={permissionHint(role, "p1.read")}>
+                {isBusy ? "加载中..." : "刷新 Bad Case"}
+              </button>
+            </div>
+            {badCases.length === 0 ? (
+              <p className="empty-desc">尚未加载或当前没有 Bad Case。</p>
+            ) : (
+              <div className="bad-case-list">
+                {badCases.map((item) => (
+                  <article key={item.bad_case_id} className="bad-case-row">
+                    <strong>{item.user_query}</strong>
+                    <span>{item.status} · {item.issue_type} · 严重度 {item.severity}</span>
+                    <small>{item.bad_case_id} · {item.created_at}</small>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </div>

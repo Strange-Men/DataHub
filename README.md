@@ -257,6 +257,16 @@ python scripts/run_p2_local_acceptance.py --auth-token-env DATAHUB_ADMIN_TOKEN
 
 前端“访问令牌”仅保存在当前标签页的 `sessionStorage`，角色不在浏览器持久化；应用 Token 和页面刷新时均通过 `/api/auth/me` 获取服务端确认的角色。清除后不再发送 Authorization Header。HTTP 401 表示 Token 缺失或无效；HTTP 403 表示 Token 有效但角色权限不足。排查时检查 `DATAHUB_AUTH_MODE`、目标角色是否配置、Token 是否重复以及调用是否使用 `Authorization: Bearer ...`，不要把 Token 打入日志。
 
+### 中文治理工作台
+
+前端主导航按任务收敛为“P1 文本知识治理”“P2 多模态知识治理”“检索验证”“系统状态”。当前角色只来自 `/api/auth/me`；无权限按钮会禁用并说明原因，后端 RBAC 仍是最终安全边界。
+
+- P1：导入 → 机器清洗 → 手工修订 → 候选知识 → 审核 → RAG 同步 → CustomerOpsAgent → Bad Case。
+- P2：上传 → Extraction → Review → Snapshot → 发布 → Index → Embed → Ready → Serve → Retrieval → Archive → Source Trace。
+- `ready · 向量已生成，尚未开放检索` 与 `serving · 已开放检索` 明确分开；Serve、Archive、Reject、RAG sync 和版本替换会说明影响并二次确认。
+- 检索验证页调用真实 P1/P2/Unified/CustomerOpsAgent API。CustomerOpsAgent 默认 P1-only，Unified 必须显式 opt-in。
+- P3/P4 只显示“尚未开放”和原因，入口 disabled，不提供预览式假操作。
+
 校验并启动：
 
 ```bash

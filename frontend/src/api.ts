@@ -46,6 +46,7 @@ export function authErrorMessage(status: number): string | null {
 export async function apiFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},
+  options: { suppressAuthEvent?: boolean } = {},
 ): Promise<Response> {
   const headers = new Headers(init.headers);
   const token = getAccessToken();
@@ -54,7 +55,7 @@ export async function apiFetch(
   }
   const response = await window.fetch(input, { ...init, headers });
   const message = authErrorMessage(response.status);
-  if (message) {
+  if (message && !options.suppressAuthEvent) {
     window.dispatchEvent(new CustomEvent(AUTH_ERROR_EVENT, { detail: message }));
   }
   return response;

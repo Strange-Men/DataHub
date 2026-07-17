@@ -8,6 +8,9 @@ import { P1TextHub } from "./pages/P1TextHub";
 import { P2MaterialCenter } from "./pages/P2MaterialCenter";
 import { P3AssetReuse } from "./pages/P3AssetReuse";
 import { P4McpAgents } from "./pages/P4McpAgents";
+import { AuthProvider } from "./auth/AuthContext";
+import { RetrievalValidation } from "./pages/RetrievalValidation";
+import { SystemStatus } from "./pages/SystemStatus";
 
 
 export function App() {
@@ -51,8 +54,9 @@ export function App() {
 
   return (
     <BrowserRouter>
-      <Layout backendStatus={backendStatus} onCheckBackend={checkBackendConnection}>
-        <Routes>
+      <AuthProvider>
+        <Layout backendStatus={backendStatus} onCheckBackend={checkBackendConnection}>
+          <Routes>
           <Route
             path="/"
             element={
@@ -66,10 +70,13 @@ export function App() {
             }
           />
           <Route path="/p2-material-center" element={<P2MaterialCenter />} />
+          <Route path="/retrieval-validation" element={<RetrievalValidation />} />
+          <Route path="/system-status" element={<SystemStatus backendStatus={backendStatus} onCheckBackend={checkBackendConnection} />} />
           <Route path="/p3-asset-reuse" element={<P3AssetReuse />} />
           <Route path="/p4-mcp-agents" element={<P4McpAgents />} />
-        </Routes>
-      </Layout>
+          </Routes>
+        </Layout>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

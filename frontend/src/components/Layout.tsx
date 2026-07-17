@@ -4,10 +4,10 @@ import { AuthControls } from "./AuthControls";
 
 const NAV_ITEMS = [
   { path: "/", label: "首页", exact: true },
-  { path: "/p1-text-hub", label: "客服文本中台", exact: false },
-  { path: "/p2-material-center", label: "AI 素材中心", exact: false },
-  { path: "/p3-asset-reuse", label: "数据资产复用", exact: false },
-  { path: "/p4-mcp-agents", label: "MCP + Agent 集群", exact: false },
+  { path: "/p1-text-hub", label: "P1 文本知识治理", exact: false },
+  { path: "/p2-material-center", label: "P2 多模态知识治理", exact: false },
+  { path: "/retrieval-validation", label: "检索验证", exact: false },
+  { path: "/system-status", label: "系统状态", exact: false },
 ];
 
 export function Layout({
@@ -24,7 +24,7 @@ export function Layout({
       <nav className="top-nav">
         <div className="nav-brand">
           <span className="nav-logo">DH</span>
-          <span className="nav-title">DataHub</span>
+          <span className="nav-title">DataHub <small>{(import.meta as any).env?.MODE || "runtime"}</small></span>
         </div>
         <div className="nav-links">
           {NAV_ITEMS.map((item) => (
