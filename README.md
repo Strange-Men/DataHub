@@ -205,8 +205,57 @@ Copy-Item .env.example .env
 | `FRONTEND_PORT` | 可选 | 默认 `5173` |
 | `VITE_API_BASE_URL` | 可选 | 浏览器可访问的后端地址，默认 `http://localhost:8000` |
 | `ASSET_MAX_UPLOAD_BYTES` | 可选 | 默认 10 MiB |
+| `DATAHUB_AUTH_MODE` | 可选 | `disabled` 保持受信本地兼容；暴露的 Docker 环境建议设为 `token` |
+| `DATAHUB_*_TOKEN` | token 模式至少一个 | admin/cleaner/reviewer/service/viewer 的互异运行时 Token；缺失角色不可用 |
 
 `POSTGRES_PASSWORD` 支持 URL 保留字符；后端容器入口会在构造 `DATABASE_URL` 时执行 URL 编码。若密码包含 Compose dotenv 的特殊字符，仍需遵守其引用与转义规则。`DATABASE_URL`、容器内 Asset 路径和服务名由 Compose 在容器网络内组装。不要把宿主机路径（例如 `D:/...`）写入 Docker 配置。`VITE_API_BASE_URL` 会进入浏览器构建产物，因此只能放公开 API 地址，不能放密钥。
+
+### 治理认证与角色 Token
+
+M9.2 提供最小的环境变量 Bearer Token + RBAC。`DATAHUB_AUTH_MODE=disabled` 是受信本地和兼容测试的显式模式；需要限制治理 API 的 Docker 部署应使用：
+
+```text
+DATAHUB_AUTH_MODE=token
+DATAHUB_ADMIN_TOKEN=<unique-runtime-secret>
+DATAHUB_CLEANER_TOKEN=<unique-runtime-secret>
+DATAHUB_REVIEWER_TOKEN=<unique-runtime-secret>
+DATAHUB_SERVICE_TOKEN=<unique-runtime-secret>
+DATAHUB_VIEWER_TOKEN=<unique-runtime-secret>
+```
+
+Token 只写入未提交的 `.env` 或部署平台 Secret。token 模式至少需要一个角色 Token，不同角色不得复用同一值；未配置的角色不可用且只记录角色名告警，不记录 Token。服务不会生成默认 Token。Health、OpenAPI 和 docs 保持公开；治理、检索与 Agent API 按角色检查权限。
+
+| 角色 | 主要范围 |
+|---|---|
+| admin | 全部治理、审核、发布、索引、Embed、Serve、Archive |
+| cleaner | P1 导入/清洗/修订；P2 上传/Extraction/修订；治理只读 |
+| reviewer | P1/P2 待审核查看与审核；Snapshot/Source Trace 只读 |
+| service | P1/P2/Unified Retrieval、CustomerOpsAgent、Bad Case 提交 |
+| viewer | P1/P2 列表、详情、状态和 P1/P2 Retrieval；无写入 |
+
+启动或切换配置后只需重建 backend，不需要删除 volume：
+
+```bash
+docker compose up -d --build backend
+```
+
+curl 从环境变量读取 Token，不要把真实值写进脚本或 URL：
+
+```bash
+curl -H "Authorization: Bearer $DATAHUB_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"shipping Germany","top_k":5}' \
+  http://localhost:8000/api/rag/search
+```
+
+P1/P2 验收脚本同样只接受 Token 所在的环境变量名：
+
+```bash
+python scripts/run_p1_pipeline_harness.py --auth-token-env DATAHUB_ADMIN_TOKEN
+python scripts/run_p2_local_acceptance.py --auth-token-env DATAHUB_ADMIN_TOKEN
+```
+
+前端“访问令牌”仅保存在当前标签页的 `sessionStorage`，清除后不再发送 Authorization Header。HTTP 401 表示 Token 缺失或无效；HTTP 403 表示 Token 有效但角色权限不足。排查时检查 `DATAHUB_AUTH_MODE`、目标角色是否配置、Token 是否重复以及调用是否使用 `Authorization: Bearer ...`，不要把 Token 打入日志。
 
 校验并启动：
 

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth import Permission, require_permission
 from app.knowledge_embedding_repositories import list_embeddings
 from app.knowledge_embedding_service import (
     P2EmbeddingDimensionError,
@@ -31,7 +32,7 @@ def _request_id() -> str:
     return f"req_{uuid4().hex[:12]}"
 
 
-@router.post("/knowledge-index/{index_entry_id}/embed", response_model=ApiResponse)
+@router.post("/knowledge-index/{index_entry_id}/embed", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_EMBED))])
 def build_knowledge_embeddings(
     index_entry_id: str,
     db: Session = Depends(get_db),
@@ -71,7 +72,7 @@ def build_knowledge_embeddings(
     return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
 
 
-@router.post("/knowledge-index/{index_entry_id}/serve", response_model=ApiResponse)
+@router.post("/knowledge-index/{index_entry_id}/serve", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_SERVE))])
 def serve_knowledge_index(
     index_entry_id: str,
     db: Session = Depends(get_db),
@@ -125,7 +126,7 @@ def serve_knowledge_index(
         ) from exc
     return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
 
-@router.get("/knowledge-embeddings", response_model=ApiResponse)
+@router.get("/knowledge-embeddings", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_knowledge_embeddings(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),

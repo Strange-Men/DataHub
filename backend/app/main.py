@@ -1,7 +1,7 @@
 import os
 from uuid import uuid4
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -19,6 +19,8 @@ from app.schemas import (
     ReviewDecisionRequest,
 )
 from app.database import SessionLocal, check_database_connection, check_pgvector_available, ensure_pgvector_extension, init_database_tables
+from app.auth import Permission, require_permission, validate_auth_configuration
+from app.auth_routes import router as auth_router
 from app.asset_routes import router as asset_router
 from app.extraction_repositories import get_extraction_job as get_asset_extraction_job
 from app.extraction_routes import router as asset_extraction_router
@@ -61,6 +63,7 @@ from app.storage import (
 )
 
 app = FastAPI(title="DataHub API", version="0.1.0")
+app.include_router(auth_router)
 app.include_router(asset_router)
 app.include_router(asset_extraction_router)
 app.include_router(review_router)
@@ -82,6 +85,7 @@ except Exception:
 @app.on_event("startup")
 def _startup_init_database() -> None:
     """Idempotent: ensure all tables exist on startup (P1-M17)."""
+    validate_auth_configuration()
     try:
         init_database_tables()
     except Exception:
@@ -213,7 +217,7 @@ def api_health() -> dict[str, object]:
     return health()
 
 
-@app.post("/api/legacy-rag/import", response_model=ApiResponse)
+@app.post("/api/legacy-rag/import", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_IMPORT))])
 def import_legacy_rag_export(payload: LegacyRagImportRequest) -> ApiResponse:
     metadata = import_legacy_rag(payload)
     return ApiResponse(
@@ -223,7 +227,7 @@ def import_legacy_rag_export(payload: LegacyRagImportRequest) -> ApiResponse:
     )
 
 
-@app.get("/api/legacy-rag/imports", response_model=ApiResponse)
+@app.get("/api/legacy-rag/imports", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def list_legacy_imports() -> ApiResponse:
     imports = [item.model_dump() for item in list_legacy_rag_imports()]
     return ApiResponse(
@@ -233,7 +237,7 @@ def list_legacy_imports() -> ApiResponse:
     )
 
 
-@app.get("/api/legacy-rag/imports/{import_id}", response_model=ApiResponse)
+@app.get("/api/legacy-rag/imports/{import_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_legacy_import(import_id: str) -> ApiResponse:
     metadata = get_legacy_rag_import(import_id)
     if metadata is None:
@@ -251,7 +255,7 @@ def get_legacy_import(import_id: str) -> ApiResponse:
     )
 
 
-@app.post("/api/sources/import-json", response_model=ApiResponse)
+@app.post("/api/sources/import-json", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_IMPORT))])
 def import_json_source(payload: ImportJsonRequest) -> ApiResponse:
     metadata = create_raw_batch(payload)
     return ApiResponse(
@@ -261,7 +265,7 @@ def import_json_source(payload: ImportJsonRequest) -> ApiResponse:
     )
 
 
-@app.get("/api/sources", response_model=ApiResponse)
+@app.get("/api/sources", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def list_sources() -> ApiResponse:
     batches = [batch.model_dump() for batch in list_raw_batches()]
     return ApiResponse(
@@ -271,7 +275,7 @@ def list_sources() -> ApiResponse:
     )
 
 
-@app.get("/api/sources/{batch_id}", response_model=ApiResponse)
+@app.get("/api/sources/{batch_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_source(batch_id: str) -> ApiResponse:
     metadata = get_raw_batch_metadata(batch_id)
     if metadata is None:
@@ -289,7 +293,7 @@ def get_source(batch_id: str) -> ApiResponse:
     )
 
 
-@app.post("/api/cleaning/run/{batch_id}", response_model=ApiResponse)
+@app.post("/api/cleaning/run/{batch_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_CLEAN))])
 def run_cleaning_for_source(batch_id: str) -> ApiResponse:
     job = run_cleaning(batch_id)
     if job is None:
@@ -307,7 +311,7 @@ def run_cleaning_for_source(batch_id: str) -> ApiResponse:
     )
 
 
-@app.get("/api/cleaning/jobs/{job_id}", response_model=ApiResponse)
+@app.get("/api/cleaning/jobs/{job_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_cleaning_job_status(job_id: str) -> ApiResponse:
     job = get_cleaning_job(job_id)
     if job is None:
@@ -325,7 +329,7 @@ def get_cleaning_job_status(job_id: str) -> ApiResponse:
     )
 
 
-@app.get("/api/sanitized/{batch_id}", response_model=ApiResponse)
+@app.get("/api/sanitized/{batch_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_sanitized_source(batch_id: str) -> ApiResponse:
     sanitized = get_sanitized_batch(batch_id)
     if sanitized is None:
@@ -343,7 +347,7 @@ def get_sanitized_source(batch_id: str) -> ApiResponse:
     )
 
 
-@app.patch("/api/sanitized/{batch_id}/messages/{message_id}/manual-clean", response_model=ApiResponse)
+@app.patch("/api/sanitized/{batch_id}/messages/{message_id}/manual-clean", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVISE))])
 def manual_clean_message(
     batch_id: str,
     message_id: str,
@@ -365,7 +369,7 @@ def manual_clean_message(
     )
 
 
-@app.post("/api/extraction/run/{batch_id}", response_model=ApiResponse)
+@app.post("/api/extraction/run/{batch_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVISE))])
 def run_extraction_for_sanitized_batch(batch_id: str) -> ApiResponse:
     job = run_extraction(batch_id)
     if job is None:
@@ -383,7 +387,7 @@ def run_extraction_for_sanitized_batch(batch_id: str) -> ApiResponse:
     )
 
 
-@app.get("/api/extraction/jobs/{job_id}", response_model=ApiResponse)
+@app.get("/api/extraction/jobs/{job_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_extraction_job_status(job_id: str) -> ApiResponse:
     # P2 uses a namespaced id so the sealed P1 lookup remains byte-for-byte
     # compatible for every existing P1 extraction job.
@@ -410,7 +414,7 @@ def get_extraction_job_status(job_id: str) -> ApiResponse:
     )
 
 
-@app.get("/api/knowledge/candidates", response_model=ApiResponse)
+@app.get("/api/knowledge/candidates", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def list_candidates() -> ApiResponse:
     candidates = [candidate.model_dump() for candidate in list_knowledge_candidates()]
     return ApiResponse(
@@ -420,7 +424,7 @@ def list_candidates() -> ApiResponse:
     )
 
 
-@app.get("/api/knowledge/candidates/{candidate_id}", response_model=ApiResponse)
+@app.get("/api/knowledge/candidates/{candidate_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_candidate(candidate_id: str) -> ApiResponse:
     candidate = get_knowledge_candidate(candidate_id)
     if candidate is None:
@@ -438,7 +442,7 @@ def get_candidate(candidate_id: str) -> ApiResponse:
     )
 
 
-@app.get("/api/review/pending", response_model=ApiResponse)
+@app.get("/api/review/pending", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def list_pending_review() -> ApiResponse:
     candidates = [candidate.model_dump() for candidate in list_pending_review_candidates()]
     return ApiResponse(
@@ -448,7 +452,7 @@ def list_pending_review() -> ApiResponse:
     )
 
 
-@app.patch("/api/knowledge/candidates/{candidate_id}", response_model=ApiResponse)
+@app.patch("/api/knowledge/candidates/{candidate_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVISE))])
 def update_candidate(candidate_id: str, payload: CandidateUpdateRequest) -> ApiResponse:
     candidate = update_knowledge_candidate(candidate_id, payload)
     if candidate is None:
@@ -483,22 +487,22 @@ def _review_response(candidate_id: str, status: str, payload: ReviewDecisionRequ
     )
 
 
-@app.post("/api/review/{candidate_id}/approve", response_model=ApiResponse)
+@app.post("/api/review/{candidate_id}/approve", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVIEW))])
 def approve_candidate(candidate_id: str, payload: ReviewDecisionRequest) -> ApiResponse:
     return _review_response(candidate_id, "approved", payload)
 
 
-@app.post("/api/review/{candidate_id}/reject", response_model=ApiResponse)
+@app.post("/api/review/{candidate_id}/reject", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVIEW))])
 def reject_candidate(candidate_id: str, payload: ReviewDecisionRequest) -> ApiResponse:
     return _review_response(candidate_id, "rejected", payload)
 
 
-@app.post("/api/review/{candidate_id}/needs-revision", response_model=ApiResponse)
+@app.post("/api/review/{candidate_id}/needs-revision", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVIEW))])
 def request_candidate_revision(candidate_id: str, payload: ReviewDecisionRequest) -> ApiResponse:
     return _review_response(candidate_id, "needs_revision", payload)
 
 
-@app.post("/api/rag/build", response_model=ApiResponse)
+@app.post("/api/rag/build", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_RAG_SYNC))])
 def build_local_rag_chunks() -> ApiResponse:
     result = build_rag_chunks()
     return ApiResponse(
@@ -508,7 +512,7 @@ def build_local_rag_chunks() -> ApiResponse:
     )
 
 
-@app.get("/api/rag/chunks", response_model=ApiResponse)
+@app.get("/api/rag/chunks", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def list_local_rag_chunks() -> ApiResponse:
     chunks = [chunk.model_dump() for chunk in list_rag_chunks()]
     return ApiResponse(
@@ -518,7 +522,7 @@ def list_local_rag_chunks() -> ApiResponse:
     )
 
 
-@app.get("/api/rag/chunks/{chunk_id}", response_model=ApiResponse)
+@app.get("/api/rag/chunks/{chunk_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_local_rag_chunk(chunk_id: str) -> ApiResponse:
     chunk = get_rag_chunk(chunk_id)
     if chunk is None:
@@ -536,7 +540,7 @@ def get_local_rag_chunk(chunk_id: str) -> ApiResponse:
     )
 
 
-@app.post("/api/rag/search", response_model=ApiResponse)
+@app.post("/api/rag/search", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.RETRIEVAL_P1))])
 def search_local_rag_chunks(payload: RagSearchRequest) -> ApiResponse:
     query = payload.query.strip()
     if not query:
@@ -574,7 +578,7 @@ def search_local_rag_chunks(payload: RagSearchRequest) -> ApiResponse:
     )
 
 
-@app.post("/api/customer-ops-agent/retrieve", response_model=None)
+@app.post("/api/customer-ops-agent/retrieve", response_model=None, dependencies=[Depends(require_permission(Permission.AGENT_CUSTOMEROPS))])
 def retrieve_for_customerops_agent(
     payload: CustomerOpsRetrievalRequest,
     x_datahub_client: str | None = Header(default=None, alias="X-DataHub-Client"),
@@ -611,7 +615,7 @@ def retrieve_for_customerops_agent(
     )
 
 
-@app.get("/api/customer-ops-agent/retrievals/{retrieval_id}", response_model=None)
+@app.get("/api/customer-ops-agent/retrievals/{retrieval_id}", response_model=None, dependencies=[Depends(require_permission(Permission.RETRIEVAL_P1))])
 def get_customerops_retrieval(
     retrieval_id: str,
     x_datahub_client: str | None = Header(default=None, alias="X-DataHub-Client"),
@@ -634,7 +638,7 @@ def get_customerops_retrieval(
     )
 
 
-@app.post("/api/customer-ops-agent/bad-cases", response_model=None)
+@app.post("/api/customer-ops-agent/bad-cases", response_model=None, dependencies=[Depends(require_permission(Permission.BADCASE_SUBMIT))])
 def submit_customerops_bad_case(
     payload: BadCaseSubmitRequest,
     x_datahub_client: str | None = Header(default=None, alias="X-DataHub-Client"),
@@ -718,7 +722,7 @@ def submit_customerops_bad_case(
     )
 
 
-@app.get("/api/bad-cases", response_model=ApiResponse)
+@app.get("/api/bad-cases", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def list_bad_case_queue(
     status: str | None = None,
     issue_type: str | None = None,
@@ -759,7 +763,7 @@ def list_bad_case_queue(
     )
 
 
-@app.get("/api/bad-cases/{bad_case_id}", response_model=ApiResponse)
+@app.get("/api/bad-cases/{bad_case_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_READ))])
 def get_bad_case_detail(bad_case_id: str) -> ApiResponse:
     bad_case = get_bad_case(bad_case_id)
     if bad_case is None:
@@ -777,7 +781,7 @@ def get_bad_case_detail(bad_case_id: str) -> ApiResponse:
     )
 
 
-@app.patch("/api/bad-cases/{bad_case_id}", response_model=ApiResponse)
+@app.patch("/api/bad-cases/{bad_case_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVISE))])
 def update_bad_case_detail(
     bad_case_id: str,
     payload: BadCaseUpdateRequest,
@@ -814,7 +818,7 @@ def update_bad_case_detail(
     )
 
 
-@app.post("/api/bad-cases/{bad_case_id}/create-draft", response_model=ApiResponse)
+@app.post("/api/bad-cases/{bad_case_id}/create-draft", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_REVISE))])
 def create_draft_from_bad_case(
     bad_case_id: str,
     payload: BadCaseDraftRequest,

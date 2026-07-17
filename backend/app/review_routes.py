@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.asset_repositories import get_asset
+from app.auth import Permission, require_permission
 from app.database import get_db
 from app.review_repositories import (
     PendingReviewConflict,
@@ -40,7 +41,7 @@ def _asset_not_found() -> HTTPException:
     )
 
 
-@router.post("/assets/{asset_id}/reviews", response_model=ApiResponse, status_code=201)
+@router.post("/assets/{asset_id}/reviews", response_model=ApiResponse, status_code=201, dependencies=[Depends(require_permission(Permission.P2_REVISE))])
 def create_review(
     asset_id: str,
     request: CreateExtractionReviewRequest,
@@ -82,7 +83,7 @@ def create_review(
     return ApiResponse(success=True, data=review.model_dump(), requestId=_request_id())
 
 
-@router.get("/reviews/{review_id}", response_model=ApiResponse)
+@router.get("/reviews/{review_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_review(review_id: str, db: Session = Depends(get_db)) -> ApiResponse:
     try:
         review = ReviewService(db).get_review(review_id)
@@ -94,7 +95,7 @@ def get_review(review_id: str, db: Session = Depends(get_db)) -> ApiResponse:
     return ApiResponse(success=True, data=review.model_dump(), requestId=_request_id())
 
 
-@router.patch("/reviews/{review_id}", response_model=ApiResponse)
+@router.patch("/reviews/{review_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_REVIEW))])
 def submit_review(
     review_id: str,
     request: SubmitExtractionReviewRequest,
@@ -141,7 +142,7 @@ def submit_review(
     return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
 
 
-@router.get("/assets/{asset_id}/snapshots", response_model=ApiResponse)
+@router.get("/assets/{asset_id}/snapshots", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_asset_snapshots(
     asset_id: str,
     db: Session = Depends(get_db),

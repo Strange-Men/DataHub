@@ -27,6 +27,11 @@ from uuid import uuid4
 
 import requests
 
+try:
+    from auth_client import bearer_headers, load_bearer_token
+except ModuleNotFoundError:  # imported as scripts module in tests
+    from scripts.auth_client import bearer_headers, load_bearer_token
+
 # ---------------------------------------------------------------------------
 # Inline minimal sample data — no external file dependency
 # ---------------------------------------------------------------------------
@@ -190,6 +195,7 @@ class PipelineHarness:
         verbose: bool = False,
         stop_on_fail: bool = False,
         trace_id: str | None = None,
+        auth_token: str | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -199,6 +205,7 @@ class PipelineHarness:
         self.results: list[StepResult] = []
         self._session = requests.Session()
         self._session.headers["Content-Type"] = "application/json"
+        self._session.headers.update(bearer_headers(auth_token))
         # IDs collected across steps
         self.batch_id: str = ""
         self.sanitized_message_id: str = ""
@@ -736,6 +743,10 @@ def main() -> None:
     parser.add_argument("--stop-on-fail", action="store_true", help="Abort on first non-PASS step")
     parser.add_argument("--trace-id", default=None, help="Custom trace ID (auto-generated if not provided)")
     parser.add_argument(
+        "--auth-token-env",
+        help="Read the Bearer token from this environment variable; the token is never a CLI argument.",
+    )
+    parser.add_argument(
         "--check-pgvector",
         action="store_true",
         help="Check pgvector extension availability instead of running the full pipeline",
@@ -743,12 +754,18 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    try:
+        auth_token = load_bearer_token(args.auth_token_env)
+    except ValueError as exc:
+        parser.error(str(exc))
+
     harness = PipelineHarness(
         base_url=args.base_url,
         timeout=args.timeout,
         verbose=args.verbose,
         stop_on_fail=args.stop_on_fail,
         trace_id=args.trace_id,
+        auth_token=auth_token,
     )
 
     ok = harness.run(check_pgvector=args.check_pgvector)

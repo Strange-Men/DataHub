@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.asset_repositories import get_asset
+from app.auth import Permission, require_permission
 from app.database import get_db
 from app.extraction_providers import get_extraction_provider
 from app.extraction_repositories import list_asset_extractions
@@ -21,7 +22,7 @@ def _request_id() -> str:
     return f"req_{uuid4().hex[:12]}"
 
 
-@router.post("/assets/{asset_id}/extract", response_model=ApiResponse, status_code=201)
+@router.post("/assets/{asset_id}/extract", response_model=ApiResponse, status_code=201, dependencies=[Depends(require_permission(Permission.P2_EXTRACT))])
 def create_asset_extraction_job(
     asset_id: str,
     request: ExtractionRequest,
@@ -52,7 +53,7 @@ def create_asset_extraction_job(
         requestId=_request_id(),
     )
 
-@router.get("/assets/{asset_id}/extractions", response_model=ApiResponse)
+@router.get("/assets/{asset_id}/extractions", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_asset_extractions(
     asset_id: str,
     db: Session = Depends(get_db),

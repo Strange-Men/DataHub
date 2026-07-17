@@ -88,7 +88,7 @@ Stop only for a branch/remote divergence or unknown user change; need for histor
 |---|---|---|---|---|---|
 | Planning | COMPLETE | included in the M9.1 phase commit | pushed with M9.1 | audit/plans 58/59/60 retained | no separate planning commit required |
 | M9.1 | COMPLETE | `[P1-P2-M9.1] test: isolate eval corpus and add release safety gates` (this phase commit; see Git log for hash) | normal `main` push verified in final handoff | focused 37; clean-export 387; compile/build PASS; P1 10/10; three P2/Unified scoped Evals stable; Agent/cleanup/secret gates PASS | stop; M9.2 has not started |
-| M9.2 | PENDING | PENDING | PENDING | PENDING | enter only after M9.1 push |
+| M9.2 | COMPLETE | `[P1-P2-M9.2] feat: add governance authentication and role controls` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused 24; clean-export 411; compile/build PASS; Docker auth smoke; P1 10/10; P2 Acceptance PASS | stop; M9.3 has not started |
 | M9.3 | PENDING | PENDING | PENDING | PENDING | enter only after M9.2 push |
 | M9.4 | PENDING | PENDING | PENDING | PENDING | enter only after M9.3 push |
 | M9.5 | PENDING | PENDING | PENDING | PENDING | enter only after M9.4 push |
@@ -102,4 +102,8 @@ Stop only for a branch/remote divergence or unknown user change; need for histor
 
 M9.1 closure: run-scoped Eval isolation and release-safety gates are complete. Runtime manifests remain ignored, all test Knowledge Assets were logically archived with zero record deletion, non-test P2 state and P1 index counts were unchanged, and all four opt-in flags were restored false. The phase report is `docs/62_M9_1_EVAL_ISOLATION_AND_RELEASE_SAFETY_REPORT.md`.
 
-Next authorized entry: M9.2 must start with the authentication ADR and route/role inventory. M9.2 has not started in this worktree.
+Historical M9.1 boundary: M9.2 was authorized to start with the authentication ADR and route/role inventory. The completed M9.2 state is recorded below.
+
+M9.2 closure: centralized environment Bearer Token authentication and RBAC protect P1/P2 governance, retrieval and Agent APIs without a schema change. Disabled mode remains compatible; token mode has stable 401/403 behavior, constant-time matching and duplicate/no-Token safety validation. Docker auth smoke, P1 Harness 10/10, P2 Acceptance, 411-test clean export, compileall and frontend build passed. Runtime Tokens were removed and Compose was restored to disabled. The ADR is `docs/63_ADR_GOVERNANCE_AUTH_RBAC.md`; the report is `docs/64_M9_2_GOVERNANCE_AUTH_RBAC_REPORT.md`.
+
+Next authorized entry: M9.3 Frontend Governance Usability. M9.3 has not started in this worktree.

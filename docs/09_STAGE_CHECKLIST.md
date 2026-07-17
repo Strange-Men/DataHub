@@ -2199,3 +2199,29 @@ Phase boundary:
 - **M9.1: PASS and ready for the audited phase commit/push.**
 - No tag is created.
 - M9.2 authentication/RBAC has not started.
+
+## P1/P2-M9.2 Governance Authentication and RBAC
+
+- [x] Write and accept the environment Bearer Token + role mapping ADR before implementation.
+- [x] Centralize five roles, capability permissions, principal resolution and route dependencies.
+- [x] Preserve disabled-mode compatibility and keep Health/OpenAPI/docs public.
+- [x] Return stable 401 for missing/invalid Token and stable 403 for authenticated role denial.
+- [x] Use constant-time Token comparison; reject duplicates; fail token mode with no configured role Token.
+- [x] Protect P1/P2 governance writes, reads, Retrieval, Unified, CustomerOpsAgent and Bad Case submission without changing response contracts.
+- [x] Keep CustomerOpsAgent default P1-only and Unified explicit opt-in.
+- [x] Add frontend session-only Token apply/clear, current role and Chinese 401/403 messages.
+- [x] Add secret-safe `--auth-token-env` support to P1 Harness and P2 Acceptance.
+- [x] Pass focused Auth/RBAC tests: 24 passed.
+- [x] Pass related route/Agent/Unified regression: 122 passed.
+- [x] Pass authoritative ignored clean-export backend suite: 411 passed, 44 warnings, 127.08 seconds.
+- [x] Pass compileall and frontend production build (50 modules).
+- [x] Pass Docker disabled/token auth smoke, P1 Harness 10/10 and P2 Acceptance.
+- [x] Restore Docker auth mode to disabled and remove runtime role Tokens after smoke.
+- [x] Pass diff, ignored-artifact and secret scans; commit no Token or runtime manifest.
+- [x] Add ADR 63 and M9.2 report 64; update README/status/ledger.
+
+Phase boundary:
+
+- **M9.2: PASS and ready for the audited phase commit/push.**
+- No tag is created.
+- M9.3 has not started.

@@ -176,6 +176,48 @@ button, input, select, textarea { font: inherit; }
   flex-shrink: 0;
 }
 
+.auth-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.auth-token-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.auth-token-field input {
+  width: 150px;
+  height: 30px;
+  font-size: 0.78rem;
+}
+
+.auth-role {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.auth-message {
+  position: absolute;
+  right: 0;
+  top: 36px;
+  z-index: 10;
+  width: max-content;
+  max-width: 360px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -1789,6 +1831,8 @@ label { display: grid; gap: 6px; color: #b4c4d9; font-size: 0.88rem; font-weight
   .top-nav { padding: 0 14px; gap: 12px; }
   .nav-links { gap: 2px; }
   .nav-link { padding: 6px 8px; font-size: 0.78rem; }
+  .auth-token-field span, .auth-role { display: none; }
+  .auth-token-field input { width: 110px; }
 
   .page-content { padding: 16px; }
 

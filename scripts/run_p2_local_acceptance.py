@@ -26,6 +26,11 @@ try:
 except ModuleNotFoundError:  # imported as scripts.run_p2_local_acceptance in tests
     from scripts.eval_run_scope import load_run_scope, make_run_scope, normalize_run_id
 
+try:
+    from auth_client import bearer_headers, load_bearer_token
+except ModuleNotFoundError:  # imported as scripts module in tests
+    from scripts.auth_client import bearer_headers, load_bearer_token
+
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT_DIR / ".local-data" / "p2-eval-expected-manifest.json"
@@ -83,7 +88,9 @@ def _response_data(envelope: dict[str, Any]) -> dict[str, Any]:
 class AcceptanceClient:
     """Small standard-library HTTP client for the project's public API."""
 
-    def __init__(self, base_url: str, timeout: float) -> None:
+    def __init__(
+        self, base_url: str, timeout: float, auth_token: str | None = None
+    ) -> None:
         parsed = urlsplit(base_url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise AcceptanceError("--base-url must be an HTTP(S) origin.")
@@ -91,6 +98,7 @@ class AcceptanceClient:
             raise AcceptanceError("Credentials must not be embedded in --base-url.")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.auth_headers = bearer_headers(auth_token)
 
     def _request(
         self,
@@ -100,7 +108,7 @@ class AcceptanceClient:
         body: bytes | None = None,
         content_type: str | None = None,
     ) -> dict[str, Any]:
-        headers = {"Accept": "application/json"}
+        headers = {"Accept": "application/json", **self.auth_headers}
         if content_type:
             headers["Content-Type"] = content_type
         request = Request(
@@ -775,6 +783,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--timeout", type=float, default=120.0)
     parser.add_argument(
+        "--auth-token-env",
+        help="Read the Bearer token from this environment variable; the token is never a CLI argument.",
+    )
+    parser.add_argument(
         "--run-id",
         help="Optional stable test-run id; auto-generated when omitted.",
     )
@@ -879,7 +891,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
     try:
-        client = AcceptanceClient(args.base_url, args.timeout)
+        auth_token = load_bearer_token(args.auth_token_env)
+        client = AcceptanceClient(args.base_url, args.timeout, auth_token=auth_token)
         if args.cleanup_manifest is not None:
             summary = cleanup_manifest_corpus(
                 client=client,

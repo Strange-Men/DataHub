@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.customerops_unified_schemas import CustomerOpsUnifiedRetrievalRequest
+from app.auth import Permission, require_permission
 from app.customerops_unified_service import (
     CustomerOpsUnifiedFailure,
     CustomerOpsUnifiedRetrievalService,
@@ -33,7 +34,7 @@ def _error(code: str, message: str, status_code: int) -> JSONResponse:
     )
 
 
-@router.post("/retrieve", response_model=None)
+@router.post("/retrieve", response_model=None, dependencies=[Depends(require_permission(Permission.AGENT_CUSTOMEROPS))])
 def retrieve_for_customerops_agent_v2(
     payload: CustomerOpsUnifiedRetrievalRequest,
     db: Session = Depends(get_db),
@@ -67,4 +68,3 @@ def retrieve_for_customerops_agent_v2(
         data=response.model_dump(),
         requestId=_request_id(),
     )
-

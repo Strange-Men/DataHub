@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth import Permission, require_permission
 from app.p2_retrieval_schemas import P2RetrievalRequest
 from app.p2_retrieval_service import P2RetrievalFailure, P2RetrievalService
 from app.schemas import ApiResponse
@@ -19,7 +20,7 @@ def _request_id() -> str:
     return f"req_{uuid4().hex[:12]}"
 
 
-@router.post("/search", response_model=None)
+@router.post("/search", response_model=None, dependencies=[Depends(require_permission(Permission.RETRIEVAL_P2))])
 def search_p2_knowledge(
     payload: P2RetrievalRequest,
     db: Session = Depends(get_db),

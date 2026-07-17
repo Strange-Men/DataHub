@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth import Permission, require_permission
 from app.knowledge_index_repositories import KnowledgeIndexSourceTraceError, list_index_entries
 from app.knowledge_index_service import (
     IndexKnowledgeAssetNotActiveError,
@@ -33,7 +34,7 @@ def _source_invalid(message: str) -> HTTPException:
     )
 
 
-@router.post("/knowledge-assets/{knowledge_asset_id}/index", response_model=ApiResponse)
+@router.post("/knowledge-assets/{knowledge_asset_id}/index", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_INDEX))])
 def create_knowledge_index(
     knowledge_asset_id: str,
     response: Response,
@@ -68,7 +69,7 @@ def create_knowledge_index(
     return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
 
 
-@router.get("/knowledge-index", response_model=ApiResponse)
+@router.get("/knowledge-index", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_knowledge_index_list(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -92,7 +93,7 @@ def get_knowledge_index_list(
     return ApiResponse(success=True, data=records.model_dump(), requestId=_request_id())
 
 
-@router.get("/knowledge-index/{index_entry_id}", response_model=ApiResponse)
+@router.get("/knowledge-index/{index_entry_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_knowledge_index_detail(
     index_entry_id: str,
     db: Session = Depends(get_db),
@@ -112,7 +113,7 @@ def get_knowledge_index_detail(
     return ApiResponse(success=True, data=record.model_dump(), requestId=_request_id())
 
 
-@router.post("/knowledge-index/{index_entry_id}/archive", response_model=ApiResponse)
+@router.post("/knowledge-index/{index_entry_id}/archive", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_ARCHIVE))])
 def archive_knowledge_index(
     index_entry_id: str,
     db: Session = Depends(get_db),

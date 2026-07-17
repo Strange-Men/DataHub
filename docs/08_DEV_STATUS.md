@@ -2058,4 +2058,16 @@ This is a planning and documentation checkpoint only.
 - Three independent Unified Evals each produced candidate query hit 1.0, exact recall 1.0, MRR 0.6071, source coverage 1.0, duplicate rate 0 and archive leakage 0 while filtering three historical P2 results per run and retaining the P1 control.
 - Agent smoke passed: old/default P1-only, explicit opt-in Unified P1+P2, fallback false, archive leakage 0. All four runtime flags were restored false.
 - Secret/ignored-artifact/diff audits passed. See `docs/62_M9_1_EVAL_ISOLATION_AND_RELEASE_SAFETY_REPORT.md`.
-- M9.2 has not started.
+- At the M9.1 boundary M9.2 had not started; the completed M9.2 status is recorded below.
+
+## P1/P2-M9.2 Governance Authentication and RBAC
+
+- **M9.2 implementation and local Docker acceptance: COMPLETE**. Added runtime environment Bearer Tokens with centralized `Role`, `Permission`, role mapping and FastAPI dependencies; no database schema or user table was added.
+- `DATAHUB_AUTH_MODE=disabled` preserves historical trusted-local behavior. `token` distinguishes missing/invalid credentials (401) from insufficient role permission (403), uses constant-time matching, rejects duplicate role Tokens and fails safely when no Token is configured.
+- Health and API discovery remain public. P1/P2 governance writes, reads, Retrieval, Unified, CustomerOpsAgent and Bad Case submission are protected by capability permissions.
+- Added a minimal Chinese frontend Token control, role display, `sessionStorage`, common Authorization Header injection and stable Chinese 401/403 guidance without starting the M9.3 workflow redesign.
+- Focused Auth/RBAC tests passed 24/24; related route/Harness/P2/Unified/Agent regression passed 122/122; authoritative ignored clean export passed 411/411 with 44 existing warnings in 127.08 seconds.
+- Python compileall and frontend production build passed. Docker disabled/token smoke passed; P1 Harness passed 10/10; P2 Acceptance passed with pre-Serve/post-Archive zero recall, old-version zero recall and physical-vector retention.
+- Runtime random Tokens were never written to `.env`, source, logs or Git. Final Compose state was restored to disabled with zero configured role Tokens and all services healthy.
+- ADR: `docs/63_ADR_GOVERNANCE_AUTH_RBAC.md`. Report: `docs/64_M9_2_GOVERNANCE_AUTH_RBAC_REPORT.md`.
+- M9.3 has not started.

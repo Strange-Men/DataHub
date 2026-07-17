@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { apiPath } from "./api";
+import { apiFetch as fetch, apiPath } from "./api";
 import type { BackendStatus } from "./types";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./pages/HomePage";

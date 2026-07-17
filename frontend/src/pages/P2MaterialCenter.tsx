@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { apiPath } from "../api";
+import { apiFetch as fetch, apiPath } from "../api";
 import type {
   Asset,
   AssetExtraction,

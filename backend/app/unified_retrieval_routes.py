@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth import Permission, require_permission
 from app.schemas import ApiResponse
 from app.unified_retrieval_schemas import UnifiedRetrievalRequest
 from app.unified_retrieval_service import (
@@ -22,7 +23,7 @@ def _request_id() -> str:
     return f"req_{uuid4().hex[:12]}"
 
 
-@router.post("/search", response_model=None)
+@router.post("/search", response_model=None, dependencies=[Depends(require_permission(Permission.RETRIEVAL_UNIFIED))])
 def search_unified_knowledge(
     payload: UnifiedRetrievalRequest,
     db: Session = Depends(get_db),

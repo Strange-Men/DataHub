@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import type { BackendStatus } from "../types";
+import { AuthControls } from "./AuthControls";
 
 const NAV_ITEMS = [
   { path: "/", label: "首页", exact: true },
@@ -38,6 +39,7 @@ export function Layout({
           ))}
         </div>
         <div className="nav-status">
+          <AuthControls onApplied={onCheckBackend} />
           <span
             className={`status-dot ${backendStatus.state}`}
             title={

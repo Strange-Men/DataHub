@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.auth import Permission, require_permission
 from app.knowledge_asset_repositories import KnowledgeSourceTraceError, list_knowledge_assets
 from app.knowledge_asset_service import (
     KnowledgeAssetNotFoundError,
@@ -42,7 +43,7 @@ def _source_trace_invalid(message: str) -> HTTPException:
     )
 
 
-@router.post("/snapshots/{snapshot_id}/publish", response_model=ApiResponse)
+@router.post("/snapshots/{snapshot_id}/publish", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_PUBLISH))])
 def publish_snapshot(
     snapshot_id: str,
     response: Response,
@@ -72,7 +73,7 @@ def publish_snapshot(
     return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
 
 
-@router.get("/knowledge-assets", response_model=ApiResponse)
+@router.get("/knowledge-assets", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_knowledge_assets(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -93,7 +94,7 @@ def get_knowledge_assets(
     return ApiResponse(success=True, data=records.model_dump(), requestId=_request_id())
 
 
-@router.get("/knowledge-assets/{knowledge_asset_id}", response_model=ApiResponse)
+@router.get("/knowledge-assets/{knowledge_asset_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_knowledge_asset_detail(
     knowledge_asset_id: str,
     db: Session = Depends(get_db),
@@ -107,7 +108,7 @@ def get_knowledge_asset_detail(
     return ApiResponse(success=True, data=record.model_dump(), requestId=_request_id())
 
 
-@router.post("/knowledge-assets/{knowledge_asset_id}/archive", response_model=ApiResponse)
+@router.post("/knowledge-assets/{knowledge_asset_id}/archive", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_ARCHIVE))])
 def archive_knowledge_asset(
     knowledge_asset_id: str,
     db: Session = Depends(get_db),

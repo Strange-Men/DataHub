@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useRef, useState } from "react";
-import { apiPath } from "../api";
+import { apiFetch as fetch, apiPath } from "../api";
 import {
   intentOptions,
   qualityLabel,

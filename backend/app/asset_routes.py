@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session
 
 from app.asset_repositories import get_asset, list_assets
+from app.auth import Permission, require_permission
 from app.asset_service import (
     AssetValidationFailure,
     DuplicateAssetFailure,
@@ -26,7 +27,7 @@ def _request_id() -> str:
     return f"req_{uuid4().hex[:12]}"
 
 
-@router.post("/upload", response_model=ApiResponse, status_code=201)
+@router.post("/upload", response_model=ApiResponse, status_code=201, dependencies=[Depends(require_permission(Permission.P2_ASSET_UPLOAD))])
 async def upload_asset(
     file: Annotated[UploadFile, File(description="JPEG, PNG, or WebP material")],
     asset_type: Annotated[str, Form()] = "image",
@@ -75,7 +76,7 @@ async def upload_asset(
     return ApiResponse(success=True, data=asset.model_dump(), requestId=_request_id())
 
 
-@router.get("", response_model=ApiResponse)
+@router.get("", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_assets(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
@@ -85,7 +86,7 @@ def get_assets(
     return ApiResponse(success=True, data=result.model_dump(), requestId=_request_id())
 
 
-@router.get("/{asset_id}", response_model=ApiResponse)
+@router.get("/{asset_id}", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P2_READ))])
 def get_asset_detail(asset_id: str, db: Session = Depends(get_db)) -> ApiResponse:
     asset = get_asset(db, asset_id)
     if asset is None:
