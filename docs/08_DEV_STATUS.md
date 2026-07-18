@@ -2111,3 +2111,13 @@ This is a planning and documentation checkpoint only.
 - Isolated Docker `enforced` P1 Harness passed 10/10. Real-provider P2 Acceptance passed with Ready-before-Serve 0, Serve hit, Archive 0, old-version 0 and scoped cleanup.
 - CustomerOpsAgent remains P1-only by default; Unified remains explicit opt-in. RRF, database schema and index structures were not changed.
 - Report: `docs/67_M9_4B_NO_ANSWER_CALIBRATION_AND_ABSTENTION_REPORT.md`. M9.5 has not started.
+
+## P1/P2-M9.5 Maintenance Release Closure
+
+- **M9.5 local Docker release closure: COMPLETE**. A disjoint 48-sample holdout passed shadow and enforced release lines with 0.9583 answerable/no-answer precision and recall, 0.0417 false-answer/false-rejection rates, and zero archived/old-version leakage.
+- Fixed No-answer thresholds remain P1 `0.45`, P2 `0.55`, Unified `1.0`; no holdout-driven tuning was performed.
+- Final focused regression passed 95 tests; isolated PostgreSQL/pgvector passed 5; clean-export collected 465 and passed 460 with 5 explicit PostgreSQL skips and 44 warnings.
+- P1 Harness passed 10/10. Real-provider P2 Acceptance passed with Ready-before-Serve 0, Serve hit, Archive 0 and old-version zero recall. Agent remained P1-only and Unified remained explicit opt-in.
+- Frontend governance contracts passed within the regression suite and the 54-module production build passed.
+- Independent test containers/volumes were removed; the three-service development stack and its volumes remained healthy and intact.
+- Report: `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`. Local maintenance release PASS; Render P2 persistence remains BLOCKED; P3/P4 have not started.

@@ -100,7 +100,7 @@ Stop only for a branch/remote divergence or unknown user change; need for histor
 | M9.3 | COMPLETE | `[P1-P2-M9.3] feat: complete chinese governance workflow` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused/contract 99; frontend build PASS; Docker five-role browser checklist PASS | stop; M9.4 has not started |
 | M9.4A | COMPLETE | `[P1-P2-M9.4A] test: isolate docker and reliability test environments` (this phase commit; see Git log for hash) | normal `main` push at phase closure | offline 27; PG 5; related 155; clean-export 430 + 5 explicit PG skips; frontend build; parallel Docker stacks PASS | stop; M9.4B has not started |
 | M9.4B | COMPLETE | `[P1-P2-M9.4B] feat: add calibrated no-answer abstention gates` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused 29; Eval 26/26; clean-export 459 + 5 explicit PG skips; P1 10/10; P2 Acceptance/build/security PASS | stop; M9.5 has not started |
-| M9.5 | PENDING | PENDING | PENDING | PENDING | enter only after M9.4B push |
+| M9.5 | COMPLETE | `[P1-P2-M9.5] release: close maintenance hardening` (this phase commit; see Git log for hash) | normal `main` push and annotated tag at release closure | holdout 48; focused 95; PG 5; clean-export 460 + 5 explicit PG skips; P1 10/10; P2/Agent/Unified/build/security gates PASS | stop; P3/P4 have not started |
 
 ## 7. Current Risks and Next Action
 
@@ -129,4 +129,6 @@ Historical entry: M9.4B No-answer Calibration and Abstention Gate was authorized
 
 M9.4B closure: centralized deterministic answerability decisions now expose stable reasons and per-mode thresholds without using RRF as confidence. Default disabled and shadow modes preserve results; explicit enforced mode makes CustomerOpsAgent remove unreliable evidence and return a fixed Chinese abstention message. Raw P1/P2/Unified responses retain candidates with additive nested metadata. The 26-sample run-scoped Eval achieved 1.0 answerable precision/recall, 1.0 no-answer precision/recall/F1, zero false-answer/false-rejection, zero archive/old-version leakage and 1.0 reason accuracy. Clean-export passed 459 with 5 explicit PG skips; P1 Harness remained 10/10 and P2 Acceptance retained Ready/Serve/Archive and replacement gates. Agent remains P1-only by default, Unified remains explicit opt-in, and RRF/schema/indexes were unchanged. Report: `docs/67_M9_4B_NO_ANSWER_CALIBRATION_AND_ABSTENTION_REPORT.md`.
 
-Next authorized entry: M9.5 Maintenance Release Closure. M9.5 has not started.
+M9.5 closure: the independent 48-sample holdout exceeded all release lines in shadow and enforced modes with 0.9583 answerable recall, 0.9583 no-answer precision, 0.0417 false-answer/false-rejection rates and zero archived/old-version leakage. Fixed thresholds remain P1 0.45, P2 0.55 and Unified 1.0; no holdout-driven adjustment was made. Final gates passed 95 focused tests, 5 isolated PostgreSQL/pgvector tests, P1 Harness 10/10, real-provider P2 Acceptance, clean-export 460 passed plus 5 explicit PostgreSQL skips, and the 54-module frontend build. Test resources were removed while the development stack and volumes remained intact. Report: `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`.
+
+Maintenance release boundary: local Docker PASS; Render P2 persistence remains BLOCKED; P3/P4 have not started.

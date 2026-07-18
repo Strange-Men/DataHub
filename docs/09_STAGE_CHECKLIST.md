@@ -2307,3 +2307,25 @@ Phase boundary:
 - **M9.4B: PASS and ready for the audited phase commit/push.**
 - No tag is created.
 - M9.5 has not started.
+
+## P1/P2-M9.5 Maintenance Release Closure
+
+- [x] Build a disjoint 48-sample run-scoped No-answer holdout without copying the original 26 queries.
+- [x] Run shadow and enforced holdout gates: answerable recall 0.9583, no-answer precision 0.9583, false-answer rate 0.0417.
+- [x] Keep P1/P2/Unified thresholds at 0.45/0.55/1.0; do not tune against holdout errors.
+- [x] Keep archived and old-version leakage at 0 and Ready-not-Serving contribution at 0.
+- [x] Pass M9.1-M9.4B focused closure regression: 95 tests.
+- [x] Pass isolated PostgreSQL/pgvector integration: 5 tests.
+- [x] Pass isolated P1 Harness 10/10 and real-provider P2 Acceptance.
+- [x] Verify CustomerOpsAgent default P1-only and Unified explicit opt-in safe default.
+- [x] Pass clean-export backend: 460 passed, 5 explicit PostgreSQL skips, 44 warnings.
+- [x] Pass frontend governance contracts and 54-module production build.
+- [x] Remove only independent test resources; preserve development services, data and volumes.
+- [x] Pass secret, ignored-artifact and diff checks.
+- [x] Add report 68 and close README/status/checklist/maintenance state.
+
+Phase boundary:
+
+- **M9.5: PASS and ready for the audited closure commit, push and annotated tag.**
+- Render P2 persistent deployment remains BLOCKED and is not represented as online acceptance.
+- P3/P4 have not started.

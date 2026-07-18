@@ -84,6 +84,10 @@ def run_eval(dataset: dict[str, Any], config: AnswerabilityConfig) -> dict[str, 
     tp = fp = tn = fn = 0
     reason_hits = 0
     archived_leakage = old_version_leakage = 0
+    threshold_neighborhood: dict[str, dict[str, int]] = {
+        scope: {"sample_count": 0, "below_threshold": 0, "at_or_above_threshold": 0, "classification_errors": 0}
+        for scope in ("p1", "p2", "unified")
+    }
 
     for sample in samples:
         decision = evaluate_answerability(
@@ -101,6 +105,19 @@ def run_eval(dataset: dict[str, Any], config: AnswerabilityConfig) -> dict[str, 
         tn += int(not predicted and not expected)
         fn += int(not predicted and expected)
         reason_hits += int(decision.no_answer_reason.value == sample["expected_reason"])
+        if (
+            decision.decision_score is not None
+            and decision.decision_threshold is not None
+            and abs(decision.decision_score - decision.decision_threshold) <= 0.05
+        ):
+            bucket = threshold_neighborhood[sample["retrieval_mode"]]
+            bucket["sample_count"] += 1
+            bucket[
+                "at_or_above_threshold"
+                if decision.decision_score >= decision.decision_threshold
+                else "below_threshold"
+            ] += 1
+            bucket["classification_errors"] += int(predicted != expected)
         forbidden = set(sample.get("forbidden_sources", []))
         if predicted and any(value.startswith("archived-") for value in forbidden):
             archived_leakage += 1
@@ -154,6 +171,7 @@ def run_eval(dataset: dict[str, Any], config: AnswerabilityConfig) -> dict[str, 
             "old_version_leakage": old_version_leakage,
             "reason_accuracy": _ratio(reason_hits, len(samples)),
         },
+        "threshold_neighborhood": threshold_neighborhood,
         "rows": rows,
     }
 
@@ -168,6 +186,11 @@ def main() -> int:
     parser.add_argument("--run-id", default=f"no-answer-{uuid4().hex[:12]}")
     parser.add_argument("--namespace")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--holdout",
+        action="store_true",
+        help="Evaluate fixed thresholds on an independent set without recalibrating them.",
+    )
     args = parser.parse_args()
 
     namespace = args.namespace or f"datahub-eval:{args.run_id}"
@@ -183,6 +206,7 @@ def main() -> int:
             "namespace": namespace,
             "dataset_path": str(args.dataset.resolve()),
             "created_at": datetime.now(UTC).isoformat(),
+            "evaluation_role": "holdout" if args.holdout else "calibration",
         }
     )
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -198,7 +222,7 @@ def main() -> int:
         and metrics["archived_leakage"] == 0
         and metrics["old_version_leakage"] == 0
         and metrics["reason_accuracy"] >= 0.95
-        and thresholds_match
+        and (args.holdout or thresholds_match)
     )
     return 0 if passed else 1
 

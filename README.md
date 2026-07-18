@@ -722,3 +722,13 @@ docs/                  PRD、架构、API 契约、验收标准和治理规则
 samples/               安全假数据样例
 scripts/               小样本转换与评测辅助脚本
 ```
+
+## P1/P2 Maintenance Hardening Release
+
+M9.1-M9.5 已完成本地 Docker 维护版本封板：Eval 使用 run-scoped manifest，治理 API 支持环境 Bearer Token 与五角色 RBAC，中文控制台提供真实 P1/P2 任务流，测试使用独立 PostgreSQL/pgvector 与 Docker project，No-answer 支持 `disabled`、`shadow`、`enforced` 三种模式。
+
+独立 48 条挑战集在 shadow/enforced 下均达到：Answerable recall `0.9583`、No-answer precision `0.9583`、False-answer rate `0.0417`，archived/old-version leakage 均为 `0`。发布阈值保持 P1 `0.45`、P2 `0.55`、Unified `1.0`，未根据挑战集逐条调参。
+
+本地权威结果：P1 Harness `10/10`、P2 Acceptance PASS、clean-export backend `460 passed / 5 skipped`、frontend production build PASS。CustomerOpsAgent 默认仍为 P1-only，Unified 仍需显式 opt-in。完整证据见 `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`。
+
+该结论仅覆盖本地 Docker。Render P2 持久化部署仍为 BLOCKED；P3/P4 尚未开始。
