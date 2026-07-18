@@ -10,6 +10,12 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from app import db_repositories
+from app.answerability import (
+    AnswerabilityConfig,
+    AnswerabilityDecision,
+    AnswerabilityEvidence,
+    evaluate_answerability,
+)
 from app.embedding import EmbeddingProvider, get_embedding_provider
 from app.knowledge_asset_repositories import KnowledgeSourceTraceError, get_knowledge_asset
 from app.knowledge_embedding_service import (
@@ -70,6 +76,7 @@ class P2RetrievalService:
     ) -> None:
         self.db = db
         self.provider = provider or get_embedding_provider()
+        self.answerability_config = AnswerabilityConfig.from_environment()
 
     def _response(
         self,
@@ -83,6 +90,7 @@ class P2RetrievalService:
         error_code: str | None = None,
         error_message: str | None = None,
         debug: dict[str, object] | None = None,
+        answerability: AnswerabilityDecision | None = None,
     ) -> P2RetrievalResponse:
         return P2RetrievalResponse(
             retrieval_id=retrieval_id,
@@ -103,6 +111,7 @@ class P2RetrievalService:
             error_code=error_code,
             error_message=error_message,
             debug=debug if payload.debug else None,
+            answerability=answerability,
         )
 
     def _log(self, response: P2RetrievalResponse) -> None:
@@ -126,6 +135,11 @@ class P2RetrievalService:
             "latency_ms": response.latency_ms,
             "fallback_used": response.fallback_used,
             "fallback_reason": response.fallback_reason,
+            "answerability": (
+                response.answerability.model_dump(mode="json")
+                if response.answerability
+                else None
+            ),
             "source_trace_summaries": [
                 _safe_trace_summary(item) for item in response.results
             ],
@@ -158,6 +172,13 @@ class P2RetrievalService:
             fallback_reason=reason,
             error_code=code,
             error_message=message,
+            answerability=evaluate_answerability(
+                query=payload.query,
+                evidence=[],
+                scope="p2",
+                config=self.answerability_config,
+                retrieval_unavailable=True,
+            ),
         )
         self._log(response)
         raise P2RetrievalFailure(
@@ -237,6 +258,12 @@ class P2RetrievalService:
             self.db, evaluation_scope=payload.evaluation_scope
         )
         if not serving_rows:
+            answerability = evaluate_answerability(
+                query=payload.query,
+                evidence=[],
+                scope="p2",
+                config=self.answerability_config,
+            )
             response = self._response(
                 retrieval_id=retrieval_id,
                 payload=payload,
@@ -244,6 +271,7 @@ class P2RetrievalService:
                 started=started,
                 results=[],
                 fallback_reason="no_serving_index",
+                answerability=answerability,
             )
             self._log(response)
             return response
@@ -361,10 +389,10 @@ class P2RetrievalService:
             )
 
         results: list[P2RetrievalResult] = []
+        decision_evidence: list[AnswerabilityEvidence] = []
+        filtered_candidate_count = 0
         asset_counts: dict[str, int] = {}
         for candidate in candidates:
-            if float(candidate.score or 0.0) < minimum_score:
-                continue
             try:
                 entry = self._validate_row(
                     candidate,
@@ -374,6 +402,19 @@ class P2RetrievalService:
                     dimension=dimension,
                 )
             except ValueError:
+                filtered_candidate_count += 1
+                continue
+            metadata = candidate.chunk_metadata
+            decision_evidence.append(
+                AnswerabilityEvidence(
+                    score=float(candidate.score or 0.0),
+                    source="p2",
+                    conflict_key=str(metadata.get("conflict_key") or "") or None,
+                    claim_value=str(metadata.get("claim_value") or "") or None,
+                )
+            )
+            if float(candidate.score or 0.0) < minimum_score:
+                filtered_candidate_count += 1
                 continue
             if asset_counts.get(candidate.asset_id, 0) >= 2:
                 continue
@@ -405,6 +446,13 @@ class P2RetrievalService:
             started=started,
             results=results,
             fallback_reason=None if results else "no_hits",
+            answerability=evaluate_answerability(
+                query=payload.query,
+                evidence=decision_evidence,
+                scope="p2",
+                config=self.answerability_config,
+                filtered_candidate_count=filtered_candidate_count,
+            ),
             debug={
                 "candidate_limit": candidate_limit,
                 "serving_row_count": len(profile_rows),

@@ -2099,3 +2099,15 @@ This is a planning and documentation checkpoint only.
 - Frontend production build passed (54 modules). CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, and archived leakage remains 0.
 - Development and test stacks ran concurrently healthy. Dev DB stayed 69 Assets / 80 Knowledge Assets; test DB ended empty. Test project containers/volumes were removed and development volumes were untouched.
 - Report: `docs/66_M9_4A_ENGINEERING_RELIABILITY_AND_TEST_ISOLATION_REPORT.md`. M9.4B No-answer Gate has not started.
+
+## P1/P2-M9.4B No-answer Calibration and Abstention Gate
+
+- **M9.4B implementation and local acceptance: COMPLETE**. Added centralized `AnswerabilityConfig`, deterministic decision signals and stable reason codes for P1, P2, Unified and both CustomerOpsAgent endpoints.
+- Default `disabled` and optional `shadow` preserve legacy results. `enforced` removes unreliable Agent evidence and returns a fixed Chinese abstention message; Raw Retrieval keeps its candidates and adds compatible nested `answerability` metadata.
+- P1/P2 native scores use separate calibrated thresholds (`0.45` / `0.55`). Unified uses a normalized source-local threshold ratio (`1.0`) and never compares raw route scores or RRF contributions.
+- Run-scoped offline Eval covered 26 samples (11 answerable / 15 no-answer or failure): answerable precision/recall, no-answer precision/recall/F1 and reason accuracy were all 1.0; false-answer/false-rejection rates and archived/old-version leakage were 0.
+- Focused no-answer tests passed 29; Auth/M9.1/frontend contract regression passed 68; Unified/Agent opt-in regression passed 33. Clean-export collected 464 and passed 459 with 5 explicit PostgreSQL skips and 44 warnings in 90.24 seconds.
+- Frontend production build passed with 54 modules. The retrieval page distinguishes a knowledge miss from `RETRIEVAL_UNAVAILABLE` and shows reason, reliable evidence count, threshold and gate mode in Chinese.
+- Isolated Docker `enforced` P1 Harness passed 10/10. Real-provider P2 Acceptance passed with Ready-before-Serve 0, Serve hit, Archive 0, old-version 0 and scoped cleanup.
+- CustomerOpsAgent remains P1-only by default; Unified remains explicit opt-in. RRF, database schema and index structures were not changed.
+- Report: `docs/67_M9_4B_NO_ANSWER_CALIBRATION_AND_ABSTENTION_REPORT.md`. M9.5 has not started.

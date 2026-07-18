@@ -15,6 +15,11 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from app import db_repositories
+from app.answerability import (
+    AnswerabilityConfig,
+    AnswerabilityEvidence,
+    evaluate_answerability,
+)
 from app.database import SessionLocal
 from app.knowledge_asset_repositories import (
     KnowledgeSourceTraceError,
@@ -398,6 +403,26 @@ def _result_id(result: UnifiedRetrievalResult) -> str:
     return f"{result.source_index}:{result.chunk_id}"
 
 
+def _answerability_evidence(
+    results: Iterable[UnifiedRetrievalResult],
+    config: AnswerabilityConfig,
+) -> list[AnswerabilityEvidence]:
+    evidence: list[AnswerabilityEvidence] = []
+    for item in results:
+        metadata = item.metadata
+        evidence.append(
+            AnswerabilityEvidence(
+                score=config.normalize_unified_score(
+                    item.source_index, float(item.original_score)
+                ),
+                source=item.source_index,
+                conflict_key=str(metadata.get("conflict_key") or "") or None,
+                claim_value=str(metadata.get("claim_value") or "") or None,
+            )
+        )
+    return evidence
+
+
 def _shadow_comparison(
     control: list[UnifiedRetrievalResult],
     candidate: list[UnifiedRetrievalResult],
@@ -667,6 +692,11 @@ class UnifiedRetrievalService:
             ),
             "rrf_rank_constant": self.flags.rrf_rank_constant,
             "raw_scores_compared": False,
+            "answerability": (
+                response.answerability.model_dump(mode="json")
+                if response.answerability
+                else None
+            ),
         }
         trace = {
             "retrieval_id": response.retrieval_id,
@@ -689,6 +719,7 @@ class UnifiedRetrievalService:
         started = time.perf_counter()
         created_at = datetime.now(UTC).isoformat()
         retrieval_id = f"unified_retrieval_{uuid4().hex[:16]}"
+        answerability_config = AnswerabilityConfig.from_environment()
         if not self.flags.unified_enabled:
             self._log_failure(
                 retrieval_id=retrieval_id,
@@ -812,6 +843,13 @@ class UnifiedRetrievalService:
         )
         retrieval_mode = "shadow_control" if effective_shadow else candidate_mode
         visible_results = control_results if effective_shadow else candidate_results
+        answerability = evaluate_answerability(
+            query=payload.query,
+            evidence=_answerability_evidence(visible_results, answerability_config),
+            scope="unified",
+            config=answerability_config,
+            retrieval_unavailable=bool(unavailable),
+        )
         response = UnifiedRetrievalResponse(
             retrieval_id=retrieval_id,
             request_id=payload.request_id,
@@ -842,6 +880,7 @@ class UnifiedRetrievalService:
             ),
             shadow_comparison=comparison,
             created_at=created_at,
+            answerability=answerability,
             debug=(
                 {
                     "candidate_k": candidate_k,

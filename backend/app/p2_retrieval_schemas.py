@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.answerability import AnswerabilityDecision
 from app.knowledge_index_schemas import KnowledgeIndexSourceTrace
 
 
@@ -53,3 +54,4 @@ class P2RetrievalResponse(BaseModel):
     error_code: str | None = None
     error_message: str | None = None
     debug: dict[str, object] | None = None
+    answerability: AnswerabilityDecision | None = None

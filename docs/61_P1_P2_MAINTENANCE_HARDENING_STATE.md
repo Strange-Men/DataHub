@@ -99,7 +99,7 @@ Stop only for a branch/remote divergence or unknown user change; need for histor
 | M9.2 | COMPLETE | `[P1-P2-M9.2] feat: add governance authentication and role controls` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused 24; clean-export 411; compile/build PASS; Docker auth smoke; P1 10/10; P2 Acceptance PASS | stop; M9.3 has not started |
 | M9.3 | COMPLETE | `[P1-P2-M9.3] feat: complete chinese governance workflow` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused/contract 99; frontend build PASS; Docker five-role browser checklist PASS | stop; M9.4 has not started |
 | M9.4A | COMPLETE | `[P1-P2-M9.4A] test: isolate docker and reliability test environments` (this phase commit; see Git log for hash) | normal `main` push at phase closure | offline 27; PG 5; related 155; clean-export 430 + 5 explicit PG skips; frontend build; parallel Docker stacks PASS | stop; M9.4B has not started |
-| M9.4B | PENDING | PENDING | PENDING | PENDING | enter only after a separate authorization |
+| M9.4B | COMPLETE | `[P1-P2-M9.4B] feat: add calibrated no-answer abstention gates` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused 29; Eval 26/26; clean-export 459 + 5 explicit PG skips; P1 10/10; P2 Acceptance/build/security PASS | stop; M9.5 has not started |
 | M9.5 | PENDING | PENDING | PENDING | PENDING | enter only after M9.4B push |
 
 ## 7. Current Risks and Next Action
@@ -125,4 +125,8 @@ Historical entry: M9.4A Engineering Reliability and Test Environment Isolation w
 
 M9.4A closure: rebuild CLI tests no longer contact the fixed development port or inherit real Provider/database state. Offline subprocesses use allow-listed mock/test configuration; PostgreSQL/pgvector tests use `datahub_test`; and `compose.test.yaml` runs beside the healthy development stack on isolated ports/networks/volumes. PG integration passed 5 tests, related reliability regression passed 155, clean-export passed 430 with 5 explicit PG skips, and frontend build passed. Test containers/volumes were removed while development counts remained 69 Assets / 80 Knowledge Assets. Report: `docs/66_M9_4A_ENGINEERING_RELIABILITY_AND_TEST_ISOLATION_REPORT.md`.
 
-Next authorized entry: M9.4B No-answer Gate. M9.4B has not started.
+Historical entry: M9.4B No-answer Calibration and Abstention Gate was authorized after M9.4A. Its completed state is recorded below.
+
+M9.4B closure: centralized deterministic answerability decisions now expose stable reasons and per-mode thresholds without using RRF as confidence. Default disabled and shadow modes preserve results; explicit enforced mode makes CustomerOpsAgent remove unreliable evidence and return a fixed Chinese abstention message. Raw P1/P2/Unified responses retain candidates with additive nested metadata. The 26-sample run-scoped Eval achieved 1.0 answerable precision/recall, 1.0 no-answer precision/recall/F1, zero false-answer/false-rejection, zero archive/old-version leakage and 1.0 reason accuracy. Clean-export passed 459 with 5 explicit PG skips; P1 Harness remained 10/10 and P2 Acceptance retained Ready/Serve/Archive and replacement gates. Agent remains P1-only by default, Unified remains explicit opt-in, and RRF/schema/indexes were unchanged. Report: `docs/67_M9_4B_NO_ANSWER_CALIBRATION_AND_ABSTENTION_REPORT.md`.
+
+Next authorized entry: M9.5 Maintenance Release Closure. M9.5 has not started.

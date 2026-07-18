@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.answerability import AnswerabilityDecision
 from app.schemas import CustomerOpsRetrievalFilters
 from app.unified_retrieval_schemas import UnifiedRetrievalSourceMode
 
@@ -104,3 +105,5 @@ class CustomerOpsUnifiedRetrievalResponse(BaseModel):
     legacy_fallback_reason: str | None = None
     source_modes: dict[str, UnifiedRetrievalSourceMode] = Field(default_factory=dict)
     request_id: str | None = None
+    answerability: AnswerabilityDecision | None = None
+    abstention_message: str | None = None

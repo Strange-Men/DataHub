@@ -2282,3 +2282,28 @@ Phase boundary:
 - **M9.4A: PASS and ready for the audited phase commit/push.**
 - No tag is created.
 - M9.4B No-answer Gate and M9.5 have not started.
+
+## P1/P2-M9.4B No-answer Calibration and Abstention Gate
+
+- [x] Confirm P1/P2 native scores are route-local and Unified RRF scores are not comparable confidence values.
+- [x] Centralize mode, thresholds, evidence signals and stable answerability reason codes outside routes.
+- [x] Keep `disabled`/`shadow` compatible and restrict evidence suppression to CustomerOpsAgent in explicit `enforced` mode.
+- [x] Preserve Raw P1/P2/Unified candidates and add compatible nested `answerability` metadata.
+- [x] Distinguish `RETRIEVAL_UNAVAILABLE` from knowledge-base no-answer decisions.
+- [x] Reject no evidence, low relevance, insufficient/conflicting evidence, filtered archived/old/ready candidates and ambiguous queries.
+- [x] Keep reliable single-branch Unified evidence answerable during the other branch's failure.
+- [x] Add a 26-sample run-scoped Eval with allowed/forbidden sources and calibrated P1/P2/Unified thresholds.
+- [x] Meet answerable recall and no-answer precision gates without rejecting every sample; leakage and false-answer rate remain 0.
+- [x] Add Chinese frontend reason/threshold/evidence/mode display without exposing vectors, stacks or Secrets.
+- [x] Pass 29 focused tests, 68 Auth/M9.1/frontend contracts and 33 Unified/Agent opt-in regressions.
+- [x] Pass clean-export backend: 459 passed, 5 explicit PostgreSQL skips, 44 warnings, 90.24 seconds.
+- [x] Pass frontend production build with 54 modules.
+- [x] Pass isolated enforced-mode P1 Harness 10/10 and real-provider P2 Acceptance with archive/old-version zero recall.
+- [x] Preserve RRF, database schema, P1-only Agent default, Unified explicit opt-in and sealed tags.
+- [x] Add report 67 and update `.env.example`, Compose, README/status/ledger.
+
+Phase boundary:
+
+- **M9.4B: PASS and ready for the audited phase commit/push.**
+- No tag is created.
+- M9.5 has not started.

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from app.answerability import AnswerabilityConfigurationError
 from app.database import get_db
 from app.auth import Permission, require_permission
 from app.p2_retrieval_schemas import P2RetrievalRequest
@@ -27,6 +28,19 @@ def search_p2_knowledge(
 ) -> ApiResponse | JSONResponse:
     try:
         result = P2RetrievalService(db).search(payload)
+    except AnswerabilityConfigurationError:
+        return JSONResponse(
+            status_code=500,
+            content=ApiResponse(
+                success=False,
+                data={
+                    "error_code": "NO_ANSWER_CONFIG_INVALID",
+                    "error_message": "No-answer configuration is invalid.",
+                    "results": [],
+                },
+                requestId=_request_id(),
+            ).model_dump(),
+        )
     except P2RetrievalFailure as exc:
         return JSONResponse(
             status_code=exc.status_code,

@@ -5,6 +5,12 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.answerability import (
+    AnswerabilityConfig,
+    AnswerabilityEvidence,
+    SAFE_ABSTENTION_MESSAGE,
+    evaluate_answerability,
+)
 from app.schemas import (
     ApiResponse,
     BadCaseDraftRequest,
@@ -86,6 +92,7 @@ except Exception:
 def _startup_init_database() -> None:
     """Idempotent: ensure all tables exist on startup (P1-M17)."""
     validate_auth_configuration()
+    AnswerabilityConfig.from_environment()
     try:
         init_database_tables()
     except Exception:
@@ -567,13 +574,22 @@ def search_local_rag_chunks(payload: RagSearchRequest) -> ApiResponse:
                 "message": "top_k must be between 1 and 10.",
             },
         )
-    results = [
-        result.model_dump()
-        for result in search_rag_chunks(query, payload.top_k)
-    ]
+    raw_results = search_rag_chunks(query, payload.top_k)
+    results = [result.model_dump() for result in raw_results]
+    answerability = evaluate_answerability(
+        query=query,
+        evidence=[
+            AnswerabilityEvidence(score=float(result.score), source="p1")
+            for result in raw_results
+        ],
+        scope="p1",
+    )
     return ApiResponse(
         success=True,
-        data={"results": results},
+        data={
+            "results": results,
+            "answerability": answerability.model_dump(mode="json"),
+        },
         requestId=_request_id(),
     )
 
@@ -608,6 +624,10 @@ def retrieve_for_customerops_agent(
         )
 
     retrieval = run_customerops_retrieval(payload, query, payload.top_k)
+    if retrieval.answerability and retrieval.answerability.should_abstain:
+        retrieval = retrieval.model_copy(
+            update={"results": [], "abstention_message": SAFE_ABSTENTION_MESSAGE}
+        )
     return ApiResponse(
         success=True,
         data=retrieval.model_dump(),

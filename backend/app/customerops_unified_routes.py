@@ -6,6 +6,11 @@ from fastapi import APIRouter, Depends, Header
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from app.answerability import (
+    AnswerabilityConfig,
+    AnswerabilityConfigurationError,
+    evaluate_answerability,
+)
 from app.customerops_unified_schemas import CustomerOpsUnifiedRetrievalRequest
 from app.auth import Permission, require_permission
 from app.customerops_unified_service import (
@@ -48,7 +53,20 @@ def retrieve_for_customerops_agent_v2(
         )
     try:
         response = CustomerOpsUnifiedRetrievalService(db).retrieve(payload)
+    except AnswerabilityConfigurationError:
+        return _error(
+            "NO_ANSWER_CONFIG_INVALID",
+            "No-answer configuration is invalid.",
+            500,
+        )
     except CustomerOpsUnifiedFailure as exc:
+        answerability = evaluate_answerability(
+            query=payload.query,
+            evidence=[],
+            scope="unified" if payload.retrieval_strategy == "unified" else "p1",
+            config=AnswerabilityConfig.from_environment(),
+            retrieval_unavailable=True,
+        )
         return JSONResponse(
             status_code=503,
             content=ApiResponse(
@@ -59,6 +77,7 @@ def retrieve_for_customerops_agent_v2(
                     "fallback_reason": exc.reason,
                     "request_id": exc.request_id,
                     "results": [],
+                    "answerability": answerability.model_dump(mode="json"),
                 },
                 requestId=_request_id(),
             ).model_dump(),

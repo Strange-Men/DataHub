@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.answerability import AnswerabilityDecision
+
 
 UnifiedSource = Literal["p1", "p2"]
 UnifiedRetrievalMode = Literal[
@@ -161,3 +163,4 @@ class UnifiedRetrievalResponse(BaseModel):
     shadow_comparison: UnifiedRetrievalShadowComparison | None = None
     created_at: str
     debug: dict[str, object] | None = None
+    answerability: AnswerabilityDecision | None = None

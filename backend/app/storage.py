@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from app.answerability import AnswerabilityEvidence, evaluate_answerability
 from app.schemas import (
     BadCaseDraftRequest,
     BadCaseRecord,
@@ -1806,6 +1807,23 @@ def run_customerops_retrieval(
                 results.append(result)
         results = sorted(results, key=lambda item: item.score, reverse=True)[:top_k]
 
+    retrieval_unavailable = bool(
+        not results
+        and fallback_reason
+        and fallback_reason.startswith(
+            ("embedding_generation_failed:", "pgvector_query_error:")
+        )
+    )
+    answerability = evaluate_answerability(
+        query=query,
+        evidence=[
+            AnswerabilityEvidence(score=float(item.score), source="p1")
+            for item in results
+        ],
+        scope="p1",
+        retrieval_unavailable=retrieval_unavailable,
+    )
+
     trace = CustomerOpsRetrievalTrace(
         retrieval_id=retrieval_id,
         query=query,
@@ -1822,6 +1840,7 @@ def run_customerops_retrieval(
         matched_chunk_scores=semantic_scores if semantic_scores else [r.score for r in results],
         embedding_provider=embedding_provider_name,
         embedding_model=embedding_model_name,
+        answerability=answerability,
     )
     _write_retrieval_trace(trace)
     return CustomerOpsRetrievalResponse(
@@ -1833,6 +1852,7 @@ def run_customerops_retrieval(
         fallback_used=fallback_used,
         fallback_reason=fallback_reason,
         created_at=created_at,
+        answerability=answerability,
     )
 
 

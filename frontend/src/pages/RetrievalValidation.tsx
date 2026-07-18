@@ -5,6 +5,27 @@ import { apiErrorMessage, can, FORBIDDEN_MESSAGE, type FrontendPermission } from
 
 type RetrievalKind = "p1" | "p2" | "unified" | "agent";
 
+type Answerability = {
+  answerable: boolean;
+  no_answer_reason: string;
+  decision_score?: number | null;
+  decision_threshold?: number | null;
+  valid_evidence_count: number;
+  mode: "disabled" | "shadow" | "enforced";
+  abstention_enforced: boolean;
+};
+
+const NO_ANSWER_REASON_LABELS: Record<string, string> = {
+  ANSWERABLE: "证据可靠，可以回答",
+  NO_EVIDENCE: "未找到相关知识",
+  LOW_RELEVANCE: "检索结果相关性不足",
+  INSUFFICIENT_EVIDENCE: "有效证据不足",
+  CONFLICTING_EVIDENCE: "检索证据存在冲突",
+  ALL_CANDIDATES_FILTERED: "候选知识未通过治理可见性检查",
+  QUERY_TOO_AMBIGUOUS: "当前问题信息不足",
+  RETRIEVAL_UNAVAILABLE: "检索服务暂时不可用",
+};
+
 const KIND_CONFIG: Record<RetrievalKind, { label: string; permission: FrontendPermission; description: string }> = {
   p1: { label: "P1 Retrieval", permission: "retrieval.p1", description: "只检索已审核并同步的 P1 文本知识。" },
   p2: { label: "P2 Retrieval", permission: "retrieval.p2", description: "只检索 serving 状态的 P2 向量知识。" },
@@ -16,6 +37,10 @@ function resultItems(body: any): any[] {
   if (Array.isArray(body?.results)) return body.results;
   if (Array.isArray(body?.data?.results)) return body.data.results;
   return [];
+}
+
+function answerabilityOf(body: any): Answerability | null {
+  return body?.answerability || body?.data?.answerability || null;
 }
 
 function sourceTrace(item: any): string {
@@ -43,6 +68,7 @@ export function RetrievalValidation() {
   const config = KIND_CONFIG[kind];
   const allowed = can(role, config.permission);
   const results = useMemo(() => resultItems(response), [response]);
+  const answerability = useMemo(() => answerabilityOf(response), [response]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -149,6 +175,28 @@ export function RetrievalValidation() {
             <span>Fallback：<strong>{String(response.fallback_used ?? response.data?.fallback_used ?? false)}</strong></span>
             {(response.fallback_reason || response.data?.fallback_reason) && <span>原因：{response.fallback_reason || response.data?.fallback_reason}</span>}
           </div>
+          {answerability && (
+            <div
+              className={`feedback ${answerability.answerable ? "success" : answerability.no_answer_reason === "RETRIEVAL_UNAVAILABLE" ? "error" : "warning"}`}
+              role="status"
+            >
+              <strong>{answerability.answerable ? "可以回答" : "暂不回答"}</strong>
+              <span>：{NO_ANSWER_REASON_LABELS[answerability.no_answer_reason] || "当前证据无法支持可靠回答"}</span>
+              <div>
+                有效证据 {answerability.valid_evidence_count} 条；判定阈值 {answerability.decision_threshold ?? "未设置"}；
+                门禁模式 {answerability.mode === "enforced" ? "已启用" : answerability.mode === "shadow" ? "影子观察" : "兼容关闭"}
+              </div>
+              {answerability.no_answer_reason === "RETRIEVAL_UNAVAILABLE" && (
+                <small>这是系统故障，不代表知识库确认没有答案，请稍后重试。</small>
+              )}
+            </div>
+          )}
+          {(response.abstention_message || response.data?.abstention_message) && (
+            <div className="empty-state">
+              <p className="empty-title">{response.abstention_message || response.data?.abstention_message}</p>
+              <p className="empty-desc">系统未引用低相关证据，也不会编造来源。</p>
+            </div>
+          )}
           {results.length === 0 ? (
             <div className="empty-state"><p className="empty-title">未检索到已治理且可见的知识</p><p className="empty-desc">请确认内容已审核、同步或进入 serving 状态。</p></div>
           ) : results.map((item, index) => (

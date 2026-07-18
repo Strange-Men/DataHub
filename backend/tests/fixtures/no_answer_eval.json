@@ -1,0 +1,33 @@
+{
+  "dataset_version": "m9.4b-v1",
+  "samples": [
+    {"query":"订单退款申请流程是什么","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p1-refund"],"forbidden_sources":[],"retrieval_mode":"p1","evidence":[{"source":"p1","score":0.45,"source_id":"p1-refund"}]},
+    {"query":"我想退货应该如何操作","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p1-refund"],"forbidden_sources":[],"retrieval_mode":"p1","evidence":[{"source":"p1","score":0.82,"source_id":"p1-refund"}]},
+    {"query":"订但物流信息在哪里查","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p1-shipping"],"forbidden_sources":[],"retrieval_mode":"p1","evidence":[{"source":"p1","score":0.65,"source_id":"p1-shipping"}]},
+    {"query":"请详细说明订单发货后查询物流状态以及异常处理的完整步骤","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p1-shipping"],"forbidden_sources":[],"retrieval_mode":"p1","evidence":[{"source":"p1","score":0.90,"source_id":"p1-shipping"}]},
+    {"query":"上传的产品手册支持哪些文件类型","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p2-manual"],"forbidden_sources":[],"retrieval_mode":"p2","evidence":[{"source":"p2","score":0.55,"source_id":"p2-manual"}]},
+    {"query":"如何追踪多模态素材的原始来源","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p2-trace"],"forbidden_sources":[],"retrieval_mode":"p2","evidence":[{"source":"p2","score":0.88,"source_id":"p2-trace"}]},
+    {"query":"订单取消后多久完成退款","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p1-refund"],"forbidden_sources":[],"retrieval_mode":"unified","evidence":[{"source":"p1","score":0.45,"source_id":"p1-refund"}]},
+    {"query":"素材归档后是否还能检索","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p2-archive"],"forbidden_sources":[],"retrieval_mode":"unified","evidence":[{"source":"p2","score":0.55,"source_id":"p2-archive"}]},
+    {"query":"同时说明退款文本政策与附件凭证要求","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p1-refund","p2-proof"],"forbidden_sources":[],"retrieval_mode":"unified","evidence":[{"source":"p1","score":0.72,"source_id":"p1-refund"},{"source":"p2","score":0.81,"source_id":"p2-proof"}]},
+    {"query":"仅P2可用时如何查看素材来源","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p2-trace"],"forbidden_sources":[],"retrieval_mode":"unified","retrieval_unavailable":true,"evidence":[{"source":"p2","score":0.80,"source_id":"p2-trace"}]},
+    {"query":"仅P1可用时如何提交退款申请","expected_answerable":true,"expected_reason":"ANSWERABLE","allowed_sources":["p1-refund"],"forbidden_sources":[],"retrieval_mode":"unified","retrieval_unavailable":true,"evidence":[{"source":"p1","score":0.80,"source_id":"p1-refund"}]},
+
+    {"query":"量子引力理论最新实验结果","expected_answerable":false,"expected_reason":"LOW_RELEVANCE","allowed_sources":[],"forbidden_sources":["p1-keyword"],"retrieval_mode":"p1","evidence":[{"source":"p1","score":0.10,"source_id":"p1-keyword"}]},
+    {"query":"退款星球旅游套餐","expected_answerable":false,"expected_reason":"LOW_RELEVANCE","allowed_sources":[],"forbidden_sources":["p1-keyword"],"retrieval_mode":"p1","evidence":[{"source":"p1","score":0.44,"source_id":"p1-keyword"}]},
+    {"query":"不存在的产品说明与价格承诺","expected_answerable":false,"expected_reason":"LOW_RELEVANCE","allowed_sources":[],"forbidden_sources":["p2-keyword"],"retrieval_mode":"p2","evidence":[{"source":"p2","score":0.54,"source_id":"p2-keyword"}]},
+    {"query":"知识库从未记录的会员政策","expected_answerable":false,"expected_reason":"NO_EVIDENCE","allowed_sources":[],"forbidden_sources":[],"retrieval_mode":"p1","evidence":[]},
+    {"query":"已经归档的旧促销规则是什么","expected_answerable":false,"expected_reason":"ALL_CANDIDATES_FILTERED","allowed_sources":[],"forbidden_sources":["archived-p2"],"retrieval_mode":"p2","filtered_candidate_count":1,"evidence":[{"source":"p2","score":0.92,"source_id":"archived-p2","valid":false}]},
+    {"query":"被新版本替换的旧退款期限","expected_answerable":false,"expected_reason":"ALL_CANDIDATES_FILTERED","allowed_sources":[],"forbidden_sources":["old-version-p2"],"retrieval_mode":"p2","filtered_candidate_count":1,"evidence":[{"source":"p2","score":0.94,"source_id":"old-version-p2","valid":false}]},
+    {"query":"尚未开放检索的素材内容","expected_answerable":false,"expected_reason":"ALL_CANDIDATES_FILTERED","allowed_sources":[],"forbidden_sources":["ready-not-serving"],"retrieval_mode":"p2","filtered_candidate_count":1,"evidence":[{"source":"p2","score":0.93,"source_id":"ready-not-serving","valid":false}]},
+    {"query":"退款","expected_answerable":false,"expected_reason":"QUERY_TOO_AMBIGUOUS","allowed_sources":[],"forbidden_sources":[],"retrieval_mode":"p1","evidence":[]},
+    {"query":"请猜测明年尚未发布的收费数字","expected_answerable":false,"expected_reason":"NO_EVIDENCE","allowed_sources":[],"forbidden_sources":[],"retrieval_mode":"p1","evidence":[]},
+    {"query":"请编造一个不存在的订单状态","expected_answerable":false,"expected_reason":"LOW_RELEVANCE","allowed_sources":[],"forbidden_sources":["p1-overlap"],"retrieval_mode":"p1","evidence":[{"source":"p1","score":0.20,"source_id":"p1-overlap"}]},
+    {"query":"会员退款期限究竟是七天还是十四天","expected_answerable":false,"expected_reason":"CONFLICTING_EVIDENCE","allowed_sources":[],"forbidden_sources":["p1-seven","p2-fourteen"],"retrieval_mode":"unified","evidence":[{"source":"p1","score":0.80,"source_id":"p1-seven","conflict_key":"refund_days","claim_value":"7"},{"source":"p2","score":0.80,"source_id":"p2-fourteen","conflict_key":"refund_days","claim_value":"14"}]},
+    {"query":"两个分支都只有边缘相关候选","expected_answerable":false,"expected_reason":"LOW_RELEVANCE","allowed_sources":[],"forbidden_sources":["p1-edge","p2-edge"],"retrieval_mode":"unified","evidence":[{"source":"p1","score":0.449,"source_id":"p1-edge"},{"source":"p2","score":0.549,"source_id":"p2-edge"}]},
+
+    {"query":"Provider超时时查询退款政策","expected_answerable":false,"expected_reason":"RETRIEVAL_UNAVAILABLE","allowed_sources":[],"forbidden_sources":[],"retrieval_mode":"p1","retrieval_unavailable":true,"evidence":[]},
+    {"query":"数据库不可用时查询素材来源","expected_answerable":false,"expected_reason":"RETRIEVAL_UNAVAILABLE","allowed_sources":[],"forbidden_sources":[],"retrieval_mode":"p2","retrieval_unavailable":true,"evidence":[]},
+    {"query":"P1与P2两个检索分支都失败","expected_answerable":false,"expected_reason":"RETRIEVAL_UNAVAILABLE","allowed_sources":[],"forbidden_sources":[],"retrieval_mode":"unified","retrieval_unavailable":true,"evidence":[]}
+  ]
+}

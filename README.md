@@ -594,6 +594,30 @@ EMBEDDING_DIMENSION=1536
 ```
 注意：`EMBEDDING_DIMENSION` 必须与 pgvector 表结构匹配（当前为 1536）。DeepSeek 不作为 embedding provider；其 API 连通性已独立验证，但当前 retrieval 契约不声明 LLM answer generation。
 
+### No-answer 判定与安全拒答
+
+M9.4B 为 P1、P2、Unified 和 CustomerOpsAgent 增加统一的确定性 `answerability` 元数据。Raw Retrieval 保留原有候选和 `retrieval_mode`；CustomerOpsAgent 仅在 `enforced` 模式且证据不可靠时清空低相关证据，并返回：
+
+> 当前知识库中没有找到足够可靠的信息，暂时无法准确回答该问题。
+
+配置模式：
+
+- `DATAHUB_NO_ANSWER_MODE=disabled`：默认兼容模式，计算判定但不抑制 Agent 证据。
+- `shadow`：记录判定，用于上线前观察，不改变 Agent 结果。
+- `enforced`：启用 Agent 拒答；Raw Retrieval 仍保留候选供治理诊断。
+
+阈值按分数语义分别配置：P1 `0.45`、P2 `0.55`、Unified `1.0`。Unified 值是“来源本地分数 / 来源本地阈值”的归一化门槛，不是 RRF 分数，也不会直接比较 P1/P2 原始分数。非法模式、阈值或证据数量会安全失败，不会静默使用默认值。
+
+```powershell
+$env:DATAHUB_NO_ANSWER_MODE = "shadow"
+$env:P1_NO_ANSWER_MIN_SCORE = "0.45"
+$env:P2_NO_ANSWER_MIN_SCORE = "0.55"
+$env:UNIFIED_NO_ANSWER_MIN_SCORE = "1.0"
+python scripts\run_no_answer_eval.py --run-id local-no-answer-check
+```
+
+Eval 输出写入被忽略的 `.local-data/no-answer-eval/`，使用 `datahub-eval:<run_id>` namespace，不写入业务 corpus。`RETRIEVAL_UNAVAILABLE` 表示 Provider/Database/检索分支故障，不能解释为“知识库确认没有答案”。当前 Agent 仍只返回知识证据，不包含 DataHub 内部 LLM 最终答案生成。
+
 ## API 示例
 
 导入客服聊天 JSON：

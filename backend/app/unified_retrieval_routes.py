@@ -6,6 +6,11 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from app.answerability import (
+    AnswerabilityConfig,
+    AnswerabilityConfigurationError,
+    evaluate_answerability,
+)
 from app.database import get_db
 from app.auth import Permission, require_permission
 from app.schemas import ApiResponse
@@ -30,7 +35,27 @@ def search_unified_knowledge(
 ) -> ApiResponse | JSONResponse:
     try:
         response = UnifiedRetrievalService(db).search(payload)
+    except AnswerabilityConfigurationError:
+        return JSONResponse(
+            status_code=500,
+            content=ApiResponse(
+                success=False,
+                data={
+                    "error_code": "NO_ANSWER_CONFIG_INVALID",
+                    "error_message": "No-answer configuration is invalid.",
+                    "results": [],
+                },
+                requestId=_request_id(),
+            ).model_dump(),
+        )
     except UnifiedRetrievalFailure as exc:
+        answerability = evaluate_answerability(
+            query=payload.query,
+            evidence=[],
+            scope="unified",
+            config=AnswerabilityConfig.from_environment(),
+            retrieval_unavailable=True,
+        )
         return JSONResponse(
             status_code=exc.status_code,
             content=ApiResponse(
@@ -42,6 +67,7 @@ def search_unified_knowledge(
                     "fallback_used": False,
                     "fallback_reason": exc.reason,
                     "results": [],
+                    "answerability": answerability.model_dump(mode="json"),
                 },
                 requestId=_request_id(),
             ).model_dump(),

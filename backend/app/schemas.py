@@ -2,6 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.answerability import AnswerabilityDecision
+
 
 class ChatMessage(BaseModel):
     message_id: str = Field(min_length=1, max_length=120)
@@ -344,6 +346,8 @@ class CustomerOpsRetrievalResponse(BaseModel):
     fallback_used: bool = False
     fallback_reason: str | None = None
     created_at: str
+    answerability: AnswerabilityDecision | None = None
+    abstention_message: str | None = None
 
 
 class CustomerOpsRetrievalTrace(BaseModel):
@@ -362,6 +366,7 @@ class CustomerOpsRetrievalTrace(BaseModel):
     matched_chunk_scores: list[float] = Field(default_factory=list)
     embedding_provider: str | None = None
     embedding_model: str | None = None
+    answerability: AnswerabilityDecision | None = None
 
 
 class BadCaseSubmitRequest(BaseModel):

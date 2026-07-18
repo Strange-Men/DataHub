@@ -8,6 +8,10 @@ from typing import Iterable
 
 from sqlalchemy.orm import Session
 
+from app.answerability import (
+    AnswerabilityConfigurationError,
+    SAFE_ABSTENTION_MESSAGE,
+)
 from app.customerops_unified_schemas import (
     CustomerOpsUnifiedEvidence,
     CustomerOpsUnifiedRetrievalRequest,
@@ -154,6 +158,16 @@ class CustomerOpsUnifiedRetrievalService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    @staticmethod
+    def _enforce_abstention(
+        response: CustomerOpsUnifiedRetrievalResponse,
+    ) -> CustomerOpsUnifiedRetrievalResponse:
+        if response.answerability and response.answerability.should_abstain:
+            return response.model_copy(
+                update={"results": [], "abstention_message": SAFE_ABSTENTION_MESSAGE}
+            )
+        return response
+
     def _run_p1(
         self,
         payload: CustomerOpsUnifiedRetrievalRequest,
@@ -167,6 +181,8 @@ class CustomerOpsUnifiedRetrievalService:
             legacy = run_customerops_retrieval(
                 legacy_payload, payload.query, payload.top_k
             )
+        except AnswerabilityConfigurationError:
+            raise
         except Exception as exc:
             raise CustomerOpsUnifiedFailure(
                 reason=f"p1_retrieval_failed:{_safe_reason(type(exc).__name__, 'error')}",
@@ -174,7 +190,7 @@ class CustomerOpsUnifiedRetrievalService:
             ) from None
 
         opt_in_fallback = fallback_reason is not None
-        return CustomerOpsUnifiedRetrievalResponse(
+        response = CustomerOpsUnifiedRetrievalResponse(
             retrieval_id=legacy.retrieval_id,
             query=legacy.query,
             top_k=legacy.top_k,
@@ -194,7 +210,9 @@ class CustomerOpsUnifiedRetrievalService:
             legacy_fallback_used=legacy.fallback_used,
             legacy_fallback_reason=legacy.fallback_reason,
             request_id=payload.request_id,
+            answerability=legacy.answerability,
         )
+        return self._enforce_abstention(response)
 
     def _gate_reason(
         self,
@@ -278,7 +296,7 @@ class CustomerOpsUnifiedRetrievalService:
         payload: CustomerOpsUnifiedRetrievalRequest,
         unified: UnifiedRetrievalResponse,
     ) -> CustomerOpsUnifiedRetrievalResponse:
-        return CustomerOpsUnifiedRetrievalResponse(
+        response = CustomerOpsUnifiedRetrievalResponse(
             retrieval_id=unified.retrieval_id,
             query=unified.query,
             top_k=unified.top_k,
@@ -293,4 +311,6 @@ class CustomerOpsUnifiedRetrievalService:
             unified_retrieval_id=unified.retrieval_id,
             source_modes=unified.source_modes,
             request_id=payload.request_id,
+            answerability=unified.answerability,
         )
+        return self._enforce_abstention(response)
