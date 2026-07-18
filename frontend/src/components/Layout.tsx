@@ -6,7 +6,7 @@ const NAV_ITEMS = [
   { path: "/", label: "首页", exact: true },
   { path: "/p1-text-hub", label: "P1 文本知识治理", exact: false },
   { path: "/p2-material-center", label: "P2 多模态知识治理", exact: false },
-  { path: "/retrieval-validation", label: "检索验证", exact: false },
+  { path: "/retrieval-validation", label: "检索与 Agent 验证", exact: false },
   { path: "/system-status", label: "系统状态", exact: false },
 ];
 

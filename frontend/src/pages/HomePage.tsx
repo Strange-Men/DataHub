@@ -13,76 +13,59 @@ export function HomePage({
   const capabilityCards = [
     {
       title: "P1 文本知识治理",
-      icon: "💬",
+      badge: "P1",
       description: "导入、机器清洗、人工修订、知识审核、RAG 同步、Agent 验证与 Bad Case 回流。",
-      status: "可操作",
+      status: "可使用",
       path: "/p1-text-hub",
       disabled: false,
     },
     {
       title: "P2 多模态知识治理",
-      icon: "🎨",
-      description: "上传、Extraction、Review、Snapshot、Knowledge Asset、Index、Embed、Serve、Retrieval 与 Archive。",
-      status: "可操作",
+      badge: "P2",
+      description: "完成素材解析、内容审核、知识发布、索引构建、开放检索与归档。",
+      status: "可使用",
       path: "/p2-material-center",
       disabled: false,
     },
     {
-      title: "检索验证",
-      icon: "🔎",
-      description: "验证 P1、P2、Unified Retrieval 和 CustomerOpsAgent 的真实结果与来源链。",
-      status: "可操作",
-      path: "/retrieval-validation",
-      disabled: false,
-    },
-    {
       title: "P3 数据资产复用",
-      icon: "📦",
-      description: "尚未开放：当前阶段不提供培训、SOP 或微调数据集生成。",
-      status: "尚未开放",
+      badge: "P3",
+      description: "数据资产复用能力将在后续阶段规划，当前没有可操作入口。",
+      status: "规划中",
       path: "/p3-asset-reuse",
       disabled: true,
     },
     {
       title: "P4 MCP + Agent 集群",
-      icon: "🤖",
-      description: "尚未开放：当前仅提供 CustomerOpsAgent 的已发布检索接口。",
-      status: "尚未开放",
+      badge: "P4",
+      description: "MCP 与多 Agent 协作能力将在后续阶段规划。",
+      status: "规划中",
       path: "/p4-mcp-agents",
       disabled: true,
+    },
+    {
+      title: "检索与 Agent 验证",
+      badge: "QA",
+      description: "验证 P1、P2、联合检索和客服 Agent 的召回、引用与安全拒答效果。",
+      status: "可使用",
+      path: "/retrieval-validation",
+      disabled: false,
     },
   ];
 
   return (
     <div className="home-page">
       <section className="hero-section">
-        <h1 className="hero-title">DataHub 数据治理与 RAG 知识中台</h1>
-        <p className="hero-desc">
-          以任务流完成 P1 文本知识与 P2 多模态知识治理，并用真实检索接口验证可见性和来源。
-        </p>
-        <div className="hero-status">
-          <div className="hero-status-row">
-            <span className="hero-status-label">当前可操作</span>
-            <span className="hero-status-value hero-status-active">P1 文本治理 / P2 多模态治理 / 检索验证</span>
-          </div>
-          <div className="hero-status-row">
-            <span className="hero-status-label">尚未开放</span>
-            <span className="hero-status-value">P3 数据资产复用 / P4 MCP + Agent 集群（当前阶段无真实接口）</span>
-          </div>
-          <div className="hero-status-row">
-            <span className="hero-status-label">后端服务</span>
-            <span className="hero-status-value">
-              <span className={`conn-indicator ${backendStatus.state}`} />
-              {backendStatus.state === "connected"
-                ? "服务正常"
-                : backendStatus.state === "checking"
-                  ? "连接中"
-                  : "服务暂不可用，可能正在冷启动"}
-            </span>
-            <button type="button" className="btn-small" onClick={onCheckBackend}>
-              重新检测
-            </button>
-          </div>
+        <div className="hero-copy">
+          <span className="hero-eyebrow">P1/P2 GOVERNANCE WORKSPACE</span>
+          <h1 className="hero-title">DataHub 数据治理与 RAG 知识中台</h1>
+          <p className="hero-desc">以清晰任务流治理文本与多模态知识，并验证检索可见性、来源和安全拒答。</p>
+        </div>
+        <div className="hero-status-bar" aria-label="平台状态">
+          <span><i className={`conn-indicator ${backendStatus.state}`} />{backendStatus.state === "connected" ? "服务正常" : backendStatus.state === "checking" ? "连接中" : "服务暂不可用"}</span>
+          <span><strong>可使用</strong> P1 · P2 · 检索与 Agent 验证</span>
+          <span><strong>规划中</strong> P3 · P4</span>
+          <button type="button" className="btn-small" onClick={onCheckBackend}>重新检测</button>
         </div>
       </section>
 
@@ -94,22 +77,18 @@ export function HomePage({
               key={card.title}
               className={`capability-card ${card.disabled ? "disabled" : ""}`}
             >
-              <span className="capability-icon">{card.icon}</span>
+              <span className="capability-mark" aria-hidden="true">{card.badge}</span>
               <h3>{card.title}</h3>
               <p>{card.description}</p>
               <div className="capability-footer">
                 <span className={`capability-status ${card.disabled ? "inactive" : "active"}`}>
                   {card.status}
                 </span>
-                <button
-                  type="button"
-                  className={card.disabled ? "btn-disabled" : "btn-primary btn-sm"}
-                  disabled={card.disabled}
-                  onClick={() => !card.disabled && navigate(card.path)}
-                >
-                  {card.disabled ? "尚未开放" : "进入任务流"}
-                </button>
-                {card.disabled && <small className="disabled-reason">当前阶段没有可调用的真实后端能力。</small>}
+                {!card.disabled && (
+                  <button type="button" className="btn-primary btn-sm" onClick={() => navigate(card.path)}>
+                    进入模块
+                  </button>
+                )}
               </div>
             </article>
           ))}

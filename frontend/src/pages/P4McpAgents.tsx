@@ -3,7 +3,7 @@ export function P4McpAgents() {
     <div className="p4-page">
       <div className="page-hero">
         <h1>P4 MCP + Agent 集群</h1>
-        <p>尚未开放。当前可用的 CustomerOpsAgent 已放入“检索验证”，仍保持默认 P1-only 和 Unified 显式 opt-in。</p>
+        <p>尚未开放。当前可用的客服 Agent 已放入“检索与 Agent 验证”，仍保持默认 P1-only 和联合检索显式启用。</p>
       </div>
       <section className="material-panel unavailable-panel">
         <strong>当前阶段没有 MCP 或多 Agent 管理接口</strong>

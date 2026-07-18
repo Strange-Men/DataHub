@@ -44,17 +44,27 @@ def test_frontend_permission_matrix_covers_all_five_roles() -> None:
 
 def test_p2_workflow_uses_real_contracts_and_visibility_gates() -> None:
     page = _read("pages/P2MaterialCenter.tsx")
+    workflow = _read("components/P2WorkflowHeader.tsx")
     for fragment in (
         "/extract`",
         "/embed`",
         "/serve`",
         "/archive`",
-        "发起 Extraction",
-        "向量已生成，尚未开放检索",
-        "serving · 已开放检索",
-        "Knowledge Asset → Snapshot → Review → Extraction → Asset",
+        "发起内容解析",
+        "知识向量已经生成",
+        "已开放检索",
+        "知识资产 → 知识快照 → 人工审核 → 内容解析 → 原始素材",
     ):
         assert fragment in page
+    for stage in (
+        "素材上传与解析",
+        "内容修订与审核",
+        "知识快照与发布",
+        "索引构建与开放检索",
+        "检索验证与归档",
+    ):
+        assert stage in workflow
+    assert "repeat(5" not in page
     assert "window.confirm" in page
     assert "embedding_vector" not in page
 
@@ -64,7 +74,7 @@ def test_retrieval_validation_keeps_unified_and_agent_opt_in_explicit() -> None:
     assert 'retrieval_strategy: agentUnified ? "unified" : "p1"' in page
     assert "shadow_mode: !activeUnified" in page
     assert "include_archived: false" in page
-    assert "默认 CustomerOpsAgent 为 P1-only" in page
+    assert "客服 Agent 保持默认 P1-only" in page
     assert "/api/v2/retrieval/p2/search" in page
     assert "/api/v2/retrieval/search" in page
     assert "/api/v2/customer-ops-agent/retrieve" in page
@@ -86,12 +96,29 @@ def test_errors_confirmations_and_loading_are_user_safe() -> None:
 def test_home_exposes_real_modules_and_disables_p3_p4() -> None:
     home = _read("pages/HomePage.tsx")
     layout = _read("components/Layout.tsx")
+    styles = _read("styles.css")
     assert 'path: "/p2-material-center"' in home
     assert 'path: "/retrieval-validation"' in home
-    assert home.count('status: "尚未开放"') == 2
-    assert "当前阶段没有可调用的真实后端能力" in home
+    assert home.count('status: "规划中"') == 2
+    assert "capability-mark" in home
+    assert "💬" not in home and "🎨" not in home and "🔎" not in home
+    assert "grid-template-columns: repeat(5, minmax(0, 1fr))" in styles
     assert "P1 文本知识治理" in layout
     assert "P2 多模态知识治理" in layout
+    assert "检索与 Agent 验证" in home + layout
+
+
+def test_retrieval_uses_compact_explicit_mode_switch() -> None:
+    page = _read("pages/RetrievalValidation.tsx")
+    switch = _read("components/ModeSwitch.tsx")
+    styles = _read("styles.css")
+    assert "使用联合检索结果" in page
+    assert "仅观察 P1/P2 联合召回，不影响最终结果。" in page
+    assert 'role="switch"' in switch
+    assert "aria-checked={checked}" in switch
+    assert "compact-switch" in switch + styles
+    assert "width: 44px" in styles
+    assert 'type="checkbox"' not in page
 
 
 def test_no_token_or_secret_is_written_to_url_or_console() -> None:

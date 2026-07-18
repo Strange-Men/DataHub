@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { apiFetch, apiPath } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import { ModeSwitch } from "../components/ModeSwitch";
 import { apiErrorMessage, can, FORBIDDEN_MESSAGE, type FrontendPermission } from "../governance";
 
 type RetrievalKind = "p1" | "p2" | "unified" | "agent";
@@ -27,10 +28,10 @@ const NO_ANSWER_REASON_LABELS: Record<string, string> = {
 };
 
 const KIND_CONFIG: Record<RetrievalKind, { label: string; permission: FrontendPermission; description: string }> = {
-  p1: { label: "P1 Retrieval", permission: "retrieval.p1", description: "只检索已审核并同步的 P1 文本知识。" },
-  p2: { label: "P2 Retrieval", permission: "retrieval.p2", description: "只检索 serving 状态的 P2 向量知识。" },
-  unified: { label: "Unified Retrieval", permission: "retrieval.unified", description: "显式调用 P1/P2 统一检索；默认保持 Shadow。" },
-  agent: { label: "CustomerOpsAgent", permission: "agent.customerops", description: "默认 P1-only；Unified 必须在下方显式选择。" },
+  p1: { label: "P1 文本检索", permission: "retrieval.p1", description: "验证已经审核并同步的 P1 文本知识。" },
+  p2: { label: "P2 多模态检索", permission: "retrieval.p2", description: "验证已经开放检索的 P2 多模态知识。" },
+  unified: { label: "联合检索", permission: "retrieval.unified", description: "同时观察 P1 与 P2 的召回和融合结果。" },
+  agent: { label: "客服 Agent", permission: "agent.customerops", description: "验证客服 Agent 的证据引用、降级和安全拒答；默认保持 P1-only。" },
 };
 
 function resultItems(body: any): any[] {
@@ -47,11 +48,11 @@ function sourceTrace(item: any): string {
   const trace = item?.source_trace;
   if (!trace || typeof trace !== "object") return "暂无来源链";
   const ordered = [
-    ["Knowledge Asset", trace.knowledge_asset_id],
-    ["Snapshot", trace.snapshot_id],
-    ["Review", trace.review_id],
-    ["Extraction", trace.extraction_id],
-    ["Asset", trace.asset_id],
+    ["知识资产", trace.knowledge_asset_id],
+    ["知识快照", trace.snapshot_id],
+    ["人工审核", trace.review_id],
+    ["内容解析", trace.extraction_id],
+    ["原始素材", trace.asset_id],
   ].filter(([, value]) => value);
   return ordered.length ? ordered.map(([label, value]) => `${label}: ${value}`).join(" → ") : "来源链已返回";
 }
@@ -121,16 +122,17 @@ export function RetrievalValidation() {
   return (
     <div className="retrieval-page">
       <div className="page-hero">
-        <h1>检索验证</h1>
-        <p>使用真实服务验证 P1、P2、Unified 与 CustomerOpsAgent；页面不会显示完整向量或内部连接信息。</p>
+        <h1>检索与 Agent 验证</h1>
+        <p>验证 P1、P2、联合检索和客服 Agent 的召回、引用与安全拒答效果；不会显示完整向量或内部连接信息。</p>
       </div>
 
-      <div className="workflow-tabs" role="tablist" aria-label="检索类型">
+      <div className="workflow-tabs retrieval-tabs" role="tablist" aria-label="验证类型">
         {(Object.keys(KIND_CONFIG) as RetrievalKind[]).map((item) => (
           <button
             key={item}
             type="button"
-            className={kind === item ? "btn-primary" : "btn-secondary"}
+            className={`retrieval-tab ${kind === item ? "active" : ""}`}
+            aria-selected={kind === item}
             onClick={() => { setKind(item); setResponse(null); setError(""); }}
           >
             {KIND_CONFIG[item].label}
@@ -144,25 +146,37 @@ export function RetrievalValidation() {
         </div>
         {!allowed && <div className="feedback warning">{FORBIDDEN_MESSAGE}</div>}
         <form className="retrieval-form" onSubmit={submit}>
-          <label>
-            检索问题
-            <textarea value={query} onChange={(event) => setQuery(event.target.value)} rows={3} maxLength={500} placeholder="请输入要验证的问题" />
+          <label className="retrieval-query-field">
+            <span>验证问题</span>
+            <textarea value={query} onChange={(event) => setQuery(event.target.value)} rows={2} maxLength={500} placeholder="输入希望验证的业务问题" />
+            <small>{query.length}/500</small>
           </label>
           {kind === "unified" && (
-            <label className="option-row">
-              <input type="checkbox" checked={activeUnified} onChange={(event) => setActiveUnified(event.target.checked)} />
-              主动使用 Unified 结果（未勾选时保持 Shadow）
-            </label>
+            <ModeSwitch
+              checked={activeUnified}
+              onChange={setActiveUnified}
+              title="使用联合检索结果"
+              offDescription="仅观察 P1/P2 联合召回，不影响最终结果。"
+              onDescription="使用联合检索结果作为本次验证结果。"
+            />
           )}
           {kind === "agent" && (
-            <label className="option-row">
-              <input type="checkbox" checked={agentUnified} onChange={(event) => setAgentUnified(event.target.checked)} />
-              显式 opt-in Unified（默认 CustomerOpsAgent 为 P1-only）
-            </label>
+            <ModeSwitch
+              checked={agentUnified}
+              onChange={setAgentUnified}
+              title="使用联合检索策略"
+              offDescription="客服 Agent 保持默认 P1-only。"
+              onDescription="本次请求显式使用联合检索策略。"
+              offLabel="P1-only"
+              onLabel="Opt-in"
+            />
           )}
-          <button className="btn-primary" type="submit" disabled={busy || !allowed || !query.trim()} title={!allowed ? FORBIDDEN_MESSAGE : undefined}>
+          <div className="retrieval-submit-row">
+            <span>{!query.trim() ? "输入问题后即可开始验证" : "将调用真实接口并返回可追踪证据"}</span>
+            <button className="btn-primary" type="submit" disabled={busy || !allowed || !query.trim()} title={!allowed ? FORBIDDEN_MESSAGE : undefined}>
             {busy ? "检索中，请勿重复提交..." : "开始验证"}
-          </button>
+            </button>
+          </div>
         </form>
       </section>
 
@@ -172,7 +186,7 @@ export function RetrievalValidation() {
           <div className="result-summary">
             <span>模式：<strong>{response.retrieval_mode || response.data?.retrieval_mode || "unknown"}</strong></span>
             <span>结果：<strong>{results.length}</strong></span>
-            <span>Fallback：<strong>{String(response.fallback_used ?? response.data?.fallback_used ?? false)}</strong></span>
+            <span>是否降级：<strong>{(response.fallback_used ?? response.data?.fallback_used ?? false) ? "是" : "否"}</strong></span>
             {(response.fallback_reason || response.data?.fallback_reason) && <span>原因：{response.fallback_reason || response.data?.fallback_reason}</span>}
           </div>
           {answerability && (
@@ -203,7 +217,7 @@ export function RetrievalValidation() {
             <article className="retrieval-result-card" key={item.chunk_id || item.candidate_id || index}>
               <div className="review-card-meta">
                 <span>#{item.rank || index + 1} · {item.source_index || item.source_type || "p1"}</span>
-                <span>score {Number(item.fused_score ?? item.score ?? item.original_score ?? 0).toFixed(4)}</span>
+                <span>相关分 {Number(item.fused_score ?? item.score ?? item.original_score ?? 0).toFixed(4)}</span>
               </div>
               <p>{item.evidence_text || item.chunk_text || item.answer || "已返回证据"}</p>
               <small>{sourceTrace(item)}</small>
