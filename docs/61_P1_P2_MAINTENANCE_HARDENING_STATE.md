@@ -132,3 +132,13 @@ M9.4B closure: centralized deterministic answerability decisions now expose stab
 M9.5 closure: the independent 48-sample holdout exceeded all release lines in shadow and enforced modes with 0.9583 answerable recall, 0.9583 no-answer precision, 0.0417 false-answer/false-rejection rates and zero archived/old-version leakage. Fixed thresholds remain P1 0.45, P2 0.55 and Unified 1.0; no holdout-driven adjustment was made. Final gates passed 95 focused tests, 5 isolated PostgreSQL/pgvector tests, P1 Harness 10/10, real-provider P2 Acceptance, clean-export 460 passed plus 5 explicit PostgreSQL skips, and the 54-module frontend build. Test resources were removed while the development stack and volumes remained intact. Report: `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`.
 
 Maintenance release boundary: local Docker PASS; Render P2 persistence remains BLOCKED; P3/P4 have not started.
+
+## 8. Final Post-Release Validation and Freeze Decision
+
+- Decision: **PATCH REQUIRED**, then restore the formal P1/P2 freeze after the patch commit and new patch tag are pushed. Existing release tags remain immutable.
+- No functional, security, data-integrity or test-isolation defect was confirmed. Route inventory found 56 API routes: 2 public health, 54 protected and 0 omissions.
+- Two confirmed bounded-query performance defects were fixed without changing schemas, RRF, lifecycle rules, Agent default or Unified opt-in: Knowledge Asset list 82 to 2 SQL; P2 retrieval 220 to 8 SQL with one Query Embedding.
+- Final clean-export collected 468 and passed 463 with 5 explicit PostgreSQL skips. Focused regression passed 130, affected P2/Unified regression 70, isolated PostgreSQL/pgvector 5, P1 Harness 10/10 and P2 Acceptance PASS.
+- A separate 24-sample exploratory No-answer boundary audit scored 0.9167 precision/recall on both classes, with two threshold-adjacent errors and zero archived/old-version leakage. No threshold was tuned.
+- Development non-test data stayed 24 Assets / 26 Knowledge Assets / 10 P1 embeddings. No test container, volume, process or port remained; development volumes were preserved.
+- Full evidence and the final risk matrix are in `docs/69_P1_P2_FINAL_POST_RELEASE_VALIDATION_AND_FREEZE_DECISION.md`. Render P2 persistence remains BLOCKED and P3/P4 have not started.

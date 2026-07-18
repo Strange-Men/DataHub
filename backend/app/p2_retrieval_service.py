@@ -17,17 +17,22 @@ from app.answerability import (
     evaluate_answerability,
 )
 from app.embedding import EmbeddingProvider, get_embedding_provider
-from app.knowledge_asset_repositories import KnowledgeSourceTraceError, get_knowledge_asset
+from app.knowledge_asset_repositories import KnowledgeSourceTraceError
 from app.knowledge_embedding_service import (
     embedding_fingerprint,
     embedding_profile_for_provider,
 )
-from app.knowledge_index_repositories import KnowledgeIndexSourceTraceError, get_index_entry
+from app.knowledge_index_repositories import (
+    KnowledgeIndexSourceTraceError,
+    get_index_entries_by_ids,
+)
+from app.knowledge_index_schemas import KnowledgeIndexEntryRecord
 from app.p2_retrieval_repositories import (
     P2PgvectorQueryError,
     P2PgvectorUnavailableError,
     P2ServingEmbeddingRow,
     list_serving_embedding_rows,
+    revalidate_serving_embedding_ids,
     search_serving_embeddings,
 )
 from app.p2_retrieval_schemas import (
@@ -191,26 +196,17 @@ class P2RetrievalService:
     def _validate_row(
         self,
         row: P2ServingEmbeddingRow,
+        entry: KnowledgeIndexEntryRecord | None,
         *,
         profile: str,
         provider_name: str,
         model_name: str,
         dimension: int,
     ) -> object:
-        try:
-            entry = get_index_entry(self.db, row.index_entry_id)
-        except KnowledgeIndexSourceTraceError as exc:
-            raise ValueError("source_trace_invalid") from exc
         if entry is None:
             raise ValueError("source_trace_invalid")
-        try:
-            knowledge_asset = get_knowledge_asset(self.db, entry.knowledge_asset_id)
-        except KnowledgeSourceTraceError as exc:
-            raise ValueError("source_trace_invalid") from exc
         if (
-            knowledge_asset is None
-            or knowledge_asset.status != "active"
-            or entry.status != "serving"
+            entry.status != "serving"
             or entry.sync_state != "ready"
             or entry.error_message
         ):
@@ -299,10 +295,29 @@ class P2RetrievalService:
                 started=started,
             )
 
+        try:
+            entries = get_index_entries_by_ids(
+                self.db,
+                list({row.index_entry_id for row in profile_rows}),
+            )
+        except (KnowledgeIndexSourceTraceError, KnowledgeSourceTraceError) as exc:
+            self._raise(
+                reason="source_trace_invalid",
+                code="SOURCE_TRACE_INVALID",
+                message="P2 serving data failed governance validation.",
+                status_code=409,
+                retrieval_id=retrieval_id,
+                payload=payload,
+                created_at=created_at,
+                started=started,
+            )
+            raise AssertionError("unreachable") from exc
+
         for row in profile_rows:
             try:
                 self._validate_row(
                     row,
+                    entries.get(row.index_entry_id),
                     profile=profile,
                     provider_name=provider_name,
                     model_name=model_name,
@@ -392,10 +407,18 @@ class P2RetrievalService:
         decision_evidence: list[AnswerabilityEvidence] = []
         filtered_candidate_count = 0
         asset_counts: dict[str, int] = {}
+        current_serving_ids = revalidate_serving_embedding_ids(
+            self.db,
+            [candidate.embedding_id for candidate in candidates],
+        )
         for candidate in candidates:
+            if candidate.embedding_id not in current_serving_ids:
+                filtered_candidate_count += 1
+                continue
             try:
                 entry = self._validate_row(
                     candidate,
+                    entries.get(candidate.index_entry_id),
                     profile=profile,
                     provider_name=provider_name,
                     model_name=model_name,

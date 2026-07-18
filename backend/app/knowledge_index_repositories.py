@@ -10,7 +10,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db_models import KnowledgeAsset, P2KnowledgeChunk, P2KnowledgeIndexEntry
-from app.knowledge_asset_repositories import KnowledgeSourceTraceError, get_knowledge_asset
+from app.knowledge_asset_repositories import (
+    KnowledgeSourceTraceError,
+    get_knowledge_asset,
+    get_knowledge_assets_by_ids,
+)
 from app.knowledge_index_schemas import (
     CreateKnowledgeIndexResult,
     KnowledgeChunkRecord,
@@ -105,6 +109,65 @@ def _entry_record(
             source=knowledge_asset.source_trace,
         ),
     )
+
+
+def get_index_entries_by_ids(
+    db: Session,
+    index_entry_ids: list[str],
+) -> dict[str, KnowledgeIndexEntryRecord]:
+    """Bulk-load governed Index Entries without per-row Source Trace queries."""
+    if not index_entry_ids:
+        return {}
+    rows = (
+        db.query(P2KnowledgeIndexEntry)
+        .filter(P2KnowledgeIndexEntry.id.in_(index_entry_ids))
+        .all()
+    )
+    chunks = (
+        db.query(P2KnowledgeChunk)
+        .filter(P2KnowledgeChunk.index_entry_id.in_(index_entry_ids))
+        .order_by(
+            P2KnowledgeChunk.index_entry_id.asc(),
+            P2KnowledgeChunk.chunk_order.asc(),
+            P2KnowledgeChunk.id.asc(),
+        )
+        .all()
+    )
+    chunks_by_entry: dict[str, list[P2KnowledgeChunk]] = {}
+    for chunk in chunks:
+        chunks_by_entry.setdefault(chunk.index_entry_id, []).append(chunk)
+    knowledge_assets = get_knowledge_assets_by_ids(
+        db,
+        list({row.knowledge_asset_id for row in rows}),
+    )
+    records: dict[str, KnowledgeIndexEntryRecord] = {}
+    for row in rows:
+        knowledge_asset = knowledge_assets.get(row.knowledge_asset_id)
+        if knowledge_asset is None:
+            raise KnowledgeIndexSourceTraceError(
+                "Index source Knowledge Asset is missing."
+            )
+        records[row.id] = KnowledgeIndexEntryRecord(
+            id=row.id,
+            knowledge_asset_id=row.knowledge_asset_id,
+            status=row.status,
+            generation=int(row.generation),
+            fingerprint=row.fingerprint,
+            sync_state=row.sync_state,
+            error_message=row.error_message,
+            created_at=_iso(row.created_at),
+            updated_at=_iso(row.updated_at),
+            chunks=[
+                _chunk_record(chunk)
+                for chunk in chunks_by_entry.get(row.id, [])
+            ],
+            source_trace=index_source_trace(
+                index_entry_id=row.id,
+                knowledge_asset_version=knowledge_asset.version,
+                source=knowledge_asset.source_trace,
+            ),
+        )
+    return records
 
 
 def get_index_entry(

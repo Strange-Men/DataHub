@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -232,6 +233,50 @@ class KnowledgeAssetFoundationTest(unittest.TestCase):
         listed = listing.json()["data"]
         self.assertEqual(listed["pagination"]["total"], 1)
         self.assertEqual(listed["knowledge_assets"][0]["source_trace"], trace)
+
+    def test_05b_list_source_trace_query_count_is_bounded(self) -> None:
+        self._publish()
+        query_count = 0
+
+        def count_query(*_args, **_kwargs) -> None:
+            nonlocal query_count
+            query_count += 1
+
+        event.listen(self.database.engine, "before_cursor_execute", count_query)
+        try:
+            response = self.client.get("/api/knowledge-assets?page=1&page_size=20")
+        finally:
+            event.remove(self.database.engine, "before_cursor_execute", count_query)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["data"]["pagination"]["total"], 1)
+        self.assertEqual(query_count, 2)
+
+    def test_05c_list_does_not_hide_incomplete_source_trace(self) -> None:
+        db = self.database.SessionLocal()
+        try:
+            db.add(
+                self.models.KnowledgeAsset(
+                    id="knowledge_asset_incomplete_trace",
+                    source_snapshot_id="snapshot_missing",
+                    asset_id="asset_knowledge_fixture",
+                    content="invalid lineage must not be hidden",
+                    content_type="ocr",
+                    status="active",
+                    version=1,
+                    metadata_json={},
+                )
+            )
+            db.commit()
+        finally:
+            db.close()
+
+        response = self.client.get("/api/knowledge-assets?page=1&page_size=20")
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(
+            response.json()["detail"]["code"],
+            "KNOWLEDGE_SOURCE_TRACE_INVALID",
+        )
 
     def test_06_new_snapshot_creates_version_without_overwrite(self) -> None:
         first = self._publish().json()["data"]["knowledge_asset"]

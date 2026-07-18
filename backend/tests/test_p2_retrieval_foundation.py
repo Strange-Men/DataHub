@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -259,6 +260,26 @@ class P2RetrievalFoundationTest(unittest.TestCase):
         self.assertEqual(data["results"][0]["asset_id"], "asset_p2_m81")
         self.assertNotIn("embedding", data["results"][0])
         self.assertEqual(data["results"][0]["source_trace"]["review_id"], "review_p2_m81_v1")
+
+    def test_01b_retrieval_governance_query_count_is_bounded(self) -> None:
+        entry = self._create_index()
+        self._embed(str(entry["id"]))
+        self._serve(str(entry["id"]))
+        query_count = 0
+
+        def count_query(*_args, **_kwargs) -> None:
+            nonlocal query_count
+            query_count += 1
+
+        event.listen(self.database.engine, "before_cursor_execute", count_query)
+        try:
+            response = self._search()
+        finally:
+            event.remove(self.database.engine, "before_cursor_execute", count_query)
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["data"]["matched_count"], 1)
+        self.assertLessEqual(query_count, 9)
 
     def test_02_serve_is_idempotent(self) -> None:
         entry = self._create_index()

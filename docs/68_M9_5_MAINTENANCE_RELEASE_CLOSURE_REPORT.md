@@ -94,3 +94,9 @@ Annotated tag: `p2-m9.5-maintenance-hardening`, message `P1/P2 maintenance harde
 ## 8. Final Boundary
 
 P1/P2 Maintenance Hardening is closed for local Docker. P3/P4 have not started; later work requires separate authorization and must preserve the release gates and historical tags.
+
+## 9. Post-release Validation Patch
+
+The independent final validation retained this report and `p2-m9.5-maintenance-hardening` as immutable release evidence. It confirmed no functional, security, data-integrity or test-isolation defect, but reproduced two P2 Source Trace query-amplification defects. A bounded bulk lineage load reduced Knowledge Asset page queries from 82 to 2; bulk retrieval governance loading plus a fresh lifecycle race gate reduced P2 retrieval from 220 to 8 SQL statements while retaining one Query Embedding call.
+
+Affected regressions, isolated PostgreSQL/pgvector, P1 Harness, P2 Acceptance, Unified/Agent smoke, frontend build and a final clean-export (`463 passed, 5 skipped`) passed. A separate 24-sample exploratory No-answer boundary audit was not used for tuning and retained zero archived/old-version leakage. The patch is documented in `docs/69_P1_P2_FINAL_POST_RELEASE_VALIDATION_AND_FREEZE_DECISION.md`; it receives a new patch tag and does not move this release tag. Render P2 persistence remains BLOCKED and P3/P4 remain unstarted.

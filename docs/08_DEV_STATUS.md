@@ -2121,3 +2121,12 @@ This is a planning and documentation checkpoint only.
 - Frontend governance contracts passed within the regression suite and the 54-module production build passed.
 - Independent test containers/volumes were removed; the three-service development stack and its volumes remained healthy and intact.
 - Report: `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`. Local maintenance release PASS; Render P2 persistence remains BLOCKED; P3/P4 have not started.
+
+## P1/P2 Final Post-Release Validation
+
+- **Decision: PATCH REQUIRED, then FREEZE.** No functional, security, data-integrity or test-isolation defect was found.
+- Two confirmed performance defects were reproduced and minimally fixed: Knowledge Asset list Source Trace queries fell from 82 to 2 per page, and P2 retrieval governance queries fell from 220 to 8 per request while retaining one Query Embedding call and a fresh Serving/Archive race gate.
+- The 24-sample exploratory No-answer audit scored 0.9167 answerable/no-answer precision and recall with two deliberately threshold-adjacent errors; no threshold or expected label changed. Archived and old-version leakage remained 0.
+- Final gates passed: focused matrix 130, affected regression 70, PostgreSQL/pgvector 5, P1 Harness 10/10, P2 Acceptance, Unified/Agent smoke, clean-export 463 passed plus 5 explicit PG skips, and frontend production build.
+- Development non-test counts stayed at 24 Assets, 26 Knowledge Assets and 10 P1 embeddings. Test cleanup deleted zero records and left no test resources.
+- Report: `docs/69_P1_P2_FINAL_POST_RELEASE_VALIDATION_AND_FREEZE_DECISION.md`. P3/P4 have not started.

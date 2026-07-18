@@ -111,6 +111,36 @@ def list_serving_embedding_rows(
     return mapped
 
 
+def revalidate_serving_embedding_ids(
+    db: Session,
+    embedding_ids: list[str],
+) -> set[str]:
+    """Fresh, bounded race gate for candidates selected after query embedding."""
+    if not embedding_ids:
+        return set()
+    rows = (
+        db.query(P2KnowledgeEmbedding.id)
+        .join(P2KnowledgeChunk, P2KnowledgeChunk.id == P2KnowledgeEmbedding.chunk_id)
+        .join(
+            P2KnowledgeIndexEntry,
+            P2KnowledgeIndexEntry.id == P2KnowledgeEmbedding.index_entry_id,
+        )
+        .join(KnowledgeAsset, KnowledgeAsset.id == P2KnowledgeEmbedding.knowledge_asset_id)
+        .filter(
+            P2KnowledgeEmbedding.id.in_(embedding_ids),
+            KnowledgeAsset.status == "active",
+            P2KnowledgeIndexEntry.status == "serving",
+            P2KnowledgeIndexEntry.sync_state == "ready",
+            P2KnowledgeIndexEntry.error_message.is_(None),
+            P2KnowledgeChunk.index_entry_id == P2KnowledgeIndexEntry.id,
+            P2KnowledgeChunk.knowledge_asset_id == KnowledgeAsset.id,
+            P2KnowledgeEmbedding.knowledge_asset_id == KnowledgeAsset.id,
+        )
+        .all()
+    )
+    return {str(row[0]) for row in rows}
+
+
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
     if len(left) != len(right) or not left:
         return 0.0

@@ -2329,3 +2329,22 @@ Phase boundary:
 - **M9.5: PASS and ready for the audited closure commit, push and annotated tag.**
 - Render P2 persistent deployment remains BLOCKED and is not represented as online acceptance.
 - P3/P4 have not started.
+
+## P1/P2 Final Post-Release Validation
+
+- [x] Verify protected commits/tags, clean `main`, ignored runtime data and healthy development services.
+- [x] Inventory 56 API routes: 2 public health, 54 protected, 0 missing protection.
+- [x] Re-run isolated P1 Harness 10/10 and PostgreSQL/pgvector 5/5 without touching development volumes.
+- [x] Re-run P2 Ready/Serve/Archive/replacement acceptance and explicit Unified/Agent smoke.
+- [x] Confirm non-test Assets, Knowledge Assets and P1 embeddings are unchanged; cleanup deleted zero records.
+- [x] Audit a new 24-sample No-answer boundary set without tuning thresholds or modifying release fixtures.
+- [x] Fix Knowledge Asset list Source Trace N+1 from 82 to 2 SQL statements.
+- [x] Fix P2 retrieval governance N+1 from 220 to 8 SQL statements with one Query Embedding and a fresh lifecycle race gate.
+- [x] Pass 130 focused, 70 affected, 5 PostgreSQL and 463+5-skipped clean-export backend gates.
+- [x] Pass frontend contracts/build and final Secret/ignored-artifact/diff checks.
+- [x] Record `PATCH REQUIRED`, then freeze after the separately tagged patch; do not move historical tags.
+
+Phase boundary:
+
+- **P1/P2 post-release patch gates: PASS; formal freeze resumes after commit/tag push.**
+- Render P2 persistence remains BLOCKED. P3/P4 have not started.
