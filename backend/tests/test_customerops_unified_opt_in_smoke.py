@@ -10,6 +10,10 @@ import sys
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = ROOT_DIR / "scripts"
+for path in (ROOT_DIR, SCRIPTS_DIR):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 SCRIPT_PATH = ROOT_DIR / "scripts" / "run_customerops_unified_opt_in_smoke.py"
 SPEC = importlib.util.spec_from_file_location("customerops_opt_in_smoke", SCRIPT_PATH)
 assert SPEC and SPEC.loader

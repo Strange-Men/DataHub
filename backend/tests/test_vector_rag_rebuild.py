@@ -14,11 +14,18 @@ All tests are local-only — no external API dependency.
 from __future__ import annotations
 
 import importlib.util
+import json
 import math
 import os
 import subprocess
 import sys
+import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 # Project root is 2 levels up from backend/tests/
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -29,13 +36,11 @@ def _script_path(script_name: str) -> str:
     return os.path.join(_PROJECT_ROOT, "scripts", script_name)
 
 
-def _test_env() -> dict:
-    """Return env dict with PYTHONPATH set for script imports."""
-    env = {**os.environ}
-    backend_dir = os.path.join(_PROJECT_ROOT, "backend")
-    existing = env.get("PYTHONPATH", "")
-    env["PYTHONPATH"] = backend_dir + (";" + existing if existing else "")
-    return env
+def _test_env(database_path: Path) -> dict[str, str]:
+    """Return a credential-free offline child environment."""
+    from scripts.test_environment import build_offline_subprocess_environment
+
+    return build_offline_subprocess_environment(Path(_PROJECT_ROOT), database_path)
 
 
 class TestRebuildScriptImportable(unittest.TestCase):
@@ -62,6 +67,8 @@ class TestRebuildScriptCli(unittest.TestCase):
     """Verify rebuild_vector_rag.py CLI behaviour."""
 
     def setUp(self):
+        self._temporary = tempfile.TemporaryDirectory(prefix="datahub-cli-test-")
+        self._database_path = Path(self._temporary.name) / "offline-test.db"
         self._saved = {
             k: os.environ.get(k)
             for k in ("EMBEDDING_PROVIDER", "EMBEDDING_MODEL",
@@ -83,23 +90,27 @@ class TestRebuildScriptCli(unittest.TestCase):
                 os.environ[k] = v
             elif k in os.environ:
                 del os.environ[k]
+        self._temporary.cleanup()
 
     def test_rebuild_script_help_works(self):
         """--help should exit 0."""
         result = subprocess.run(
             [sys.executable, _script_path("rebuild_vector_rag.py"), "--help"],
             capture_output=True, text=True, timeout=30,
-            env=_test_env(), cwd=_PROJECT_ROOT
+            env=_test_env(self._database_path), cwd=_PROJECT_ROOT
         )
         self.assertEqual(result.returncode, 0,
                          f"--help should exit 0. stderr: {result.stderr[:500]}")
 
     def test_rebuild_script_runs_without_crash_local(self):
-        """Local rebuild with mock provider should run without crashing."""
+        """Local CLI must fail closed before touching storage in an offline test."""
+        environment = _test_env(self._database_path)
+        environment["DATAHUB_TEST_MODE"] = "provider-config-negative"
+        environment["EMBEDDING_PROVIDER"] = "unsupported-test-provider"
         result = subprocess.run(
             [sys.executable, _script_path("rebuild_vector_rag.py")],
             capture_output=True, text=True, timeout=60,
-            env=_test_env(), cwd=_PROJECT_ROOT
+            env=environment, cwd=_PROJECT_ROOT
         )
         stdout = result.stdout
         stderr = result.stderr
@@ -110,26 +121,30 @@ class TestRebuildScriptCli(unittest.TestCase):
 
     def test_rebuild_script_never_prints_api_key(self):
         """Output must never contain the API key."""
-        os.environ["EMBEDDING_API_KEY"] = "sk-my-secret-key-12345"
-        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        sentinel = "offline-provider-sentinel-value"
+        environment = _test_env(self._database_path)
+        environment["EMBEDDING_API_KEY"] = sentinel
+        environment["DATAHUB_TEST_MODE"] = "provider-config-negative"
+        environment["EMBEDDING_PROVIDER"] = "unsupported-test-provider"
         result = subprocess.run(
             [sys.executable, _script_path("rebuild_vector_rag.py")],
             capture_output=True, text=True, timeout=30,
-            env=_test_env(), cwd=_PROJECT_ROOT
+            env=environment, cwd=_PROJECT_ROOT
         )
         stdout = result.stdout
         stderr = result.stderr
-        self.assertNotIn("sk-my-secret-key-12345", stdout)
-        self.assertNotIn("sk-my-secret-key-12345", stderr)
+        self.assertNotIn(sentinel, stdout)
+        self.assertNotIn(sentinel, stderr)
 
     def test_rebuild_script_missing_key_reports_blocked(self):
         """When real provider has no key, rebuild should report BLOCKED."""
-        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
-        # No EMBEDDING_API_KEY
+        environment = _test_env(self._database_path)
+        environment["DATAHUB_TEST_MODE"] = "provider-config-negative"
+        environment["EMBEDDING_PROVIDER"] = "siliconflow"
         result = subprocess.run(
             [sys.executable, _script_path("rebuild_vector_rag.py")],
             capture_output=True, text=True, timeout=30,
-            env=_test_env(), cwd=_PROJECT_ROOT
+            env=environment, cwd=_PROJECT_ROOT
         )
         stdout = result.stdout
         combined = stdout + result.stderr
@@ -139,37 +154,83 @@ class TestRebuildScriptCli(unittest.TestCase):
 
     def test_rebuild_script_with_base_url_shows_usage(self):
         """--base-url should work without crashing with Python syntax errors."""
-        os.environ["EMBEDDING_PROVIDER"] = "mock"
-        result = subprocess.run(
-            [sys.executable, _script_path("rebuild_vector_rag.py"),
-             "--base-url", "http://127.0.0.1:8000"],
-            capture_output=True, text=True, timeout=30,
-            env=_test_env(), cwd=_PROJECT_ROOT,
-            encoding="utf-8", errors="replace"
-        )
-        # May fail to connect but shouldn't crash with Python syntax/interpreter error
-        stderr = result.stderr
-        # A SyntaxError or ImportError would appear as a traceback
-        # Network connection errors are expected and OK
-        self.assertNotIn("SyntaxError", stderr)
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, _format, *_args):
+                return
+
+            def do_GET(self):
+                payload = {
+                    "status": "ok",
+                    "phase": "test-stub",
+                    "pgvector_status": {"pgvector_available": True, "backend": "stub"},
+                }
+                body = json.dumps(payload).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_POST(self):
+                length = int(self.headers.get("Content-Length", "0"))
+                self.rfile.read(length)
+                payload = {
+                    "success": True,
+                    "data": {
+                        "approved_candidate_count": 1,
+                        "chunk_count": 1,
+                        "embedding_count": 1,
+                        "failed_embedding_count": 0,
+                        "vector_sync_enabled": True,
+                        "embedding_provider": "mock",
+                        "embedding_model": "mock-deterministic",
+                        "embedding_dimension": 1536,
+                    },
+                }
+                body = json.dumps(payload).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            result = subprocess.run(
+                [sys.executable, _script_path("rebuild_vector_rag.py"),
+                 "--base-url", f"http://127.0.0.1:{server.server_port}"],
+                capture_output=True, text=True, timeout=10,
+                env=_test_env(self._database_path), cwd=_PROJECT_ROOT,
+                encoding="utf-8", errors="replace"
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr[:500])
+        self.assertIn("Rebuild status: SUCCESS", result.stdout)
+        self.assertFalse(thread.is_alive(), "stub server must not survive the test")
 
     def test_rebuild_script_verbose_flag_accepted(self):
         """--verbose flag should be accepted."""
-        os.environ["EMBEDDING_PROVIDER"] = "mock"
+        environment = _test_env(self._database_path)
+        environment["DATAHUB_TEST_MODE"] = "provider-config-negative"
+        environment["EMBEDDING_PROVIDER"] = "unsupported-test-provider"
         result = subprocess.run(
             [sys.executable, _script_path("rebuild_vector_rag.py"), "--verbose"],
             capture_output=True, text=True, timeout=60,
-            env=_test_env(), cwd=_PROJECT_ROOT
+            env=environment, cwd=_PROJECT_ROOT
         )
         self.assertNotIn("unrecognized arguments", result.stderr)
 
     def test_rebuild_script_force_flag_accepted(self):
         """--force flag should be accepted."""
-        os.environ["EMBEDDING_PROVIDER"] = "mock"
         result = subprocess.run(
-            [sys.executable, _script_path("rebuild_vector_rag.py"), "--force"],
+            [sys.executable, _script_path("rebuild_vector_rag.py"), "--force", "--help"],
             capture_output=True, text=True, timeout=60,
-            env=_test_env(), cwd=_PROJECT_ROOT
+            env=_test_env(self._database_path), cwd=_PROJECT_ROOT
         )
         self.assertNotIn("unrecognized arguments", result.stderr)
 
@@ -216,6 +277,32 @@ class TestRebuildLogicNoExternalAPI(unittest.TestCase):
         result = script.check_provider_locally(verbose=False)
         self.assertFalse(result.get("provider_ready"))
         self.assertEqual(result.get("reason"), "missing_api_key")
+
+    def test_real_provider_failures_are_safe_and_never_call_network(self):
+        """Timeout/auth/rate-limit/server failures collapse to one safe contract."""
+        os.environ["EMBEDDING_PROVIDER"] = "siliconflow"
+        sentinel = "provider-secret-sentinel"
+        os.environ["EMBEDDING_API_KEY"] = sentinel
+        sys.path.insert(0, _PROJECT_ROOT)
+        import scripts.rebuild_vector_rag as script
+
+        class FailingProvider:
+            def __init__(self, label: str) -> None:
+                self.label = label
+
+            def embed(self, _text: str):
+                raise RuntimeError(f"{self.label}: {sentinel}")
+
+        for label in ("timeout", "HTTP 401", "HTTP 403", "HTTP 429", "HTTP 500"):
+            with self.subTest(label=label):
+                with patch(
+                    "app.embedding.get_embedding_provider",
+                    return_value=FailingProvider(label),
+                ):
+                    result = script.check_provider_locally(verbose=False)
+                self.assertFalse(result["provider_ready"])
+                self.assertEqual(result["reason"], "embed_failed")
+                self.assertNotIn(sentinel, result["error"])
 
     def test_pgvector_table_dimension_constant(self):
         """PGVECTOR_TABLE_DIMENSION should be 1536."""
@@ -275,7 +362,19 @@ class TestRebuildResultFields(unittest.TestCase):
         """run_rebuild result dict must contain expected fields."""
         sys.path.insert(0, _PROJECT_ROOT)
         import scripts.rebuild_vector_rag as script
-        result = script.run_rebuild(base_url=None, verbose=False, force=False)
+        fake = SimpleNamespace(
+            approved_candidate_count=1,
+            chunk_count=1,
+            embedding_count=1,
+            failed_embedding_count=0,
+            vector_sync_enabled=True,
+            embedding_provider="mock",
+            embedding_model="mock-deterministic",
+            embedding_dimension=1536,
+            vector_sync_error=None,
+        )
+        with patch("app.storage.build_rag_chunks", return_value=fake):
+            result = script.run_rebuild(base_url=None, verbose=False, force=False)
         self.assertIn("rebuild_status", result)
         # Even BLOCKED should report these fields
         if result.get("rebuild_status") != "BLOCKED":

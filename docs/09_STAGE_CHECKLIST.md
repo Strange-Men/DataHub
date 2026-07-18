@@ -2257,3 +2257,28 @@ Phase boundary:
 - **M9.3: PASS and ready for the audited phase commit/push.**
 - No tag is created.
 - M9.4 has not started.
+
+## P1/P2-M9.4A Engineering Reliability and Test Environment Isolation
+
+- [x] Reproduce the fixed-port rebuild CLI coupling while the development backend is healthy.
+- [x] Replace development port 8000 with a random-port controlled Stub and bounded cleanup.
+- [x] Build allow-listed offline subprocess environments with mock Provider and test-only DB/Storage.
+- [x] Reject non-test DB names, identical dev/test URLs, real Keys, non-mock offline Providers, colliding project names and ports.
+- [x] Add independent `compose.test.yaml` PostgreSQL/pgvector/backend profile on 55432/18000.
+- [x] Run development and test stacks concurrently and prove API/database isolation.
+- [x] Pass real pgvector dimension, cosine, archived/fingerprint filter and recovery gates.
+- [x] Pass Review/Snapshot, Index/Chunk and Embedding rollback tests with final-state assertions.
+- [x] Pass concurrent/repeated publish, index, serve/archive and archive idempotency gates.
+- [x] Pass Provider, Storage, Database, branch and retrieval-log failure injection without Secret leakage.
+- [x] Pass related reliability regression: 155 tests, 30 warnings.
+- [x] Pass clean-export full backend: 430 passed, 5 explicit PG skips, 44 warnings, 91.19 seconds.
+- [x] Pass frontend production build with 54 modules.
+- [x] Remove only test containers/volumes; retain healthy development stack and 69/80 data counts.
+- [x] Preserve archived leakage 0, Agent default P1-only, Unified explicit opt-in and sealed tags.
+- [x] Add report 66 and update README/status/ledger.
+
+Phase boundary:
+
+- **M9.4A: PASS and ready for the audited phase commit/push.**
+- No tag is created.
+- M9.4B No-answer Gate and M9.5 have not started.

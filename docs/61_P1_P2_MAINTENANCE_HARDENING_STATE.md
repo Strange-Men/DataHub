@@ -60,20 +60,28 @@ Status: **COMPLETE**. Audit documents 58/59/60 define the evidence, test backlog
 - Gate: production build, API contract/component checks, Docker browser/manual role checklist, no fake controls, P1/P2 backend regressions.
 - Commit: `[P1-P2-M9.3] feat: complete chinese governance workflow`.
 
-### E. M9.4 Reliability and No-answer Gate
+### E. M9.4A Engineering Reliability and Test Environment Isolation
 
 - Add disposable PostgreSQL/pgvector integration tests for transactions, idempotency, concurrency and provider/storage/database/log failures; never use retained developer volumes as a test database.
+- Isolate offline CLI tests from real Provider, development ports, inherited `.env`, persistent Storage and development databases.
+- Run an independent Compose test profile/project beside the healthy development stack and clean only test containers/volumes.
+- Expected files: reliability fixtures/tests, test Compose, test environment guards, README and docs 08/09/61/66.
+- Gate: PostgreSQL/pgvector fault/concurrency suite, no rollback drift, zero archive leakage, default Agent behavior unchanged, full regressions.
+- Commit: `[P1-P2-M9.4A] test: isolate docker and reliability test environments`.
+
+### F. M9.4B No-answer Gate
+
 - Build labeled answer/near-negative/unrelated/archive/unreviewed/query-shape samples and measure score distributions before selecting any threshold.
 - Add a default-off, separately observable no-answer Shadow/active policy with profile/source-specific configuration and a stable non-error rejection contract. Do not add answer generation.
 - Make only small, measured query-path fixes proven by latency/query-count evidence.
-- Expected files: reliability fixtures/tests, no-answer policy/schemas/Eval samples/scripts, `.env.example`, README, docs 08/09/61/65.
-- Gate: PostgreSQL/pgvector fault/concurrency suite, no rollback drift, zero archive/unreviewed leakage, calibrated Eval report, default behavior unchanged, full regressions.
-- Commits: `[P1-P2-M9.4] test: harden postgres pgvector reliability`; if policy code is independently ready, `[P1-P2-M9.4] feat: add calibrated no-answer gate`.
+- Expected files: no-answer policy/schemas/Eval samples/scripts, `.env.example`, README and a separately numbered report.
+- Gate: calibrated Eval report, default-off compatibility, zero archive/unreviewed leakage and full regressions.
+- Commit: separately authorized M9.4B feature commit only after calibration.
 
-### F. M9.5 Maintenance Release Closure
+### G. M9.5 Maintenance Release Closure
 
 - Run clone-style Docker config/build/up/health/persistence; full P1/P2/Unified/Agent/auth/frontend/no-answer chains; compileall, full backend tests, frontend build, secret and diff audits.
-- Add docs 66 and close README/status/checklist/ledger without adding a major feature.
+- Add the next available numbered closure report and close README/status/checklist/ledger without adding a major feature.
 - Commit the closure report, push `main`, then create the annotated tag only if every forced gate passes.
 - Final tag: `p2-m9.5-maintenance-hardening` with the authorized message.
 - Render Deployment Acceptance remains BLOCKED and is not a local-release gate.
@@ -90,8 +98,9 @@ Stop only for a branch/remote divergence or unknown user change; need for histor
 | M9.1 | COMPLETE | `[P1-P2-M9.1] test: isolate eval corpus and add release safety gates` (this phase commit; see Git log for hash) | normal `main` push verified in final handoff | focused 37; clean-export 387; compile/build PASS; P1 10/10; three P2/Unified scoped Evals stable; Agent/cleanup/secret gates PASS | stop; M9.2 has not started |
 | M9.2 | COMPLETE | `[P1-P2-M9.2] feat: add governance authentication and role controls` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused 24; clean-export 411; compile/build PASS; Docker auth smoke; P1 10/10; P2 Acceptance PASS | stop; M9.3 has not started |
 | M9.3 | COMPLETE | `[P1-P2-M9.3] feat: complete chinese governance workflow` (this phase commit; see Git log for hash) | normal `main` push at phase closure | focused/contract 99; frontend build PASS; Docker five-role browser checklist PASS | stop; M9.4 has not started |
-| M9.4 | PENDING | PENDING | PENDING | PENDING | enter only after M9.3 push |
-| M9.5 | PENDING | PENDING | PENDING | PENDING | enter only after M9.4 push |
+| M9.4A | COMPLETE | `[P1-P2-M9.4A] test: isolate docker and reliability test environments` (this phase commit; see Git log for hash) | normal `main` push at phase closure | offline 27; PG 5; related 155; clean-export 430 + 5 explicit PG skips; frontend build; parallel Docker stacks PASS | stop; M9.4B has not started |
+| M9.4B | PENDING | PENDING | PENDING | PENDING | enter only after a separate authorization |
+| M9.5 | PENDING | PENDING | PENDING | PENDING | enter only after M9.4B push |
 
 ## 7. Current Risks and Next Action
 
@@ -112,4 +121,8 @@ M9.2.1 interruption audit: the backend route inventory, centralized role matrix,
 
 M9.3 closure: the Chinese frontend is now task-flow oriented, exposes only real P1/P2 and retrieval APIs, centralizes five-role UX from `/api/auth/me`, distinguishes P2 ready/serving, confirms retrieval-visibility changes, and displays the full Source Trace without vectors or Secrets. P3/P4 remain explicitly disabled. Focused/contract regressions passed 99 tests, the production build passed, and retained-volume Docker browser checks covered all five roles, 401, Token clear/reload, serving/archived states, Agent P1-only and Unified opt-in. Docker was restored to disabled with zero role Tokens. Report: `docs/65_M9_3_FRONTEND_GOVERNANCE_USABILITY_REPORT.md`.
 
-Next authorized entry: M9.4 Reliability and No-answer Gate. M9.4 has not started.
+Historical entry: M9.4A Engineering Reliability and Test Environment Isolation was authorized after M9.3. Its completed state is recorded below.
+
+M9.4A closure: rebuild CLI tests no longer contact the fixed development port or inherit real Provider/database state. Offline subprocesses use allow-listed mock/test configuration; PostgreSQL/pgvector tests use `datahub_test`; and `compose.test.yaml` runs beside the healthy development stack on isolated ports/networks/volumes. PG integration passed 5 tests, related reliability regression passed 155, clean-export passed 430 with 5 explicit PG skips, and frontend build passed. Test containers/volumes were removed while development counts remained 69 Assets / 80 Knowledge Assets. Report: `docs/66_M9_4A_ENGINEERING_RELIABILITY_AND_TEST_ISOLATION_REPORT.md`.
+
+Next authorized entry: M9.4B No-answer Gate. M9.4B has not started.

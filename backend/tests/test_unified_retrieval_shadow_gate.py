@@ -446,6 +446,27 @@ def test_unified_log_is_namespaced_and_contains_no_vectors() -> None:
     assert "DATABASE_URL" not in serialized
 
 
+def test_retrieval_log_failure_does_not_break_healthy_unified_result() -> None:
+    database = Mock()
+    retrieval = UnifiedRetrievalService(
+        database,
+        p1_adapter=FakeAdapter(branch("p1", (candidate("p1", 1),))),
+        p2_adapter=FakeAdapter(branch("p2", (candidate("p2", 1),))),
+        flags=flags(shadow_enabled=False),
+        p2_post_filter=lambda items: items,
+    )
+    with patch(
+        "app.unified_retrieval_service.db_repositories.save_retrieval_log_to_db",
+        side_effect=RuntimeError("safe test log failure"),
+    ):
+        response = retrieval.search(
+            UnifiedRetrievalRequest(query="log failure", shadow_mode=False)
+        )
+    assert response.candidate_mode == "unified_rrf"
+    assert len(response.candidate_results) == 2
+    database.rollback.assert_called_once()
+
+
 def test_api_is_disabled_by_default_and_preserves_correlation_ids(monkeypatch) -> None:
     monkeypatch.setenv("UNIFIED_RETRIEVAL_ENABLED", "false")
     monkeypatch.setenv("P2_RETRIEVAL_ENABLED", "false")

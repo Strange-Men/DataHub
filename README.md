@@ -513,6 +513,39 @@ docker compose down -v --remove-orphans
 - 不要把 Docker socket 暴露给应用容器，也不要以 `down -v` 作为日常停止命令。
 - 当前 Docker 验收属于本地开发/发布门禁，不等同于生产加固或 Render 线上验收。
 
+### 测试环境隔离
+
+M9.4A 将测试分为三层：Unit/Offline 使用 Mock Provider 和临时 test SQLite；PostgreSQL Integration 使用独立 `datahub_test`；Docker E2E 使用 `compose.test.yaml`、独立 project name、端口和 named volumes。测试不需要停止正常 `datahub` 开发栈。
+
+离线和 CLI 门禁不会读取真实 Provider Key 或连接开发 backend：
+
+```powershell
+cd D:\Claude_workfile\DataHub\backend
+python -m pytest tests/test_test_environment_isolation.py tests/test_vector_rag_rebuild.py -q
+```
+
+启动独立 PostgreSQL/pgvector + backend test profile（密码必须是临时测试值，不能复用开发/生产密码）：
+
+```powershell
+cd D:\Claude_workfile\DataHub
+$env:DATAHUB_TEST_POSTGRES_PASSWORD = "<ephemeral-test-only-password>"
+docker compose -f compose.test.yaml --profile test -p datahub-reliability-test up -d --build
+
+$env:DATABASE_URL = "postgresql+psycopg2://datahub_test:<ephemeral-test-only-password>@127.0.0.1:55432/datahub_test"
+$env:DATAHUB_TEST_DATABASE_URL = $env:DATABASE_URL
+cd backend
+python -m pytest tests/test_postgres_pgvector_reliability.py -q
+```
+
+安全检查会拒绝 database name 不含 `test`、与声明的开发 URL 相同、Provider 非 mock、携带真实 Key、project name 不含 `test` 或端口与 5433/8000/5173 重叠的配置。测试结束后只清理显式 test project：
+
+```powershell
+cd D:\Claude_workfile\DataHub
+docker compose -f compose.test.yaml --profile test -p datahub-reliability-test down -v
+```
+
+不要对正常 `datahub` 项目执行 `down -v`。完整证据见 `docs/66_M9_4A_ENGINEERING_RELIABILITY_AND_TEST_ISOLATION_REPORT.md`。
+
 ## 快速开始
 
 以下是无需 Docker 的本机手动开发方式；新环境优先使用上面的 Docker Compose 流程。

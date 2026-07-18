@@ -2089,3 +2089,13 @@ This is a planning and documentation checkpoint only.
 - Retained-volume Docker browser checks covered admin, cleaner, reviewer, service and viewer, Token clear/reload, Chinese 401, role-denial guidance, real service Retrieval, serving/archived display, Source Trace, P3/P4 disabled and an error-free console.
 - Compose was restored to `DATAHUB_AUTH_MODE=disabled` with zero role Tokens; backend/frontend/PostgreSQL are healthy. No backend business code, schema, retrieval, RRF, Agent default or Unified opt-in change was made.
 - Report: `docs/65_M9_3_FRONTEND_GOVERNANCE_USABILITY_REPORT.md`. M9.4 has not started.
+
+## P1/P2-M9.4A Engineering Reliability and Test Environment Isolation
+
+- **M9.4A implementation and local reliability acceptance: COMPLETE**. Rebuild CLI tests no longer use fixed development port 8000 or inherit real Provider/database/Storage configuration.
+- Added allow-listed offline subprocess environments, explicit test DB/Provider/project/port safety guards, random-port HTTP Stub cleanup and independent `compose.test.yaml` profile.
+- Real PostgreSQL 16 + pgvector 0.8.5 integration passed 5/5, covering vector dimension/cosine/filtering, rollback, concurrent publish/index, projection/embedding failure, serve/archive race and DB failure/recovery.
+- Related M9.1/M9.2/P2/Unified/Agent reliability regression passed 155/155; clean-export full backend passed 430 with 5 explicit PG skips and 44 warnings in 91.19 seconds.
+- Frontend production build passed (54 modules). CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, and archived leakage remains 0.
+- Development and test stacks ran concurrently healthy. Dev DB stayed 69 Assets / 80 Knowledge Assets; test DB ended empty. Test project containers/volumes were removed and development volumes were untouched.
+- Report: `docs/66_M9_4A_ENGINEERING_RELIABILITY_AND_TEST_ISOLATION_REPORT.md`. M9.4B No-answer Gate has not started.

@@ -1,0 +1,136 @@
+name: datahub-test
+
+x-test-backend-image: &test-backend-image
+  image: datahub-backend-test:${DATAHUB_TEST_IMAGE_TAG:-local}
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+
+x-test-backend-environment: &test-backend-environment
+  POSTGRES_HOST: postgres-test
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: datahub_test
+  POSTGRES_USER: datahub_test
+  POSTGRES_PASSWORD: ${DATAHUB_TEST_POSTGRES_PASSWORD:?Set an ephemeral test-only password}
+  DATAHUB_ENV: docker-test
+  DATAHUB_TEST_MODE: integration
+  ASSET_STORAGE_BACKEND: local
+  ASSET_STORAGE_ROOT: /data/assets
+  EMBEDDING_PROVIDER: mock
+  EMBEDDING_MODEL: mock-deterministic
+  EMBEDDING_DIMENSION: "1536"
+  EMBEDDING_API_KEY: ""
+  LLM_PROVIDER: mock
+  LLM_API_KEY: ""
+  DATAHUB_AUTH_MODE: disabled
+  UNIFIED_RETRIEVAL_ENABLED: "false"
+  P2_RETRIEVAL_ENABLED: "false"
+  UNIFIED_RETRIEVAL_SHADOW_MODE: "false"
+  CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED: "false"
+
+x-test-volumes: &test-volumes
+  - asset_test_data:/data/assets
+  - backend_test_data:/app/backend/storage
+  - runtime_test_data:/app/.local-data
+
+services:
+  postgres-test:
+    profiles: ["test"]
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: datahub_test
+      POSTGRES_USER: datahub_test
+      POSTGRES_PASSWORD: ${DATAHUB_TEST_POSTGRES_PASSWORD:?Set an ephemeral test-only password}
+    ports:
+      - "127.0.0.1:${DATAHUB_TEST_POSTGRES_PORT:-55432}:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./docker/postgres/init/001-enable-vector.sql:/docker-entrypoint-initdb.d/001-enable-vector.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          PGPASSWORD="$${POSTGRES_PASSWORD}"
+          pg_isready -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+          && test "$$(PGPASSWORD="$${POSTGRES_PASSWORD}"
+          psql -h 127.0.0.1 -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}" -tAc
+          "SELECT current_database()")" = "datahub_test"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: "no"
+    networks: [datahub-test]
+
+  volume-init-test:
+    profiles: ["test"]
+    <<: *test-backend-image
+    user: "0:0"
+    entrypoint: []
+    network_mode: none
+    command:
+      - sh
+      - -c
+      - >-
+        install -d -o 10001 -g 10001 /data/assets /app/backend/storage /app/.local-data
+        && chown -R 10001:10001 /data/assets /app/backend/storage /app/.local-data
+    volumes: *test-volumes
+    restart: "no"
+
+  db-init-test:
+    profiles: ["test"]
+    <<: *test-backend-image
+    command:
+      - sh
+      - -c
+      - python scripts/check_pgvector_support.py && python scripts/init_database.py
+    environment: *test-backend-environment
+    volumes: *test-volumes
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      volume-init-test:
+        condition: service_completed_successfully
+    restart: "no"
+    networks: [datahub-test]
+
+  backend-test:
+    profiles: ["test"]
+    <<: *test-backend-image
+    environment: *test-backend-environment
+    ports:
+      - "127.0.0.1:${DATAHUB_TEST_BACKEND_PORT:-18000}:8000"
+    volumes: *test-volumes
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      volume-init-test:
+        condition: service_completed_successfully
+      db-init-test:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import json, urllib.request;
+          data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3));
+          assert data['status']=='ok';
+          assert data['database_status']['status']=='ok';
+          assert data['pgvector_status']['pgvector_available']
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: "no"
+    networks: [datahub-test]
+
+volumes:
+  postgres_test_data:
+  asset_test_data:
+  backend_test_data:
+  runtime_test_data:
+
+networks:
+  datahub-test:
+    driver: bridge
