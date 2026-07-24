@@ -2375,5 +2375,34 @@ Phase boundary:
 Phase boundary:
 
 - **P3-M0.1: PASS and FROZEN after the dedicated commit/tag are pushed.**
-- P3-M1 has not started and requires a separate explicit instruction.
+- At this P3-M0 boundary, P3-M1 had not started and required a separate explicit instruction.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M1 Source Eligibility Release Closure
+
+- [x] Start from clean synchronized `main` at the P3-M1.2 tag baseline.
+- [x] Keep M1.1 as the only eligibility truth source; Route contains no duplicate P1/P2/Bad Case rules.
+- [x] Accept only stable source identity/version/fingerprint guards; never trust caller-supplied governance state.
+- [x] Cover P1 approved, unapproved, drift, missing Trace and missing source decisions.
+- [x] Cover P2 active/current, ready, serving, archived, superseded, old-version and missing Snapshot decisions.
+- [x] Reject raw Bad Case and require approved, fingerprint-stable correction knowledge with valid Bad Case lineage.
+- [x] Keep single and batch APIs read-only; preserve batch input order and isolate each ineligible result.
+- [x] Enforce batch size 1～100; empty and 101-item requests return 422.
+- [x] Protect both endpoints with centralized `p3.source.read`; grant it to the five existing roles without adding roles.
+- [x] Validate disabled compatibility, token 401, centralized 403, five-role 200, public Health and unchanged `/api/auth/me`.
+- [x] Confirm responses exclude full content, vectors, Token, Secret, storage URI and database connection data.
+- [x] Pass M1.1 26, M1.2 30, Auth/RBAC 24, P1 related 2 and P2 related 6 focused/regression tests.
+- [x] Pass authoritative clean-export backend: 520 passed, 5 explicit PostgreSQL skips, 44 existing warnings.
+- [x] Rebuild only the backend Docker image while preserving existing development volumes and healthy postgres/frontend services.
+- [x] Pass live P1 eligible/ineligible, P2 serving/archived, raw Bad Case, mixed batch, empty/over-limit and Auth Smoke.
+- [x] Preserve P2 state when the development volume has no ready row; accept ready-not-serving through the focused SQLAlchemy database test.
+- [x] Restore Docker Auth to compose default `disabled`; backend/frontend/postgres are healthy.
+- [x] Pass live OpenAPI registration, compileall, Secret/conflict scan and `git diff --check`.
+- [x] Add `docs/75_P3_M1_SOURCE_ELIGIBILITY_RELEASE_REPORT.md`.
+- [x] Make no code repair, P1/P2 business/schema change, P3 table, ReuseProject, frontend or M2 implementation.
+
+Phase boundary:
+
+- **P3-M1: PASS and ready for the dedicated release commit/tag.**
+- P3-M2 has not started and requires a separate explicit instruction.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
