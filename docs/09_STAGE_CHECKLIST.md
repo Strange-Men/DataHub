@@ -2348,3 +2348,32 @@ Phase boundary:
 
 - **P1/P2 post-release patch gates: PASS; formal freeze resumes after commit/tag push.**
 - Render P2 persistence remains BLOCKED. P3/P4 have not started.
+
+## P3-M0.1 Planning Review and Freeze
+
+- [x] Preflight started from clean synchronized `main` plus only the expected untracked docs/71～73 planning drafts.
+- [x] Planning review changed documentation/status only; no code, database, API, frontend, test or Docker action was performed.
+- [x] `ReuseProject` lifecycle is frozen as `draft -> active -> archived`.
+- [x] `ReuseAssetVersion` lifecycle is frozen as generating/generated/review/publish states with needs_revision/rejected/failed branches and published -> superseded/archive.
+- [x] `ExportJob` lifecycle is frozen as `pending -> running -> succeeded|failed`, with succeeded -> revoked.
+- [x] `generated` is not approved; `approved` is not published; published content cannot be overwritten.
+- [x] Seven independent P3 tables are frozen: `reuse_projects`, `reuse_source_items`, `reuse_asset_versions`, `reuse_asset_version_sources`, `reuse_reviews`, `export_jobs`, `export_artifacts`.
+- [x] P1/P2 existing tables remain unchanged; P3 source references use IDs, versions, approved snapshots/fingerprints and Source Trace.
+- [x] P1 requires approved Review evidence and no approval/content fingerprint drift.
+- [x] P2 requires approved + active/current/non-archived Knowledge Asset; Serving is not a P3 eligibility condition and Ready-not-Serving is allowed.
+- [x] Raw Bad Cases are prohibited; only approved correction knowledge is eligible.
+- [x] Source invalidation preserves historical assets, marks `source_stale`, and blocks new approval/publish/export without writing to P1/P2.
+- [x] P3 v1 reuses cleaner/reviewer/admin/viewer/service roles; admin owns publish/export/revoke; stable personal identity is Deferred.
+- [x] M3 is deterministic and reproducible; M4 LLM is optional and can only produce generated drafts.
+- [x] P3 v1 prohibits chained P3 reuse, adds no independent retrieval index and performs no model training.
+- [x] Artifact policy has no automatic TTL or physical deletion; admin logical revoke preserves Manifest/checksum/audit.
+- [x] Database evolution follows additive `Base.metadata.create_all(checkfirst)`; application rollback retains P3 tables and production has no destructive down migration.
+- [x] M1～M8 use structural quality gates; M9 calibrates final numerical release thresholds on an independent challenge set.
+- [x] M1～M9 each have target, input/output, allowed/forbidden scope, focused tests, acceptance gate, commit/tag suggestion and stop condition.
+- [x] `docs/74_P3_M0_PLANNING_FREEZE_DECISION.md` records the final decision and P3-M1 entry gate.
+
+Phase boundary:
+
+- **P3-M0.1: PASS and FROZEN after the dedicated commit/tag are pushed.**
+- P3-M1 has not started and requires a separate explicit instruction.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
