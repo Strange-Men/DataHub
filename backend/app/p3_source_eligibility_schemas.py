@@ -1,8 +1,9 @@
 """Stable schemas for P3 governed-source eligibility decisions."""
 
 from enum import Enum
+from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 P3_SOURCE_ELIGIBILITY_POLICY_VERSION = "p3-source-eligibility-v1"
@@ -42,6 +43,29 @@ class P3SourceReference(BaseModel):
     expected_fingerprint: str | None = Field(default=None, min_length=1, max_length=128)
 
 
+class P3SourceEligibilityRequest(BaseModel):
+    """Public API request without any caller-controlled governance state."""
+
+    source_type: P3SourceType | Literal["RAW_BAD_CASE"]
+    source_id: str = Field(min_length=1, max_length=200)
+    source_version: int | None = Field(default=None, ge=1)
+    expected_fingerprint: str | None = Field(default=None, min_length=1, max_length=128)
+
+    @field_validator("source_id")
+    @classmethod
+    def validate_source_id(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("source_id must not be blank")
+        return normalized
+
+
+class P3SourceEligibilityBatchRequest(BaseModel):
+    """Bounded public batch request."""
+
+    sources: list[P3SourceEligibilityRequest] = Field(min_length=1, max_length=100)
+
+
 class P3SourceEligibilityDecision(BaseModel):
     """Safe, deterministic result of one read-only eligibility check."""
 
@@ -58,3 +82,25 @@ class P3SourceEligibilityDecision(BaseModel):
     lineage_complete: bool = False
     checked_conditions: list[str] = Field(default_factory=list)
     policy_version: str = P3_SOURCE_ELIGIBILITY_POLICY_VERSION
+
+
+class P3SourceEligibilitySingleData(BaseModel):
+    policy_version: str = P3_SOURCE_ELIGIBILITY_POLICY_VERSION
+    decision: P3SourceEligibilityDecision
+
+
+class P3SourceEligibilityBatchData(BaseModel):
+    policy_version: str = P3_SOURCE_ELIGIBILITY_POLICY_VERSION
+    decisions: list[P3SourceEligibilityDecision]
+
+
+class P3SourceEligibilitySingleResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3SourceEligibilitySingleData
+    requestId: str
+
+
+class P3SourceEligibilityBatchResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3SourceEligibilityBatchData
+    requestId: str

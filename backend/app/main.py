@@ -35,6 +35,7 @@ from app.knowledge_asset_routes import router as knowledge_asset_router
 from app.knowledge_index_routes import router as knowledge_index_router
 from app.knowledge_embedding_routes import router as knowledge_embedding_router
 from app.p2_retrieval_routes import router as p2_retrieval_router
+from app.p3_source_eligibility_routes import router as p3_source_eligibility_router
 from app.unified_retrieval_routes import router as unified_retrieval_router
 from app.customerops_unified_routes import router as customerops_unified_router
 from app.storage import (
@@ -77,6 +78,7 @@ app.include_router(knowledge_asset_router)
 app.include_router(knowledge_index_router)
 app.include_router(knowledge_embedding_router)
 app.include_router(p2_retrieval_router)
+app.include_router(p3_source_eligibility_router)
 app.include_router(unified_retrieval_router)
 app.include_router(customerops_unified_router)
 

@@ -48,6 +48,8 @@ class Permission(StrEnum):
     P2_ARCHIVE = "p2.archive"
     P2_READ = "p2.read"
 
+    P3_SOURCE_READ = "p3.source.read"
+
     RETRIEVAL_P1 = "retrieval.p1"
     RETRIEVAL_P2 = "retrieval.p2"
     RETRIEVAL_UNIFIED = "retrieval.unified"
@@ -67,6 +69,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P2_EXTRACT,
             Permission.P2_REVISE,
             Permission.P2_READ,
+            Permission.P3_SOURCE_READ,
         }
     ),
     Role.REVIEWER: frozenset(
@@ -75,6 +78,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P1_REVIEW,
             Permission.P2_READ,
             Permission.P2_REVIEW,
+            Permission.P3_SOURCE_READ,
         }
     ),
     Role.SERVICE: frozenset(
@@ -84,6 +88,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.RETRIEVAL_UNIFIED,
             Permission.AGENT_CUSTOMEROPS,
             Permission.BADCASE_SUBMIT,
+            Permission.P3_SOURCE_READ,
         }
     ),
     Role.VIEWER: frozenset(
@@ -92,6 +97,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P2_READ,
             Permission.RETRIEVAL_P1,
             Permission.RETRIEVAL_P2,
+            Permission.P3_SOURCE_READ,
         }
     ),
 }
