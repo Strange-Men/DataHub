@@ -250,6 +250,50 @@ class P3ReuseService:
             status=status,
         )
 
+    def get_source_item(
+        self,
+        *,
+        project_id: str,
+        source_item_id: str,
+    ) -> ReuseSourceItem:
+        project = self.get_project(project_id)
+        source = _repository_call(
+            repositories.get_source_item_by_id,
+            self.db,
+            source_item_id,
+            context={"source_item_id": source_item_id},
+        )
+        if source.project_id != project.id:
+            raise P3ServiceNotFound(
+                "Source item does not belong to the requested project.",
+                project_id=project.id,
+                source_item_id=source.id,
+            )
+        return source
+
+    def list_project_source_items(
+        self,
+        *,
+        project_id: str,
+        limit: int = repositories.DEFAULT_PAGE_LIMIT,
+        offset: int = 0,
+        include_removed: bool = False,
+        source_type: P3SourceType | None = None,
+        source_stale: bool | None = None,
+    ) -> P3RepositoryPage[ReuseSourceItem]:
+        project = self.get_project(project_id)
+        return _repository_call(
+            repositories.list_project_source_items,
+            self.db,
+            project_id=project.id,
+            limit=limit,
+            offset=offset,
+            include_removed=include_removed,
+            source_type=source_type,
+            source_stale=source_stale,
+            context={"project_id": project.id},
+        )
+
     def update_project_metadata(
         self,
         project_id: str,
