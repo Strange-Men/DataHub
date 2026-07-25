@@ -2406,3 +2406,31 @@ Phase boundary:
 - **P3-M1: PASS and ready for the dedicated release commit/tag.**
 - P3-M2 has not started and requires a separate explicit instruction.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M2 Reuse Project and Governed Source Release Closure
+
+- [x] Start each M2 sub-stage from synchronized, clean `main` and preserve all historical tags.
+- [x] Add only `reuse_projects` and `reuse_source_items` with additive `create_all(checkfirst)` registration.
+- [x] Enforce project idempotency, normalized source-version uniqueness, internal RESTRICT foreign key, logical archive/removal and `source_stale`.
+- [x] Keep Project lifecycle at `draft -> active -> archived`; forbid rollback, reactivation and archived mutation.
+- [x] Keep Repository persistence-only, bounded and deterministic; convert constraint failures to safe stable errors and roll back failed writes.
+- [x] Use M1.1 as the only eligibility truth source before adding or activating a source; never trust caller-supplied governance fields.
+- [x] Persist immutable eligibility evidence and Source Trace without copying full P1/P2 content.
+- [x] Revalidate current evidence, mark drift/ineligibility stale, preserve original evidence and skip logically removed rows.
+- [x] Require at least one current, non-stale, freshly eligible source before activation; keep failed activation draft.
+- [x] Expose bounded project/source CRUD, logical removal, single revalidation and batch revalidation APIs through Service only.
+- [x] Add centralized `p3.project.read`, `p3.project.write`, `p3.source.manage`, `p3.project.activate` and `p3.project.archive` permissions without adding roles.
+- [x] Grant all roles read; grant cleaner write/manage/activate; keep archive admin-only; pass disabled/token 401/403/200 behavior.
+- [x] Pass Docker Project/P1/P2/archived/list/revalidation/activation/archive smoke and remove exact P3 test rows.
+- [x] Preserve the ready-not-serving rule through isolated regression without mutating a development P2 row when no ready fixture exists.
+- [x] Pass isolated PostgreSQL integration: 3 passed; remove only `datahub-test` containers/network/volumes.
+- [x] Pass M2.4 API 15, affected M2/M1/Auth 198 plus 3 skips, and clean-export backend 653 plus 8 explicit skips.
+- [x] Pass compileall, Secret scan, OpenAPI, `git diff --check`, protected P1/P2 scope and runtime cleanup gates.
+- [x] Keep P1/P2 business/schema/data frozen; add no draft asset, Review, Publish, Export, P3 frontend or Provider integration.
+- [x] Add `docs/76_P3_M2_PROJECT_SOURCE_RELEASE_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M2: PASS and ready for the dedicated release commit/tag.**
+- P3-M3 has not started and requires a separate explicit instruction.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.

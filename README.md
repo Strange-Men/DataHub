@@ -265,7 +265,7 @@ python scripts/run_p2_local_acceptance.py --auth-token-env DATAHUB_ADMIN_TOKEN
 - P2：上传 → Extraction → Review → Snapshot → 发布 → Index → Embed → Ready → Serve → Retrieval → Archive → Source Trace。
 - `ready · 向量已生成，尚未开放检索` 与 `serving · 已开放检索` 明确分开；Serve、Archive、Reject、RAG sync 和版本替换会说明影响并二次确认。
 - 检索验证页调用真实 P1/P2/Unified/CustomerOpsAgent API。CustomerOpsAgent 默认 P1-only，Unified 必须显式 opt-in。
-- P3-M1 来源资格阶段已完成：提供 P1/P2/Bad Case 修正知识的只读判定内核、单项/批量 API 和 `p3.source.read` RBAC；P3 页面仍显示“尚未开放”，P3-M2 与 P4 尚未开始。
+- P3-M2 项目与来源阶段已完成：在 M1 资格内核之上提供两张独立 P3 表、Repository、Service、项目/来源 API 与集中式 RBAC；P3 页面仍显示“尚未开放”，P3-M3 与 P4 尚未开始。
 
 校验并启动：
 
@@ -731,4 +731,4 @@ M9.1-M9.5 已完成本地 Docker 维护版本封板：Eval 使用 run-scoped man
 
 本地权威结果：P1 Harness `10/10`、P2 Acceptance PASS、clean-export backend `460 passed / 5 skipped`、frontend production build PASS。CustomerOpsAgent 默认仍为 P1-only，Unified 仍需显式 opt-in。完整证据见 `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`。
 
-该结论仅覆盖本地 Docker。Render P2 持久化部署仍为 BLOCKED。P3-M0.1 数据资产复用规划已冻结，七表、状态机和 M1～M9 路线见 `docs/71_P3_DATA_ASSET_REUSE_PRD_AND_SCOPE.md` 至 `docs/74_P3_M0_PLANNING_FREEZE_DECISION.md`；P3-M1 来源资格阶段已通过验收，证据见 `docs/75_P3_M1_SOURCE_ELIGIBILITY_RELEASE_REPORT.md`。P3-M2 与 P4 尚未开始。
+该结论仅覆盖本地 Docker。Render P2 持久化部署仍为 BLOCKED。P3-M0.1 数据资产复用规划已冻结，七表、状态机和 M1～M9 路线见 `docs/71_P3_DATA_ASSET_REUSE_PRD_AND_SCOPE.md` 至 `docs/74_P3_M0_PLANNING_FREEZE_DECISION.md`；P3-M1 来源资格阶段已通过验收，证据见 `docs/75_P3_M1_SOURCE_ELIGIBILITY_RELEASE_REPORT.md`；P3-M2 项目与来源阶段已通过验收，证据见 `docs/76_P3_M2_PROJECT_SOURCE_RELEASE_REPORT.md`。P3-M3 与 P4 尚未开始。
