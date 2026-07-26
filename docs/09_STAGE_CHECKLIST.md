@@ -2462,3 +2462,33 @@ Phase boundary:
 - **P3-M3.1: PASS and ready for its dedicated commit/tag.**
 - P3-M3 is not complete; P3-M3.2 has not started.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M3 Deterministic Draft Asset Generation Release
+
+- [x] Complete M3.2 Asset Version and Source Snapshot repositories without adding tables or business eligibility rules.
+- [x] Allocate version numbers per Project/type with finite PostgreSQL retry, stable conflict and no client-supplied version.
+- [x] Keep Repository persistence limited to generating/generated/failed; prevent generated overwrite and failed-to-generated transition.
+- [x] Atomically persist generating version and immutable source snapshots; preserve history after Source Item stale/removed.
+- [x] Read only approved P1 Review snapshots, approved Bad Case correction knowledge and approved/current P2 Knowledge Assets.
+- [x] Revalidate every current source through M2/M1 before new generation; reject inactive/no-source/stale/ineligible/evidence-drift/over-100 projects.
+- [x] Build fixed-field Canonical Manifest and stable SHA-256 independent of source input order.
+- [x] Register deterministic v1 templates for training material, SOP, service script, QA bank and SFT dataset.
+- [x] Produce stable Canonical JSON Content Hash with no random/time/Prompt/LLM/Provider input.
+- [x] Enforce idempotent replay, different-request conflict, new-key version increment and safe failed persistence.
+- [x] Expose generate/list/detail/source-snapshot endpoints only through `P3AssetService`.
+- [x] Add centralized `p3.asset.read` and `p3.asset.generate` without adding roles; pass disabled/token 401/403/200 matrix.
+- [x] Reject caller-forged version/status/payload/hash/mode/snapshot/failure fields with 422.
+- [x] Pass M3.2 26, M3.3 23, M3.4 33 and affected regression 118 tests, including scoped PostgreSQL gates.
+- [x] Pass Docker five-template/idempotency/hash/snapshot/stale/Auth Smoke and remove exact temporary P3 rows.
+- [x] Pass isolated PostgreSQL release acceptance: 2 tests for concurrency/idempotency/atomicity/generated/failed/rollback/stale history.
+- [x] Run the Goal's single authoritative ignored clean-export backend suite: 769 passed, 11 skipped, 44 warnings in 92.08 seconds.
+- [x] Remove clean-export files and isolated test container/network/volumes; preserve healthy development services/volumes.
+- [x] Keep P1/P2 business/schema/data frozen and call no real Provider.
+- [x] Create no `reuse_reviews`, `export_jobs` or `export_artifacts`; enter no M4/M5/M6/M7/M8/P4 capability.
+- [x] Add `docs/78_P3_M3_DETERMINISTIC_DRAFT_RELEASE_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M3: PASS and ready for the dedicated release commit/tag.**
+- P3-M4 has not started and requires a separate explicit instruction.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.

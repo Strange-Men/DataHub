@@ -717,3 +717,119 @@ def test_postgresql_concurrent_versioning_idempotency_and_atomic_snapshots() -> 
         with SessionLocal() as session:
             _clear_p3_rows(session, prefix)
         engine.dispose()
+
+
+@pytest.mark.postgres_integration
+@pytest.mark.skipif(
+    not TEST_DATABASE_URL,
+    reason="DATAHUB_TEST_DATABASE_URL is required for PostgreSQL integration tests",
+)
+def test_postgresql_generated_failed_rollback_and_snapshot_history() -> None:
+    url = require_test_database_url(
+        TEST_DATABASE_URL,
+        development_url=os.getenv("DATAHUB_DEVELOPMENT_DATABASE_URL"),
+    )
+    engine = create_engine(url, pool_pre_ping=True)
+    SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+    prefix = "p3m35_pg_"
+    Base.metadata.create_all(
+        bind=engine,
+        tables=[
+            ReuseProject.__table__,
+            ReuseSourceItem.__table__,
+            ReuseAssetVersion.__table__,
+            ReuseAssetVersionSource.__table__,
+        ],
+    )
+    try:
+        with SessionLocal() as session:
+            _clear_p3_rows(session, prefix)
+            project = _seed_project(session, project_id=f"{prefix}project")
+            source = _seed_source(
+                session,
+                source_item_id=f"{prefix}source",
+                project_id=project.id,
+            )
+            snapshot = _snapshot(source)
+            generated = _create_version(
+                session,
+                project_id=project.id,
+                idempotency_key=f"{prefix}generated_key",
+                snapshots=(snapshot,),
+            )
+            replay = _create_version(
+                session,
+                project_id=project.id,
+                idempotency_key=f"{prefix}generated_key",
+                snapshots=(snapshot,),
+            )
+            assert replay.id == generated.id
+            generated = mark_asset_generated(
+                session,
+                generated.id,
+                content_payload={"title": "PostgreSQL generated draft"},
+            )
+            assert generated.status is ReuseAssetVersionStatus.GENERATED
+
+            binding = session.query(ReuseAssetVersionSource).filter(
+                ReuseAssetVersionSource.asset_version_id == generated.id
+            ).one()
+            frozen = (
+                binding.source_fingerprint,
+                binding.lineage_manifest_hash,
+                dict(binding.source_trace_snapshot),
+            )
+            source.source_stale = True
+            source.removed_at = datetime.now(UTC)
+            session.commit()
+            session.expire_all()
+            binding = session.get(ReuseAssetVersionSource, binding.id)
+            assert (
+                binding.source_fingerprint,
+                binding.lineage_manifest_hash,
+                binding.source_trace_snapshot,
+            ) == frozen
+
+            failed = _create_version(
+                session,
+                project_id=project.id,
+                idempotency_key=f"{prefix}failed_key",
+            )
+            failed = mark_asset_failed(
+                session,
+                failed.id,
+                failure_code="P3_ASSET_GENERATION_FAILED",
+                failure_message=(
+                    "postgresql://user:password@internal/datahub token=hidden"
+                ),
+            )
+            assert failed.status is ReuseAssetVersionStatus.FAILED
+            assert "postgresql://" not in failed.failure_message.lower()
+
+            session.add(
+                ReuseAssetVersion(
+                    id=f"{prefix}duplicate_version",
+                    project_id=project.id,
+                    asset_type=ReuseAssetType.TRAINING_MATERIAL,
+                    version_number=generated.version_number,
+                    status=ReuseAssetVersionStatus.GENERATING,
+                    generation_mode=ReuseGenerationMode.DETERMINISTIC_TEMPLATE,
+                    template_key="duplicate",
+                    template_version="v1",
+                    content_payload={},
+                    content_hash="d" * 64,
+                    source_manifest_hash="e" * 64,
+                    idempotency_key=f"{prefix}duplicate_key",
+                    created_by_role="cleaner",
+                    request_id=f"{prefix}duplicate_request",
+                )
+            )
+            with pytest.raises(IntegrityError):
+                session.commit()
+            session.rollback()
+            assert session.get(ReuseAssetVersion, generated.id) is not None
+            assert session.get(ReuseAssetVersion, failed.id) is not None
+    finally:
+        with SessionLocal() as session:
+            _clear_p3_rows(session, prefix)
+        engine.dispose()
