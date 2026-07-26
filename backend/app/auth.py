@@ -54,6 +54,8 @@ class Permission(StrEnum):
     P3_SOURCE_MANAGE = "p3.source.manage"
     P3_PROJECT_ACTIVATE = "p3.project.activate"
     P3_PROJECT_ARCHIVE = "p3.project.archive"
+    P3_ASSET_READ = "p3.asset.read"
+    P3_ASSET_GENERATE = "p3.asset.generate"
 
     RETRIEVAL_P1 = "retrieval.p1"
     RETRIEVAL_P2 = "retrieval.p2"
@@ -79,6 +81,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P3_PROJECT_WRITE,
             Permission.P3_SOURCE_MANAGE,
             Permission.P3_PROJECT_ACTIVATE,
+            Permission.P3_ASSET_READ,
+            Permission.P3_ASSET_GENERATE,
         }
     ),
     Role.REVIEWER: frozenset(
@@ -89,6 +93,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P2_REVIEW,
             Permission.P3_SOURCE_READ,
             Permission.P3_PROJECT_READ,
+            Permission.P3_ASSET_READ,
         }
     ),
     Role.SERVICE: frozenset(
@@ -100,6 +105,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.BADCASE_SUBMIT,
             Permission.P3_SOURCE_READ,
             Permission.P3_PROJECT_READ,
+            Permission.P3_ASSET_READ,
+            Permission.P3_ASSET_GENERATE,
         }
     ),
     Role.VIEWER: frozenset(
@@ -110,6 +117,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.RETRIEVAL_P2,
             Permission.P3_SOURCE_READ,
             Permission.P3_PROJECT_READ,
+            Permission.P3_ASSET_READ,
         }
     ),
 }

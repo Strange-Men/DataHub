@@ -94,7 +94,7 @@ def _repository_call(
         ) from exc
     except SQLAlchemyError as exc:
         raise _error(
-            "P3_ASSET_GENERATION_FAILED",
+            "P3_ASSET_STORAGE_UNAVAILABLE",
             "P3 draft asset persistence is unavailable.",
             **safe_context,
         ) from exc

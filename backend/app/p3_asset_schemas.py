@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TypeAlias
+from datetime import datetime
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.p3_reuse_models import ReuseAssetType
+from app.p3_reuse_models import (
+    ReuseAssetType,
+    ReuseAssetVersionStatus,
+    ReuseGenerationMode,
+)
 from app.p3_source_eligibility_schemas import P3SourceType
 
 
@@ -16,6 +21,14 @@ P3_DETERMINISTIC_TEMPLATE_VERSION = "v1"
 
 class _FrozenSchema(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class P3AssetGenerateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    asset_type: ReuseAssetType
+    template_key: str | None = Field(default=None, min_length=1, max_length=200)
+    idempotency_key: str = Field(min_length=1, max_length=200)
 
 
 class P3GenerationSourceRef(_FrozenSchema):
@@ -136,10 +149,90 @@ ASSET_PAYLOAD_SCHEMAS: dict[ReuseAssetType, type[BaseModel]] = {
 }
 
 
+class P3AssetVersionView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    project_id: str
+    asset_type: ReuseAssetType
+    version_number: int
+    status: ReuseAssetVersionStatus
+    generation_mode: ReuseGenerationMode
+    template_key: str
+    template_version: str
+    content_payload: dict[str, object]
+    content_hash: str
+    source_manifest_hash: str
+    created_by_role: str
+    request_id: str
+    created_at: datetime
+    updated_at: datetime
+    failure_code: str | None
+    failure_message: str | None
+
+
+class P3AssetVersionSourceView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    asset_version_id: str
+    source_item_id: str
+    source_type: P3SourceType
+    source_id: str
+    source_version: int | None
+    source_fingerprint: str
+    approved_review_id: str | None
+    snapshot_id: str | None
+    knowledge_asset_id: str | None
+    lineage_manifest_hash: str
+    source_trace_snapshot: dict[str, object]
+    created_at: datetime
+
+
+class P3AssetVersionPageData(BaseModel):
+    items: list[P3AssetVersionView]
+    total: int
+    limit: int
+    offset: int
+
+
+class P3AssetVersionSourcePageData(BaseModel):
+    items: list[P3AssetVersionSourceView]
+    total: int
+    limit: int
+    offset: int
+
+
+class P3AssetVersionResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3AssetVersionView
+    requestId: str
+
+
+class P3AssetVersionPageResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3AssetVersionPageData
+    requestId: str
+
+
+class P3AssetVersionSourcePageResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3AssetVersionSourcePageData
+    requestId: str
+
+
 __all__ = [
     "ASSET_PAYLOAD_SCHEMAS",
     "P3_ASSET_MANIFEST_SCHEMA_VERSION",
     "P3_DETERMINISTIC_TEMPLATE_VERSION",
+    "P3AssetGenerateRequest",
+    "P3AssetVersionPageData",
+    "P3AssetVersionPageResponse",
+    "P3AssetVersionResponse",
+    "P3AssetVersionSourcePageData",
+    "P3AssetVersionSourcePageResponse",
+    "P3AssetVersionSourceView",
+    "P3AssetVersionView",
     "P3DeterministicAssetPayload",
     "P3GenerationSourceMaterial",
     "P3GenerationSourceRef",
