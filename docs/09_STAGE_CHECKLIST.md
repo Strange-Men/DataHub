@@ -2434,3 +2434,31 @@ Phase boundary:
 - **P3-M2: PASS and ready for the dedicated release commit/tag.**
 - P3-M3 has not started and requires a separate explicit instruction.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M3.1 Draft Asset Schema Foundation
+
+- [x] Start from clean synchronized `main` at the pushed P3-M2 release tag.
+- [x] Add exactly `reuse_asset_versions` and `reuse_asset_version_sources`.
+- [x] Keep additive `Base.metadata.create_all(checkfirst)`; add no Alembic or destructive migration.
+- [x] Preserve `reuse_projects`, `reuse_source_items` and all P1/P2 tables/data.
+- [x] Freeze five asset types and the complete AssetVersion lifecycle enum.
+- [x] Allow only `deterministic_template`; reject reserved `llm_draft` in M3.1.
+- [x] Require Project/type/version uniqueness, global idempotency key uniqueness and nonblank content/source hashes.
+- [x] Use `ON DELETE RESTRICT` from AssetVersion to Project and from version-source snapshot to AssetVersion/SourceItem.
+- [x] Prevent duplicate source binding within one AssetVersion.
+- [x] Freeze source type/ID/version/fingerprint, Review/Snapshot/Knowledge Asset IDs, lineage hash and Source Trace per version.
+- [x] Verify later SourceItem stale/removal/fingerprint changes do not rewrite the frozen snapshot.
+- [x] Create no `reuse_reviews`, `export_jobs` or `export_artifacts` table.
+- [x] Add no Repository, Service, API, generator, Provider, review, publish, export or frontend implementation.
+- [x] Pass SQLite focused schema tests: 35 passed, 1 explicit PostgreSQL skip.
+- [x] Pass key M2 Model/Repository/Service and M1 core regression: 144 passed, 3 explicit PostgreSQL skips.
+- [x] Pass isolated PostgreSQL integration: 4 passed; remove exact test container/network/volume.
+- [x] Reuse the goal's single authoritative M2 clean-export result (`653 passed, 8 skipped`) instead of running a second full suite.
+- [x] Pass compileall, Secret scan, `git diff --check`, table inventory and protected P1/P2 scope checks.
+- [x] Add `docs/77_P3_M3_1_DRAFT_ASSET_SCHEMA_FOUNDATION.md`.
+
+Phase boundary:
+
+- **P3-M3.1: PASS and ready for its dedicated commit/tag.**
+- P3-M3 is not complete; P3-M3.2 has not started.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.

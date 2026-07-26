@@ -52,10 +52,13 @@ from scripts.test_environment import require_test_database_url  # noqa: E402
 
 
 TEST_DATABASE_URL = os.getenv("DATAHUB_TEST_DATABASE_URL", "").strip()
-P3_TABLES = {"reuse_projects", "reuse_source_items"}
-FORBIDDEN_FUTURE_TABLES = {
+P3_TABLES = {
+    "reuse_projects",
+    "reuse_source_items",
     "reuse_asset_versions",
     "reuse_asset_version_sources",
+}
+FORBIDDEN_FUTURE_TABLES = {
     "reuse_reviews",
     "export_jobs",
     "export_artifacts",
@@ -989,7 +992,7 @@ def test_service_does_not_modify_p1_p2_records(
     assert db.get(models.KnowledgeAsset, knowledge.id).status == "active"
 
 
-def test_no_future_p3_tables_or_physical_delete_flow() -> None:
+def test_no_unimplemented_p3_tables_or_physical_delete_flow() -> None:
     registered = {
         name
         for name in Base.metadata.tables

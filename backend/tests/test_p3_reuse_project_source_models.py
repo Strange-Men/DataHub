@@ -41,9 +41,7 @@ from scripts.test_environment import (  # noqa: E402
 
 
 P3_M21_TABLES = {"reuse_projects", "reuse_source_items"}
-FORBIDDEN_FUTURE_P3_TABLES = {
-    "reuse_asset_versions",
-    "reuse_asset_version_sources",
+FORBIDDEN_UNIMPLEMENTED_P3_TABLES = {
     "reuse_reviews",
     "export_jobs",
     "export_artifacts",
@@ -136,7 +134,7 @@ def test_empty_database_creates_only_the_two_requested_p3_tables() -> None:
             tables=[ReuseProject.__table__, ReuseSourceItem.__table__],
         )
         assert set(sa_inspect(engine).get_table_names()) == P3_M21_TABLES
-        assert FORBIDDEN_FUTURE_P3_TABLES.isdisjoint(
+        assert FORBIDDEN_UNIMPLEMENTED_P3_TABLES.isdisjoint(
             sa_inspect(engine).get_table_names()
         )
     finally:
@@ -186,7 +184,7 @@ def test_additive_upgrade_and_repeated_create_all_preserve_p1_p2_data() -> None:
 
         tables = set(sa_inspect(engine).get_table_names())
         assert P3_M21_TABLES <= tables
-        assert FORBIDDEN_FUTURE_P3_TABLES.isdisjoint(tables)
+        assert FORBIDDEN_UNIMPLEMENTED_P3_TABLES.isdisjoint(tables)
         assert {"knowledge_candidates", "assets"} <= tables
         with Session(engine) as session:
             assert session.get(
@@ -202,7 +200,7 @@ def test_additive_upgrade_and_repeated_create_all_preserve_p1_p2_data() -> None:
         engine.dispose()
 
 
-def test_application_init_registers_both_p3_tables_idempotently(
+def test_application_init_registers_current_p3_tables_idempotently(
     tmp_path: Path,
 ) -> None:
     database_path = tmp_path / "p3-m21-init-test.db"
@@ -224,7 +222,10 @@ def test_application_init_registers_both_p3_tables_idempotently(
         timeout=30,
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "reuse_projects,reuse_source_items"
+    assert result.stdout.strip() == (
+        "reuse_asset_version_sources,reuse_asset_versions,"
+        "reuse_projects,reuse_source_items"
+    )
 
 
 @pytest.mark.parametrize(

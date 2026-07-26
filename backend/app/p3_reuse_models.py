@@ -1,8 +1,7 @@
-"""P3 reuse-project and governed-source SQLAlchemy models.
+"""P3 reuse-project, governed-source, and draft-asset SQLAlchemy models.
 
-P3-M2.1 intentionally defines only the project and selected-source tables.
-The models reference P1/P2 governance records by stable IDs and immutable
-evidence; they never add foreign keys or columns to P1/P2 tables.
+P3 models reference P1/P2 governance records only by stable IDs and immutable
+evidence. They never add foreign keys or columns to P1/P2 tables.
 """
 
 from __future__ import annotations
@@ -46,6 +45,41 @@ class ReuseProjectStatus(str, Enum):
     DRAFT = "draft"
     ACTIVE = "active"
     ARCHIVED = "archived"
+
+
+class ReuseAssetType(str, Enum):
+    """Frozen P3 v1 output asset types."""
+
+    TRAINING_MATERIAL = "training_material"
+    SOP = "sop"
+    SERVICE_SCRIPT = "service_script"
+    QA_BANK = "qa_bank"
+    SFT_DATASET = "sft_dataset"
+
+
+class ReuseAssetVersionStatus(str, Enum):
+    """Frozen lifecycle states for one immutable asset version."""
+
+    GENERATING = "generating"
+    GENERATED = "generated"
+    PENDING_REVIEW = "pending_review"
+    NEEDS_REVISION = "needs_revision"
+    APPROVED = "approved"
+    PUBLISHED = "published"
+    REJECTED = "rejected"
+    FAILED = "failed"
+    SUPERSEDED = "superseded"
+    ARCHIVED = "archived"
+
+
+class ReuseGenerationMode(str, Enum):
+    """Generation modes implemented by the M3.1 schema.
+
+    ``llm_draft`` is reserved for a separately authorized future stage and is
+    intentionally not accepted by this enum.
+    """
+
+    DETERMINISTIC_TEMPLATE = "deterministic_template"
 
 
 class ReuseProject(Base):
@@ -162,3 +196,166 @@ class ReuseSourceItem(Base):
         default=False,
         server_default=false(),
     )
+
+
+class ReuseAssetVersion(Base):
+    """Versioned P3 asset payload created from a frozen source manifest."""
+
+    __tablename__ = "reuse_asset_versions"
+    __table_args__ = (
+        CheckConstraint(
+            "version_number >= 1",
+            name="ck_reuse_asset_versions_version_positive",
+        ),
+        CheckConstraint(
+            "length(trim(template_key)) > 0",
+            name="ck_reuse_asset_versions_template_key_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(template_version)) > 0",
+            name="ck_reuse_asset_versions_template_version_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(content_hash)) > 0",
+            name="ck_reuse_asset_versions_content_hash_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(source_manifest_hash)) > 0",
+            name="ck_reuse_asset_versions_source_manifest_hash_not_blank",
+        ),
+        UniqueConstraint(
+            "project_id",
+            "asset_type",
+            "version_number",
+            name="uq_reuse_asset_versions_project_type_version",
+        ),
+        UniqueConstraint(
+            "idempotency_key",
+            name="uq_reuse_asset_versions_idempotency_key",
+        ),
+    )
+
+    id = Column(String(200), primary_key=True)
+    project_id = Column(
+        String(200),
+        ForeignKey("reuse_projects.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    asset_type = Column(
+        SqlEnum(
+            ReuseAssetType,
+            name="reuse_asset_type",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        index=True,
+    )
+    version_number = Column(Integer, nullable=False)
+    status = Column(
+        SqlEnum(
+            ReuseAssetVersionStatus,
+            name="reuse_asset_version_status",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        default=ReuseAssetVersionStatus.GENERATING.value,
+        index=True,
+    )
+    generation_mode = Column(
+        SqlEnum(
+            ReuseGenerationMode,
+            name="reuse_generation_mode",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        default=ReuseGenerationMode.DETERMINISTIC_TEMPLATE.value,
+    )
+    template_key = Column(String(200), nullable=False)
+    template_version = Column(String(100), nullable=False)
+    content_payload = Column(JSON, nullable=False)
+    content_hash = Column(String(128), nullable=False)
+    source_manifest_hash = Column(String(128), nullable=False)
+    idempotency_key = Column(String(200), nullable=False)
+    created_by_role = Column(String(50), nullable=False)
+    request_id = Column(String(200), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+    approved_at = Column(DateTime, nullable=True)
+    published_at = Column(DateTime, nullable=True)
+    superseded_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, nullable=True)
+    failure_code = Column(String(100), nullable=True)
+    failure_message = Column(Text, nullable=True)
+
+
+class ReuseAssetVersionSource(Base):
+    """Immutable source-evidence snapshot bound to one asset version."""
+
+    __tablename__ = "reuse_asset_version_sources"
+    __table_args__ = (
+        CheckConstraint(
+            "length(trim(source_id)) > 0",
+            name="ck_reuse_asset_version_sources_source_id_not_blank",
+        ),
+        CheckConstraint(
+            "source_version IS NULL OR source_version >= 1",
+            name="ck_reuse_asset_version_sources_version_positive",
+        ),
+        CheckConstraint(
+            "length(trim(source_fingerprint)) > 0",
+            name="ck_reuse_asset_version_sources_fingerprint_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(lineage_manifest_hash)) > 0",
+            name="ck_reuse_asset_version_sources_lineage_hash_not_blank",
+        ),
+        UniqueConstraint(
+            "asset_version_id",
+            "source_item_id",
+            name="uq_reuse_asset_version_sources_version_source",
+        ),
+    )
+
+    id = Column(String(200), primary_key=True)
+    asset_version_id = Column(
+        String(200),
+        ForeignKey("reuse_asset_versions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    source_item_id = Column(
+        String(200),
+        ForeignKey("reuse_source_items.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    source_type = Column(
+        SqlEnum(
+            P3SourceType,
+            name="p3_asset_version_source_type",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+    )
+    source_id = Column(String(200), nullable=False)
+    source_version = Column(Integer, nullable=True)
+    source_fingerprint = Column(String(128), nullable=False)
+    approved_review_id = Column(String(200), nullable=True)
+    snapshot_id = Column(String(200), nullable=True)
+    knowledge_asset_id = Column(String(200), nullable=True)
+    lineage_manifest_hash = Column(String(128), nullable=False)
+    source_trace_snapshot = Column(JSON, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
