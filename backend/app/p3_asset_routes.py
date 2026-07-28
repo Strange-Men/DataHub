@@ -1,4 +1,4 @@
-"""HTTP API for deterministic P3 draft assets with centralized RBAC."""
+"""HTTP API for governed P3 draft assets with centralized RBAC."""
 
 from __future__ import annotations
 
@@ -20,8 +20,10 @@ from app.p3_asset_schemas import (
     P3AssetVersionSourcePageResponse,
     P3AssetVersionSourceView,
     P3AssetVersionView,
+    P3LLMAssetGenerateRequest,
 )
 from app.p3_asset_service import P3AssetService, P3AssetServiceError
+from app.p3_llm_draft_service import P3LLMDraftService
 from app.p3_reuse_models import ReuseAssetType, ReuseAssetVersionStatus
 
 
@@ -68,6 +70,17 @@ _ERROR_STATUS = {
     "P3_ASSET_IDEMPOTENCY_CONFLICT": 409,
     "P3_ASSET_STORAGE_UNAVAILABLE": 503,
     "P3_ASSET_GENERATION_FAILED": 500,
+    "P3_LLM_DRAFT_DISABLED": 503,
+    "P3_LLM_PROVIDER_NOT_CONFIGURED": 503,
+    "P3_LLM_CONTEXT_LIMIT_EXCEEDED": 422,
+    "P3_LLM_PROVIDER_TIMEOUT": 503,
+    "P3_LLM_PROVIDER_UNAVAILABLE": 503,
+    "P3_LLM_OUTPUT_INVALID_JSON": 502,
+    "P3_LLM_OUTPUT_SCHEMA_INVALID": 502,
+    "P3_LLM_UNKNOWN_SOURCE_REF": 502,
+    "P3_LLM_GROUNDING_INCOMPLETE": 502,
+    "P3_LLM_OUTPUT_TOO_LARGE": 502,
+    "P3_LLM_GENERATION_FAILED": 502,
 }
 
 
@@ -118,6 +131,34 @@ def generate_draft_asset(
             project_id=project_id,
             asset_type=payload.asset_type,
             template_key=payload.template_key,
+            idempotency_key=payload.idempotency_key,
+            actor_role=principal.role.value,
+            request_id=request_id,
+        )
+    )
+    return _version_response(version, request_id)
+
+
+@router.post(
+    "/{project_id}/assets/generate-llm-draft",
+    response_model=P3AssetVersionResponse,
+    status_code=201,
+)
+def generate_llm_draft(
+    project_id: str,
+    payload: P3LLMAssetGenerateRequest,
+    principal: Principal = Depends(
+        require_permission(Permission.P3_ASSET_GENERATE_LLM)
+    ),
+    db: Session = Depends(get_db),
+) -> P3AssetVersionResponse:
+    request_id = _request_id()
+    version = _service_call(
+        lambda: P3LLMDraftService(db).generate_llm_draft(
+            project_id=project_id,
+            asset_type=payload.asset_type,
+            prompt_key=payload.prompt_key,
+            provider_profile=payload.provider_profile,
             idempotency_key=payload.idempotency_key,
             actor_role=principal.role.value,
             request_id=request_id,

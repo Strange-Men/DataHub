@@ -31,6 +31,19 @@ class P3AssetGenerateRequest(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
+class P3LLMAssetGenerateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    asset_type: ReuseAssetType
+    prompt_key: str | None = Field(default=None, min_length=1, max_length=200)
+    provider_profile: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=50,
+    )
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
 class P3GenerationSourceRef(_FrozenSchema):
     source_item_id: str
     source_type: P3SourceType
@@ -236,6 +249,7 @@ __all__ = [
     "P3DeterministicAssetPayload",
     "P3GenerationSourceMaterial",
     "P3GenerationSourceRef",
+    "P3LLMAssetGenerateRequest",
     "P3QaBankPayload",
     "P3ServiceScriptPayload",
     "P3SftDatasetPayload",

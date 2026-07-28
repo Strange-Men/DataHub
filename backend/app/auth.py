@@ -56,6 +56,7 @@ class Permission(StrEnum):
     P3_PROJECT_ARCHIVE = "p3.project.archive"
     P3_ASSET_READ = "p3.asset.read"
     P3_ASSET_GENERATE = "p3.asset.generate"
+    P3_ASSET_GENERATE_LLM = "p3.asset.generate_llm"
 
     RETRIEVAL_P1 = "retrieval.p1"
     RETRIEVAL_P2 = "retrieval.p2"
@@ -83,6 +84,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P3_PROJECT_ACTIVATE,
             Permission.P3_ASSET_READ,
             Permission.P3_ASSET_GENERATE,
+            Permission.P3_ASSET_GENERATE_LLM,
         }
     ),
     Role.REVIEWER: frozenset(
@@ -107,6 +109,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P3_PROJECT_READ,
             Permission.P3_ASSET_READ,
             Permission.P3_ASSET_GENERATE,
+            Permission.P3_ASSET_GENERATE_LLM,
         }
     ),
     Role.VIEWER: frozenset(
