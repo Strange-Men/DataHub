@@ -2222,3 +2222,19 @@ This is a planning and documentation checkpoint only.
 - P1/P2 business/schema/data remain frozen. No real Provider, Review, Publish, Export, frontend or P4 path was used.
 - Report: `docs/79_P3_M4_GOVERNED_LLM_DRAFT_RELEASE_REPORT.md`.
 - P3-M5 has not started and requires a separate explicit instruction.
+
+## P3-M5 Manual Revision and Human Review Release
+
+- Status: **COMPLETE / PASS**, pending the dedicated release commit/tag in this closure turn.
+- M5.1 adds `manual_revision`, self-restricted `parent_asset_version_id`, the immutable `reuse_reviews` table and forward/repeat-safe SQLite/PostgreSQL compatibility.
+- M5.2 atomically creates child revisions with inherited Source Snapshots, submits generated versions for review and persists one final Review Decision per version.
+- M5.3 reuses M2 revalidation, M3 canonical Hash/Snapshot and M4 Grounding; no second eligibility, evidence or grounding rule was introduced.
+- M5.4 exposes revision, submit, decision and review-history APIs with centralized edit/submit/read/decide permissions and the existing five roles.
+- Review Policy `p3-review-v1` requires four human checklist conclusions for approval; needs-revision/rejected require comments.
+- Docker approved/needs-revision/rejected, stale gate and five-role Auth paths passed. Exact temporary rows were removed; Auth disabled and LLM flag false were restored.
+- Isolated PostgreSQL passed 3 tests for compatibility, parent/Snapshot/Decision atomicity, idempotency and concurrency; its exact database was dropped.
+- Final P3/Auth/OpenAPI matrix: **522 passed, 11 deselected, 2 warnings**. Authoritative clean-export: **962 passed, 16 skipped, 44 warnings in 108.28s**.
+- Three outdated historical tests were corrected to stop treating the now-implemented `reuse_reviews` as a future table; no product-code repair was required at Release Closure.
+- P1/P2 business/schema/data remain frozen. Real Provider calls are 0. No Export table, publish, frontend or P4 path was added.
+- `approved` remains unpublished, unsearchable and non-exportable. Report: `docs/80_P3_M5_MANUAL_REVISION_REVIEW_RELEASE_REPORT.md`.
+- P3-M6 has not started and requires a separate explicit instruction.

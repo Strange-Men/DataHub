@@ -50,7 +50,7 @@ from app.p3_reuse_service import P3ReuseService, P3SourceIneligible  # noqa: E40
 from app.p3_source_eligibility_schemas import P3SourceType  # noqa: E402
 
 
-FUTURE_TABLES = {"reuse_reviews", "export_jobs", "export_artifacts"}
+FUTURE_TABLES = {"export_jobs", "export_artifacts"}
 
 
 @pytest.fixture(scope="module")

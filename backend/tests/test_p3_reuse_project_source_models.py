@@ -42,7 +42,6 @@ from scripts.test_environment import (  # noqa: E402
 
 P3_M21_TABLES = {"reuse_projects", "reuse_source_items"}
 FORBIDDEN_UNIMPLEMENTED_P3_TABLES = {
-    "reuse_reviews",
     "export_jobs",
     "export_artifacts",
 }
@@ -224,7 +223,7 @@ def test_application_init_registers_current_p3_tables_idempotently(
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == (
         "reuse_asset_version_sources,reuse_asset_versions,"
-        "reuse_projects,reuse_source_items"
+        "reuse_projects,reuse_reviews,reuse_source_items"
     )
 
 

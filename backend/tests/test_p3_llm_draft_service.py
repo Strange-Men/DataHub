@@ -52,7 +52,7 @@ from app.p3_source_eligibility_schemas import P3SourceType  # noqa: E402
 from scripts.test_environment import require_test_database_url  # noqa: E402
 
 
-FUTURE_TABLES = {"reuse_reviews", "export_jobs", "export_artifacts"}
+FUTURE_TABLES = {"export_jobs", "export_artifacts"}
 TEST_DATABASE_URL = os.getenv("DATAHUB_TEST_DATABASE_URL", "").strip()
 
 

@@ -2526,3 +2526,39 @@ Phase boundary:
 - **P3-M4: PASS and ready for the dedicated release commit/tag.**
 - P3-M5 has not started and requires a separate explicit instruction.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M5 Manual Revision and Human Review Release
+
+- [x] Independently complete, test, commit, push and annotate M5.1 through M5.4 before Release Closure.
+- [x] Add `manual_revision` without changing old deterministic/LLM modes or hashes.
+- [x] Add `parent_asset_version_id` with self FK `ON DELETE RESTRICT`; require a parent for manual revisions.
+- [x] Add exactly `reuse_reviews`; create no `export_jobs` or `export_artifacts`.
+- [x] Enforce one immutable final Review per version and unique review idempotency key.
+- [x] Freeze `p3-review-v1` with four human checklist conclusions.
+- [x] Require all checklist items for approved and comments for needs-revision/rejected.
+- [x] Create manual revisions as new child versions; never overwrite parent content, state, Hash, Snapshot or Review.
+- [x] Atomically copy parent Source Snapshots without rereading or writing P1/P2.
+- [x] Allow submit only as `generated -> pending_review`; preserve state on failure.
+- [x] Atomically create Review and transition to approved/needs_revision/rejected.
+- [x] Keep approved separate from published; set no published state or timestamp.
+- [x] Reuse M2 source revalidation, M3 canonical Hash/Snapshot and M4 Grounding.
+- [x] Block revision, submit and Decision when sources are stale or evidence changed.
+- [x] Add revision, submit, decision, asset-review and project-review APIs through Service only.
+- [x] Add centralized `p3.asset.edit`, `p3.asset.submit_review`, `p3.review.read`, `p3.review.decide`.
+- [x] Enforce five-role matrix: cleaner edits/submits, reviewer decides, admin performs all, viewer/service read only.
+- [x] Pass Docker approved/needs-revision/rejected, stale, 401/403/200 and disabled-mode Smoke with zero real Provider calls.
+- [x] Restore Auth disabled and `P3_LLM_DRAFT_ENABLED=false`; remove exact temporary P3 rows.
+- [x] Pass isolated PostgreSQL: 3 tests for forward compatibility, FK, Snapshot/Decision atomicity, idempotency and concurrency.
+- [x] Correct only three outdated tests that treated the now-implemented Review table as future scope.
+- [x] Pass final P3-M1 through M5/Auth/OpenAPI matrix: 522 passed, 11 deselected, 2 warnings.
+- [x] Run the Goal's only authoritative clean-export backend suite: **962 passed, 16 skipped, 44 warnings in 108.28s**.
+- [x] Remove clean-export files and isolated test database; preserve development Docker volumes.
+- [x] Keep P1/P2 frozen; implement no publish, export, frontend, P4 or real Provider path.
+- [x] Add `docs/80_P3_M5_MANUAL_REVISION_REVIEW_RELEASE_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M5: PASS and ready for the dedicated release commit/tag.**
+- P3-M6 has not started and requires a separate explicit instruction.
+- `approved` remains unpublished, unsearchable and non-exportable.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
