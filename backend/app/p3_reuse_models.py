@@ -73,13 +73,10 @@ class ReuseAssetVersionStatus(str, Enum):
 
 
 class ReuseGenerationMode(str, Enum):
-    """Generation modes implemented by the M3.1 schema.
-
-    ``llm_draft`` is reserved for a separately authorized future stage and is
-    intentionally not accepted by this enum.
-    """
+    """Stable generation modes supported by governed draft assets."""
 
     DETERMINISTIC_TEMPLATE = "deterministic_template"
+    LLM_DRAFT = "llm_draft"
 
 
 class ReuseProject(Base):

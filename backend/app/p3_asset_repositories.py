@@ -1,4 +1,4 @@
-"""Persistence-only repositories for P3 deterministic draft asset versions."""
+"""Persistence-only repositories for governed P3 draft asset versions."""
 
 from __future__ import annotations
 
@@ -112,9 +112,9 @@ def _validate_asset_type(value: object) -> ReuseAssetType:
 
 
 def _validate_generation_mode(value: object) -> ReuseGenerationMode:
-    if value is not ReuseGenerationMode.DETERMINISTIC_TEMPLATE:
+    if not isinstance(value, ReuseGenerationMode):
         raise P3RepositoryValidationError(
-            "generation_mode must be deterministic_template."
+            "generation_mode must be a ReuseGenerationMode value."
         )
     return value
 

@@ -269,10 +269,10 @@ def test_all_frozen_asset_version_states_are_persistable(
     [
         ("asset_type", "unsupported"),
         ("status", "draft"),
-        ("generation_mode", "llm_draft"),
+        ("generation_mode", "unsupported"),
     ],
 )
-def test_invalid_enums_and_reserved_llm_mode_are_rejected(
+def test_invalid_enums_are_rejected(
     db: Session,
     field: str,
     value: str,
@@ -284,6 +284,14 @@ def test_invalid_enums_and_reserved_llm_mode_are_rejected(
         db.commit()
     db.rollback()
     assert db.query(ReuseAssetVersion).count() == 0
+
+
+def test_llm_draft_generation_mode_is_persistable(db: Session) -> None:
+    _persist_project(db)
+    db.add(_asset_version(generation_mode=ReuseGenerationMode.LLM_DRAFT))
+    db.commit()
+    loaded = db.get(ReuseAssetVersion, "m31_asset_version")
+    assert loaded.generation_mode is ReuseGenerationMode.LLM_DRAFT
 
 
 def test_project_foreign_key_is_enforced(db: Session) -> None:

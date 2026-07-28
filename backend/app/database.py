@@ -98,6 +98,11 @@ def init_database_tables() -> None:
     import app.db_models as _models  # noqa: F401
     import app.p3_reuse_models as _p3_reuse_models  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    from app.p3_llm_schema_compatibility import (
+        ensure_llm_draft_generation_mode_compatibility,
+    )
+
+    ensure_llm_draft_generation_mode_compatibility(engine)
 
     # Try to enable pgvector — safe no-op on SQLite, graceful failure on
     # PostgreSQL without the extension available (P1-M21.1).
