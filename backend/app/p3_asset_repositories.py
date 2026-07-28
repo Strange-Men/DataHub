@@ -158,6 +158,14 @@ def _content_payload(value: object) -> tuple[dict[str, object], str]:
     return normalized, hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
+def canonicalize_asset_content(
+    value: object,
+) -> tuple[dict[str, object], str]:
+    """Return the stable M3 canonical payload and SHA-256 content hash."""
+
+    return _content_payload(value)
+
+
 def _safe_failure_message(value: object) -> str:
     message = _required_text(value, "failure_message", 10_000)
     first_line = message.splitlines()[0].strip()
@@ -739,6 +747,7 @@ __all__ = [
     "MAX_VERSION_ALLOCATION_ATTEMPTS",
     "P3AssetVersionSourceSnapshotInput",
     "add_asset_version_source_snapshot",
+    "canonicalize_asset_content",
     "create_asset_version_with_source_snapshots",
     "create_generating_asset_version",
     "get_asset_version_by_id",
