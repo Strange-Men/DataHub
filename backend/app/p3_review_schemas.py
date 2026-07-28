@@ -3,8 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from app.p3_reuse_models import (
     ReuseAssetType,
@@ -77,6 +84,30 @@ class P3ReviewDecisionPayload(_FrozenReviewSchema):
         return self
 
 
+class _ReviewApiRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class P3ManualRevisionRequest(_ReviewApiRequest):
+    content_payload: dict[str, object]
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class P3SubmitReviewRequest(_ReviewApiRequest):
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
+
+
+class P3ReviewDecisionRequest(_ReviewApiRequest):
+    decision: ReuseReviewDecision
+    comments: str | None = Field(default=None, max_length=10_000)
+    checklist: P3ReviewChecklist
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
 class P3ReviewView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -93,9 +124,34 @@ class P3ReviewView(BaseModel):
     created_at: datetime
 
 
+class P3ReviewPageData(BaseModel):
+    items: list[P3ReviewView]
+    total: int
+    limit: int
+    offset: int
+
+
+class P3ReviewResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3ReviewView
+    requestId: str
+
+
+class P3ReviewPageResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3ReviewPageData
+    requestId: str
+
+
 __all__ = [
     "P3_REVIEW_POLICY_VERSION",
+    "P3ManualRevisionRequest",
     "P3ReviewChecklist",
+    "P3ReviewDecisionRequest",
     "P3ReviewDecisionPayload",
+    "P3ReviewPageData",
+    "P3ReviewPageResponse",
+    "P3ReviewResponse",
     "P3ReviewView",
+    "P3SubmitReviewRequest",
 ]

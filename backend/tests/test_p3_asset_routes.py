@@ -39,6 +39,7 @@ from app.p3_reuse_models import (  # noqa: E402
     ReuseAssetVersion,
     ReuseAssetVersionSource,
     ReuseProject,
+    ReuseReview,
     ReuseSourceItem,
 )
 
@@ -70,6 +71,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]
     db = SessionLocal()
     try:
         for model in (
+            ReuseReview,
             ReuseAssetVersionSource,
             ReuseAssetVersion,
             ReuseSourceItem,

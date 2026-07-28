@@ -57,6 +57,10 @@ class Permission(StrEnum):
     P3_ASSET_READ = "p3.asset.read"
     P3_ASSET_GENERATE = "p3.asset.generate"
     P3_ASSET_GENERATE_LLM = "p3.asset.generate_llm"
+    P3_ASSET_EDIT = "p3.asset.edit"
+    P3_ASSET_SUBMIT_REVIEW = "p3.asset.submit_review"
+    P3_REVIEW_READ = "p3.review.read"
+    P3_REVIEW_DECIDE = "p3.review.decide"
 
     RETRIEVAL_P1 = "retrieval.p1"
     RETRIEVAL_P2 = "retrieval.p2"
@@ -85,6 +89,9 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P3_ASSET_READ,
             Permission.P3_ASSET_GENERATE,
             Permission.P3_ASSET_GENERATE_LLM,
+            Permission.P3_ASSET_EDIT,
+            Permission.P3_ASSET_SUBMIT_REVIEW,
+            Permission.P3_REVIEW_READ,
         }
     ),
     Role.REVIEWER: frozenset(
@@ -96,6 +103,8 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P3_SOURCE_READ,
             Permission.P3_PROJECT_READ,
             Permission.P3_ASSET_READ,
+            Permission.P3_REVIEW_READ,
+            Permission.P3_REVIEW_DECIDE,
         }
     ),
     Role.SERVICE: frozenset(
@@ -110,6 +119,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P3_ASSET_READ,
             Permission.P3_ASSET_GENERATE,
             Permission.P3_ASSET_GENERATE_LLM,
+            Permission.P3_REVIEW_READ,
         }
     ),
     Role.VIEWER: frozenset(
@@ -121,6 +131,7 @@ ROLE_PERMISSIONS: dict[Role, frozenset[Permission]] = {
             Permission.P3_SOURCE_READ,
             Permission.P3_PROJECT_READ,
             Permission.P3_ASSET_READ,
+            Permission.P3_REVIEW_READ,
         }
     ),
 }

@@ -38,6 +38,7 @@ from app.p2_retrieval_routes import router as p2_retrieval_router
 from app.p3_source_eligibility_routes import router as p3_source_eligibility_router
 from app.p3_reuse_routes import router as p3_reuse_router
 from app.p3_asset_routes import router as p3_asset_router
+from app.p3_review_routes import router as p3_review_router
 from app.unified_retrieval_routes import router as unified_retrieval_router
 from app.customerops_unified_routes import router as customerops_unified_router
 from app.storage import (
@@ -83,6 +84,7 @@ app.include_router(p2_retrieval_router)
 app.include_router(p3_source_eligibility_router)
 app.include_router(p3_reuse_router)
 app.include_router(p3_asset_router)
+app.include_router(p3_review_router)
 app.include_router(unified_retrieval_router)
 app.include_router(customerops_unified_router)
 
