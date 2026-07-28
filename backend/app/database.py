@@ -103,6 +103,11 @@ def init_database_tables() -> None:
     )
 
     ensure_llm_draft_generation_mode_compatibility(engine)
+    from app.p3_review_schema_compatibility import (
+        ensure_manual_revision_review_compatibility,
+    )
+
+    ensure_manual_revision_review_compatibility(engine)
 
     # Try to enable pgvector — safe no-op on SQLite, graceful failure on
     # PostgreSQL without the extension available (P1-M21.1).

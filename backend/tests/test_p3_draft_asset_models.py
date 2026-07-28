@@ -40,8 +40,9 @@ P3_TABLES = {
     "reuse_source_items",
     "reuse_asset_versions",
     "reuse_asset_version_sources",
+    "reuse_reviews",
 }
-FORBIDDEN_TABLES = {"reuse_reviews", "export_jobs", "export_artifacts"}
+FORBIDDEN_TABLES = {"export_jobs", "export_artifacts"}
 
 
 def _engine():
@@ -461,7 +462,7 @@ def test_restrict_foreign_keys_and_unique_constraints_are_declared() -> None:
         binding_fks = inspector.get_foreign_keys("reuse_asset_version_sources")
         assert {
             fk["referred_table"] for fk in version_fks
-        } == {"reuse_projects"}
+        } == {"reuse_projects", "reuse_asset_versions"}
         assert {
             fk["referred_table"] for fk in binding_fks
         } == {"reuse_asset_versions", "reuse_source_items"}

@@ -77,6 +77,15 @@ class ReuseGenerationMode(str, Enum):
 
     DETERMINISTIC_TEMPLATE = "deterministic_template"
     LLM_DRAFT = "llm_draft"
+    MANUAL_REVISION = "manual_revision"
+
+
+class ReuseReviewDecision(str, Enum):
+    """Final human decisions recorded for one asset version."""
+
+    APPROVED = "approved"
+    NEEDS_REVISION = "needs_revision"
+    REJECTED = "rejected"
 
 
 class ReuseProject(Base):
@@ -220,6 +229,15 @@ class ReuseAssetVersion(Base):
             "length(trim(source_manifest_hash)) > 0",
             name="ck_reuse_asset_versions_source_manifest_hash_not_blank",
         ),
+        CheckConstraint(
+            "generation_mode != 'manual_revision' "
+            "OR parent_asset_version_id IS NOT NULL",
+            name="ck_reuse_asset_versions_manual_parent_required",
+        ),
+        CheckConstraint(
+            "parent_asset_version_id IS NULL OR parent_asset_version_id != id",
+            name="ck_reuse_asset_versions_parent_not_self",
+        ),
         UniqueConstraint(
             "project_id",
             "asset_type",
@@ -293,6 +311,16 @@ class ReuseAssetVersion(Base):
     archived_at = Column(DateTime, nullable=True)
     failure_code = Column(String(100), nullable=True)
     failure_message = Column(Text, nullable=True)
+    parent_asset_version_id = Column(
+        String(200),
+        ForeignKey(
+            "reuse_asset_versions.id",
+            ondelete="RESTRICT",
+            name="fk_reuse_asset_versions_parent",
+        ),
+        nullable=True,
+        index=True,
+    )
 
 
 class ReuseAssetVersionSource(Base):
@@ -355,4 +383,65 @@ class ReuseAssetVersionSource(Base):
     knowledge_asset_id = Column(String(200), nullable=True)
     lineage_manifest_hash = Column(String(128), nullable=False)
     source_trace_snapshot = Column(JSON, nullable=False)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+
+
+class ReuseReview(Base):
+    """Immutable final human-review decision for one asset version."""
+
+    __tablename__ = "reuse_reviews"
+    __table_args__ = (
+        CheckConstraint(
+            "length(trim(reviewed_content_hash)) > 0",
+            name="ck_reuse_reviews_content_hash_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(reviewed_source_manifest_hash)) > 0",
+            name="ck_reuse_reviews_manifest_hash_not_blank",
+        ),
+        CheckConstraint(
+            "length(trim(review_policy_version)) > 0",
+            name="ck_reuse_reviews_policy_not_blank",
+        ),
+        CheckConstraint(
+            "decision = 'approved' OR length(trim(comments)) > 0",
+            name="ck_reuse_reviews_comments_for_nonapproval",
+        ),
+        UniqueConstraint(
+            "asset_version_id",
+            name="uq_reuse_reviews_asset_version",
+        ),
+        UniqueConstraint(
+            "idempotency_key",
+            name="uq_reuse_reviews_idempotency_key",
+        ),
+    )
+
+    id = Column(String(200), primary_key=True)
+    asset_version_id = Column(
+        String(200),
+        ForeignKey("reuse_asset_versions.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    decision = Column(
+        SqlEnum(
+            ReuseReviewDecision,
+            name="reuse_review_decision",
+            native_enum=False,
+            create_constraint=True,
+            validate_strings=True,
+            values_callable=_enum_values,
+        ),
+        nullable=False,
+        index=True,
+    )
+    comments = Column(Text, nullable=True)
+    checklist_payload = Column(JSON, nullable=False)
+    review_policy_version = Column(String(100), nullable=False)
+    reviewed_content_hash = Column(String(128), nullable=False)
+    reviewed_source_manifest_hash = Column(String(128), nullable=False)
+    reviewer_role = Column(String(50), nullable=False)
+    request_id = Column(String(200), nullable=False)
+    idempotency_key = Column(String(200), nullable=False)
     created_at = Column(DateTime, nullable=False, default=_utcnow)

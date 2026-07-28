@@ -273,10 +273,14 @@ def _create_old_sqlite_schema(engine) -> None:
     ReuseProject.__table__.create(bind=engine)
     ddl = str(CreateTable(ReuseAssetVersion.__table__).compile(engine))
     ddl = ddl.replace(
-        "generation_mode IN ('deterministic_template', 'llm_draft')",
+        "generation_mode IN "
+        "('deterministic_template', 'llm_draft', 'manual_revision')",
         "generation_mode IN ('deterministic_template')",
     )
-    assert "llm_draft" not in ddl
+    assert (
+        "generation_mode IN ('deterministic_template', 'llm_draft'"
+        not in ddl
+    )
     with engine.begin() as connection:
         connection.exec_driver_sql(ddl)
         for index in ReuseAssetVersion.__table__.indexes:
