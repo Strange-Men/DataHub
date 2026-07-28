@@ -52,6 +52,21 @@ def test_compose_defines_health_gated_runtime_and_one_shot_initializers() -> Non
     ):
         assert f"{flag}: ${{{flag}:-false}}" in compose
         assert f"{flag}=false" in _read(".env.example")
+    assert "P3_LLM_DRAFT_ENABLED: ${P3_LLM_DRAFT_ENABLED:-false}" in compose
+    assert "P3_LLM_DRAFT_ENABLED=false" in _read(".env.example")
+    for variable in (
+        "P3_LLM_PROVIDER_PROFILE",
+        "P3_LLM_BASE_URL",
+        "P3_LLM_MODEL",
+        "P3_LLM_API_KEY",
+        "P3_LLM_MAX_SOURCE_COUNT",
+        "P3_LLM_MAX_CONTEXT_CHARS",
+        "P3_LLM_MAX_OUTPUT_CHARS",
+        "P3_LLM_MAX_OUTPUT_TOKENS",
+        "P3_LLM_TIMEOUT_SECONDS",
+    ):
+        assert f"{variable}:" in compose
+        assert f"{variable}=" in _read(".env.example")
 
 
 def test_compose_persists_database_assets_p1_storage_and_runtime_manifests() -> None:

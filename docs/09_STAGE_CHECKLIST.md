@@ -2492,3 +2492,37 @@ Phase boundary:
 - **P3-M3: PASS and ready for the dedicated release commit/tag.**
 - P3-M4 has not started and requires a separate explicit instruction.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M4 Governed LLM-assisted Draft Generation Release
+
+- [x] Start M4.1/M4.2/M4.3 from clean synchronized main; independently commit, push and annotate each stage.
+- [x] Support only `deterministic_template` and `llm_draft`; preserve old deterministic data and hashes.
+- [x] Apply forward-only, repeat-safe SQLite/PostgreSQL generation-mode compatibility without a destructive down migration.
+- [x] Keep `P3_LLM_DRAFT_ENABLED=false` by default and expose bounded Compose configuration.
+- [x] Define provider-neutral request/result contracts and a minimal OpenAI-compatible adapter without adding a vendor SDK.
+- [x] Keep Fake Provider test-only, offline and non-selectable from production profile configuration.
+- [x] Register five versioned v1 Prompts and separate system instruction from untrusted source data.
+- [x] Enforce strict JSON/Pydantic Schema, output limit, known source refs, exact evidence match, deduplication and 100% substantive-unit citation coverage.
+- [x] Document that structural Grounding cannot prove every natural-language fact free of hallucination.
+- [x] Reuse M1 Eligibility, M2 Revalidation and M3 Reader/Manifest/Repository; copy no second governance rule.
+- [x] Require active Project, current non-stale sources, fresh eligibility, readable approved content and bounded context.
+- [x] Atomically create `generating` plus Source Snapshots before Provider; finish only as `generated` or safe `failed`.
+- [x] Store no Raw Response, full Prompt, Source Material, Secret, Authorization header, stack or connection string.
+- [x] Enforce idempotent generated/failed replay, different-request conflict and single attempt owner under PostgreSQL concurrency.
+- [x] Add only `POST /api/p3/reuse-projects/{project_id}/assets/generate-llm-draft`; reuse existing List/Detail.
+- [x] Add centralized `p3.asset.generate_llm`; admin/cleaner/service generate, reviewer/viewer reject, all five roles read.
+- [x] Pass M4.1 21+1 skip, M4.2 final focused 30+1 skip, M4.3 43 and affected regression 86.
+- [x] Pass P3-M1 through M4/Auth/OpenAPI matrix: 423 passed, 7 skipped.
+- [x] Pass Docker default disabled/no-write, deterministic, List/Detail, 401/403/200 and disabled restoration Smoke.
+- [x] Pass isolated PostgreSQL: 5 tests for migration, lifecycle, snapshot, failure, idempotency, concurrency and stale history.
+- [x] Run final post-fix ignored clean-export backend: **864 passed, 13 skipped, 44 warnings, 105.41s**.
+- [x] Pass compileall, Secret scan, conflict marker scan, Compose config and `git diff --check`.
+- [x] Remove exact Docker smoke rows, independent test database, transient containers and clean-export files; preserve development volumes.
+- [x] Keep P1/P2 frozen, call no real Provider, create no `reuse_reviews`/`export_jobs`/`export_artifacts`.
+- [x] Add `docs/79_P3_M4_GOVERNED_LLM_DRAFT_RELEASE_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M4: PASS and ready for the dedicated release commit/tag.**
+- P3-M5 has not started and requires a separate explicit instruction.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.

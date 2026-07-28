@@ -2206,3 +2206,19 @@ This is a planning and documentation checkpoint only.
 - P1/P2 business/schema/data remain frozen. No real Provider was called and no `reuse_reviews`, `export_jobs` or `export_artifacts` table exists.
 - Report: `docs/78_P3_M3_DETERMINISTIC_DRAFT_RELEASE_REPORT.md`.
 - P3-M4 has not started and requires a separate explicit instruction after the M3 release commit/tag are pushed.
+
+## P3-M4 Governed LLM-assisted Draft Generation Release
+
+- Status: **COMPLETE / PASS**, pending the dedicated release commit/tag in this closure turn.
+- M4.1 extended `generation_mode` to `llm_draft` with forward-only, idempotent SQLite/PostgreSQL constraint compatibility; deterministic records and hashes remain readable.
+- Provider-neutral contract, minimal OpenAI-compatible adapter, test-only Fake Provider, versioned five-type Prompt Registry, strict structured output, Grounding Guard and context budget are implemented.
+- Default `P3_LLM_DRAFT_ENABLED=false`; Compose and `.env.example` explicitly expose all P3 LLM runtime settings without storing a Secret.
+- M4.2 reuses M1 eligibility, M2 revalidation and M3 Source Reader/Manifest/Repository. It freezes `generating` plus Source Snapshots before one Provider call, then validates/revalidates and records `generated` or safe `failed`.
+- Idempotency includes provider/model/prompt/config identity. Failed replay never recalls Provider; concurrent PostgreSQL requests have a single persisted attempt owner and one Provider call.
+- M4.3 adds one Service-only endpoint and centralized `p3.asset.generate_llm`. admin/cleaner/service generate; reviewer/viewer cannot; all roles retain `p3.asset.read`.
+- Docker Smoke passed default 503/no-write, deterministic 201, List/Detail, token 401/403/200 and disabled restoration. Exact P3 smoke rows were removed and all three services are healthy.
+- Isolated PostgreSQL passed 5 tests and its exact test database was dropped. No transient test container remains.
+- Final authoritative clean-export: **864 passed, 13 skipped, 44 warnings in 105.41s**. compileall, Secret/conflict marker scans and diff check pass.
+- P1/P2 business/schema/data remain frozen. No real Provider, Review, Publish, Export, frontend or P4 path was used.
+- Report: `docs/79_P3_M4_GOVERNED_LLM_DRAFT_RELEASE_REPORT.md`.
+- P3-M5 has not started and requires a separate explicit instruction.

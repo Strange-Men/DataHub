@@ -293,6 +293,12 @@ class P3LLMDraftService(P3AssetService):
             ReuseAssetVersionStatus.FAILED,
         }:
             return version
+        if version.request_id != request_id:
+            raise _error(
+                "P3_ASSET_IDEMPOTENCY_CONFLICT",
+                "The idempotent LLM draft attempt is owned by another request.",
+                asset_version_id=version.id,
+            )
 
         provider_request = P3LLMDraftProviderRequest(
             asset_type=normalized_type,

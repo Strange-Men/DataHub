@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import inspect
+import os
 import sys
+import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
-from sqlalchemy import inspect as sa_inspect
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, inspect as sa_inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -26,7 +29,9 @@ from test_p3_deterministic_generation import (  # noqa: E402
 )
 
 from app import db_models as models  # noqa: E402
+from app.database import Base  # noqa: E402
 from app.p3_asset_service import P3AssetServiceError  # noqa: E402
+from app.p3_asset_service import P3AssetService  # noqa: E402
 from app.p3_llm_draft_contract import (  # noqa: E402
     FakeP3LLMDraftProvider,
     P3LLMDraftProviderRequest,
@@ -44,9 +49,11 @@ from app.p3_reuse_models import (  # noqa: E402
     ReuseSourceItem,
 )
 from app.p3_source_eligibility_schemas import P3SourceType  # noqa: E402
+from scripts.test_environment import require_test_database_url  # noqa: E402
 
 
 FUTURE_TABLES = {"reuse_reviews", "export_jobs", "export_artifacts"}
+TEST_DATABASE_URL = os.getenv("DATAHUB_TEST_DATABASE_URL", "").strip()
 
 
 def _settings(**overrides: object) -> P3LLMDraftSettings:
@@ -249,6 +256,56 @@ def test_idempotent_success_calls_provider_once_and_returns_same_version(
     assert replay.id == first.id
     assert len(provider.calls) == 1
     assert db.query(ReuseAssetVersion).count() == 1
+
+
+def test_raced_generating_attempt_owned_by_other_request_does_not_call_provider(
+    db: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _unused, project, _source = _active_p1_project(db)
+    service, provider = _service(db)
+    existing = ReuseAssetVersion(
+        id="raced_llm_version",
+        project_id=project.id,
+        asset_type=ReuseAssetType.TRAINING_MATERIAL,
+        version_number=1,
+        status=ReuseAssetVersionStatus.GENERATING,
+        generation_mode=ReuseGenerationMode.LLM_DRAFT,
+        template_key=(
+            "llm|prompt=p3.llm.training_material.v1|"
+            "provider=fake_test_only|model=fake-governed-model|"
+            "config=679eacc9d44b9d73"
+        ),
+        template_version="v1",
+        content_payload={},
+        content_hash="4f53cda18c2baa0c0354bb5f9a3ecbe5"
+        "ed12ab4d8e6f0554d2f214be3f7f659",
+        source_manifest_hash="unused",
+        idempotency_key="raced_key",
+        created_by_role="cleaner",
+        request_id="other_request",
+    )
+    monkeypatch.setattr(
+        service,
+        "_existing_by_idempotency_key",
+        lambda _key: None,
+    )
+    from app import p3_asset_repositories
+
+    def raced_create(*_args, **kwargs):
+        existing.source_manifest_hash = kwargs["source_manifest_hash"]
+        existing.template_key = kwargs["template_key"]
+        return existing
+
+    monkeypatch.setattr(
+        p3_asset_repositories,
+        "create_asset_version_with_source_snapshots",
+        raced_create,
+    )
+    with pytest.raises(P3AssetServiceError) as captured:
+        _generate(service, project, key="raced_key")
+    assert captured.value.code == "P3_ASSET_IDEMPOTENCY_CONFLICT"
+    assert len(provider.calls) == 0
 
 
 def test_same_idempotency_key_with_different_request_conflicts(
@@ -483,3 +540,197 @@ def test_service_does_not_create_future_tables_or_call_sql_directly(
         "actor_role",
         "request_id",
     }
+
+
+@pytest.mark.postgres_integration
+@pytest.mark.skipif(
+    not TEST_DATABASE_URL,
+    reason="DATAHUB_TEST_DATABASE_URL is required for PostgreSQL integration tests",
+)
+def test_postgresql_llm_lifecycle_idempotency_failure_and_history() -> None:
+    url = require_test_database_url(
+        TEST_DATABASE_URL,
+        development_url=os.getenv("DATAHUB_DEVELOPMENT_DATABASE_URL"),
+    )
+    engine = create_engine(url, pool_pre_ping=True)
+    SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+    Base.metadata.create_all(bind=engine)
+    suffix = uuid.uuid4().hex[:12]
+    candidate_id = f"p3m4_pg_candidate_{suffix}"
+    project_id = ""
+    try:
+        with SessionLocal() as session:
+            _add_p1(session, candidate_id=candidate_id)
+            reuse_service, project = _create_project(
+                session,
+                key=f"p3m4_pg_project_{suffix}",
+            )
+            project_id = project.id
+            _add_project_source(
+                reuse_service,
+                project,
+                source_type=P3SourceType.P1_KNOWLEDGE,
+                source_id=candidate_id,
+            )
+            reuse_service.activate_project(project.id)
+
+            deterministic = P3AssetService(session).generate_draft_asset(
+                project_id=project.id,
+                asset_type=ReuseAssetType.TRAINING_MATERIAL,
+                template_key=None,
+                idempotency_key=f"p3m4_pg_deterministic_{suffix}",
+                actor_role="cleaner",
+                request_id=f"p3m4_pg_deterministic_request_{suffix}",
+            )
+            provider = FakeP3LLMDraftProvider()
+            service = P3LLMDraftService(
+                session,
+                provider=provider,
+                settings=_settings(),
+            )
+            llm = _generate(
+                service,
+                project,
+                asset_type=ReuseAssetType.SOP,
+                key=f"p3m4_pg_llm_{suffix}",
+            )
+            replay = _generate(
+                service,
+                project,
+                asset_type=ReuseAssetType.SOP,
+                key=f"p3m4_pg_llm_{suffix}",
+            )
+            assert deterministic.generation_mode is ReuseGenerationMode.DETERMINISTIC_TEMPLATE
+            assert llm.generation_mode is ReuseGenerationMode.LLM_DRAFT
+            assert replay.id == llm.id
+            assert len(provider.calls) == 1
+            assert (
+                session.query(ReuseAssetVersionSource)
+                .filter(ReuseAssetVersionSource.asset_version_id == llm.id)
+                .count()
+                == 1
+            )
+
+            failed_provider = FakeP3LLMDraftProvider(mode="timeout")
+            failed_service = P3LLMDraftService(
+                session,
+                provider=failed_provider,
+                settings=_settings(),
+            )
+            with pytest.raises(P3AssetServiceError):
+                _generate(
+                    failed_service,
+                    project,
+                    asset_type=ReuseAssetType.QA_BANK,
+                    key=f"p3m4_pg_failed_{suffix}",
+                )
+            failed = (
+                session.query(ReuseAssetVersion)
+                .filter(
+                    ReuseAssetVersion.idempotency_key
+                    == f"p3m4_pg_failed_{suffix}"
+                )
+                .one()
+            )
+            assert failed.status is ReuseAssetVersionStatus.FAILED
+            assert failed.failure_code == "P3_LLM_PROVIDER_TIMEOUT"
+            assert (
+                session.query(ReuseAssetVersionSource)
+                .filter(
+                    ReuseAssetVersionSource.asset_version_id == failed.id
+                )
+                .count()
+                == 1
+            )
+
+        concurrent_provider = FakeP3LLMDraftProvider()
+
+        def concurrent_generate(request_number: int):
+            with SessionLocal() as session:
+                service = P3LLMDraftService(
+                    session,
+                    provider=concurrent_provider,
+                    settings=_settings(),
+                )
+                try:
+                    return service.generate_llm_draft(
+                        project_id=project_id,
+                        asset_type=ReuseAssetType.SERVICE_SCRIPT,
+                        prompt_key=None,
+                        provider_profile=None,
+                        idempotency_key=f"p3m4_pg_concurrent_{suffix}",
+                        actor_role="cleaner",
+                        request_id=(
+                            f"p3m4_pg_concurrent_request_{suffix}_"
+                            f"{request_number}"
+                        ),
+                    ).id
+                except P3AssetServiceError as exc:
+                    assert exc.code == "P3_ASSET_IDEMPOTENCY_CONFLICT"
+                    return "conflict"
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            outcomes = list(executor.map(concurrent_generate, (1, 2)))
+        with SessionLocal() as session:
+            concurrent_versions = (
+                session.query(ReuseAssetVersion)
+                .filter(
+                    ReuseAssetVersion.idempotency_key
+                    == f"p3m4_pg_concurrent_{suffix}"
+                )
+                .all()
+            )
+            assert len(concurrent_versions) == 1
+            assert concurrent_versions[0].status is ReuseAssetVersionStatus.GENERATED
+            assert len(concurrent_provider.calls) == 1
+            assert any(outcome == concurrent_versions[0].id for outcome in outcomes)
+
+            source = (
+                session.query(ReuseSourceItem)
+                .filter(ReuseSourceItem.project_id == project_id)
+                .one()
+            )
+            historical = (
+                session.query(ReuseAssetVersion)
+                .filter(ReuseAssetVersion.project_id == project_id)
+                .all()
+            )
+            historical_payloads = {
+                version.id: dict(version.content_payload)
+                for version in historical
+            }
+            source.source_stale = True
+            session.commit()
+            for version in historical:
+                session.refresh(version)
+                assert version.content_payload == historical_payloads[version.id]
+    finally:
+        if project_id:
+            with SessionLocal() as session:
+                version_ids = [
+                    row[0]
+                    for row in session.query(ReuseAssetVersion.id)
+                    .filter(ReuseAssetVersion.project_id == project_id)
+                    .all()
+                ]
+                if version_ids:
+                    session.query(ReuseAssetVersionSource).filter(
+                        ReuseAssetVersionSource.asset_version_id.in_(version_ids)
+                    ).delete(synchronize_session=False)
+                    session.query(ReuseAssetVersion).filter(
+                        ReuseAssetVersion.id.in_(version_ids)
+                    ).delete(synchronize_session=False)
+                session.query(ReuseSourceItem).filter(
+                    ReuseSourceItem.project_id == project_id
+                ).delete(synchronize_session=False)
+                session.query(ReuseProject).filter(
+                    ReuseProject.id == project_id
+                ).delete(synchronize_session=False)
+                session.query(models.ReviewRecord).filter(
+                    models.ReviewRecord.candidate_id == candidate_id
+                ).delete(synchronize_session=False)
+                session.query(models.KnowledgeCandidate).filter(
+                    models.KnowledgeCandidate.id == candidate_id
+                ).delete(synchronize_session=False)
+                session.commit()
+        engine.dispose()
