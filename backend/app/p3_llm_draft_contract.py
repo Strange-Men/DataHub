@@ -189,6 +189,14 @@ class P3LLMDraftProviderResult:
 
 @runtime_checkable
 class P3LLMDraftProvider(Protocol):
+    @property
+    def provider_profile(self) -> str:
+        """Stable non-secret provider profile name."""
+
+    @property
+    def model_alias(self) -> str:
+        """Stable configured model alias."""
+
     def generate_structured_draft(
         self,
         request: P3LLMDraftProviderRequest,
@@ -206,6 +214,14 @@ class OpenAICompatibleP3LLMDraftProvider:
         self._api_key = settings.api_key
         self._timeout_seconds = settings.timeout_seconds
         self._max_output_tokens = settings.max_output_tokens
+
+    @property
+    def provider_profile(self) -> str:
+        return "openai_compatible"
+
+    @property
+    def model_alias(self) -> str:
+        return self._model_alias
 
     def generate_structured_draft(
         self,
