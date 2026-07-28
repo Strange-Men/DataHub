@@ -15,6 +15,9 @@ from app.p3_deterministic_templates import get_deterministic_template
 from app.p3_reuse_models import ReuseAssetType
 
 
+P3_LLM_DEFAULT_MAX_OUTPUT_CHARS = 200_000
+
+
 P3_LLM_ERROR_CODES = frozenset(
     {
         "P3_LLM_DRAFT_DISABLED",
@@ -122,7 +125,7 @@ class P3LLMDraftSettings:
             ),
             max_output_chars=_bounded_int(
                 "P3_LLM_MAX_OUTPUT_CHARS",
-                200_000,
+                P3_LLM_DEFAULT_MAX_OUTPUT_CHARS,
                 minimum=1_000,
                 maximum=1_000_000,
             ),
@@ -451,6 +454,7 @@ def validate_context_budget(
 __all__ = [
     "FakeP3LLMDraftProvider",
     "OpenAICompatibleP3LLMDraftProvider",
+    "P3_LLM_DEFAULT_MAX_OUTPUT_CHARS",
     "P3_LLM_ERROR_CODES",
     "P3LLMDraftError",
     "P3LLMDraftProvider",

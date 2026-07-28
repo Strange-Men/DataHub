@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app.p3_reuse_models import ReuseReviewDecision
+from app.p3_reuse_models import (
+    ReuseAssetType,
+    ReuseReviewDecision,
+)
 
 
 P3_REVIEW_POLICY_VERSION = "p3-review-v1"
@@ -72,8 +77,25 @@ class P3ReviewDecisionPayload(_FrozenReviewSchema):
         return self
 
 
+class P3ReviewView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    asset_version_id: str
+    decision: ReuseReviewDecision
+    comments: str | None
+    checklist_payload: dict[str, object]
+    review_policy_version: str
+    reviewed_content_hash: str
+    reviewed_source_manifest_hash: str
+    reviewer_role: str
+    request_id: str
+    created_at: datetime
+
+
 __all__ = [
     "P3_REVIEW_POLICY_VERSION",
     "P3ReviewChecklist",
     "P3ReviewDecisionPayload",
+    "P3ReviewView",
 ]

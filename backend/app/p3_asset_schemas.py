@@ -176,10 +176,13 @@ class P3AssetVersionView(BaseModel):
     content_payload: dict[str, object]
     content_hash: str
     source_manifest_hash: str
+    parent_asset_version_id: str | None
     created_by_role: str
     request_id: str
     created_at: datetime
     updated_at: datetime
+    approved_at: datetime | None
+    published_at: datetime | None
     failure_code: str | None
     failure_message: str | None
 

@@ -57,9 +57,9 @@ P3_TABLES = {
     "reuse_source_items",
     "reuse_asset_versions",
     "reuse_asset_version_sources",
+    "reuse_reviews",
 }
 FORBIDDEN_FUTURE_TABLES = {
-    "reuse_reviews",
     "export_jobs",
     "export_artifacts",
 }
