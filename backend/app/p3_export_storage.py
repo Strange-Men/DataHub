@@ -49,6 +49,10 @@ class P3ExportArtifactStorage(ABC):
     def stat(self, storage_key: str) -> P3ArtifactStat:
         """Return safe Artifact metadata without exposing a filesystem path."""
 
+    @abstractmethod
+    def cleanup_incomplete(self, storage_key: str) -> None:
+        """Remove only an uncommitted write after export persistence fails."""
+
 
 class LocalFilesystemP3ExportStorage(P3ExportArtifactStorage):
     """Local-only, root-confined Artifact storage with atomic replacement."""
@@ -164,6 +168,15 @@ class LocalFilesystemP3ExportStorage(P3ExportArtifactStorage):
             storage_key=storage_key,
             byte_size=size,
         )
+
+    def cleanup_incomplete(self, storage_key: str) -> None:
+        target = self._resolve_key(storage_key)
+        try:
+            target.unlink(missing_ok=True)
+        except OSError as exc:
+            raise P3ExportStorageError(
+                "Incomplete Export Artifact could not be cleaned."
+            ) from exc
 
 
 def _default_export_root() -> Path:

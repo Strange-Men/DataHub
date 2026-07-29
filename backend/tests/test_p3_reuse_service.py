@@ -58,8 +58,6 @@ P3_TABLES = {
     "reuse_asset_versions",
     "reuse_asset_version_sources",
     "reuse_reviews",
-}
-FORBIDDEN_FUTURE_TABLES = {
     "export_jobs",
     "export_artifacts",
 }
@@ -999,7 +997,6 @@ def test_no_unimplemented_p3_tables_or_physical_delete_flow() -> None:
         if name.startswith("reuse_") or name.startswith("export_")
     }
     assert registered == P3_TABLES
-    assert FORBIDDEN_FUTURE_TABLES.isdisjoint(registered)
     module_source = inspect.getsource(service_module)
     assert ".delete(" not in module_source
     assert "DELETE FROM" not in module_source.upper()
