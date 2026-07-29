@@ -767,6 +767,6 @@ M9.1-M9.5 已完成本地 Docker 维护版本封板：Eval 使用 run-scoped man
 - 五类资产确定性映射为 UTF-8 JSONL 或 UTF-8 BOM CSV；Artifact 保存文件 SHA-256、Canonical Export Manifest Hash、行数、编码与安全文件名。
 - 新增创建、列表、详情、Artifact Metadata、下载和 revoke API，以及集中式 read/create/download/revoke 权限；只有 admin 创建与撤回。
 - Artifact 不自动过期或物理删除；revoke 后禁止下载但保留文件和审计。来源 stale 阻止新导出，不改写历史 Artifact；历史未 revoke Artifact 可下载并显示 stale。
-- Docker 公开 API Smoke 和独立 PostgreSQL 验收通过。单次权威全量执行为 **1118 passed、21 skipped、7 个旧阶段过期断言失败、44 warnings**；修订这些测试边界后原 7 个节点为 **7 passed**，未违反“只运行一次全量”的约束。
-- P1/P2、Retrieval 与真实 Provider 均零修改/零写入/零调用；默认 Auth disabled、LLM flag false。完整证据见 `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md`。
+- Docker 公开 API Smoke 和独立 PostgreSQL 验收通过。M7.5 收紧“精确七表”契约并在全新 clean-export 上取得最终权威结果：**1125 passed、21 skipped、44 warnings、0 failed**。
+- P1/P2、Retrieval 与真实 Provider 均零修改/零写入/零调用；默认 Auth disabled、LLM flag false。Release 与发布后验证证据见 `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md`、`docs/83_P3_M7_POST_RELEASE_VALIDATION_REPORT.md`。
 - M8 中文前端尚未开始，必须等待新的明确指令。

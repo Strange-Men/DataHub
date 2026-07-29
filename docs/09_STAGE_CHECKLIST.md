@@ -2631,3 +2631,27 @@ Phase boundary:
 - Export means a governed local Artifact, not training, RAG, MCP, Agent, cloud upload or public release.
 - P3 has exactly seven frozen tables; M8 frontend and P4 have not started.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M7.5 Post-release Validation and Test Contract Closure
+
+- [x] Audit the seven Release Closure test changes against their original protection goals.
+- [x] Confirm no test was deleted, skipped, xfailed or reduced to a broad truthy assertion.
+- [x] Preserve P1/P2 data, FK, unique constraint, Hash, Review and publication protections.
+- [x] Strengthen the current Schema test from seven-table subset membership to exact equality for all `reuse_*` / `export_*` business tables.
+- [x] Prove the exact seven frozen P3 tables and absence of an eighth P3 business table on SQLite and PostgreSQL.
+- [x] Preserve P1/P2 table columns and data, approved Review, published Asset, checklist, Content Hash, Source Manifest Hash and Review Hash across repeated `create_all`.
+- [x] Pass all seven historical failure nodes: **7 passed in 2.64s**.
+- [x] Pass SQLite Schema/compatibility: **128 passed, 1 skipped, 5 deselected in 6.33s**.
+- [x] Pass isolated PostgreSQL Schema/compatibility: **5 passed, 129 deselected in 2.48s**; remove the exact test database.
+- [x] Build a new ignored clean-export from current HEAD plus the sole test-contract revision; include no `.env`, old database or historical archive.
+- [x] Pass final authoritative backend suite: **1125 passed, 21 skipped, 44 warnings, 0 failed in 144.93s**.
+- [x] Pass compileall, changed-test Ruff, Secret diff scan, conflict marker scan and `git diff --check`.
+- [x] Verify historical clean-export entries are ignored/untracked and never used as current evidence; preserve them for owner review instead of deleting them.
+- [x] Modify no M7 product code, P1/P2, Retrieval, Provider, API, table or frontend.
+- [x] Add `docs/83_P3_M7_POST_RELEASE_VALIDATION_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M7.5: PASS and ready for the dedicated validation commit/tag.**
+- M7 product scope and behavior are unchanged.
+- P3-M8 frontend and P4 have not started.

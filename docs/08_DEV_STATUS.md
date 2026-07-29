@@ -2209,7 +2209,7 @@ This is a planning and documentation checkpoint only.
 
 ## P3-M4 Governed LLM-assisted Draft Generation Release
 
-- Status: **COMPLETE / PASS**, pending the dedicated release commit/tag in this closure turn.
+- Status: **COMPLETE / PASS**. Release commit/tag are pushed; M7.5 post-release validation closes the final full-suite evidence gap.
 - M4.1 extended `generation_mode` to `llm_draft` with forward-only, idempotent SQLite/PostgreSQL constraint compatibility; deterministic records and hashes remain readable.
 - Provider-neutral contract, minimal OpenAI-compatible adapter, test-only Fake Provider, versioned five-type Prompt Registry, strict structured output, Grounding Guard and context budget are implemented.
 - Default `P3_LLM_DRAFT_ENABLED=false`; Compose and `.env.example` explicitly expose all P3 LLM runtime settings without storing a Secret.
@@ -2270,6 +2270,8 @@ This is a planning and documentation checkpoint only.
 - Isolated PostgreSQL release acceptance passed **2 tests, 58 deselected** for migration, concurrency, lifecycle, atomicity, rollback, revoke and stale-history immutability; its exact test database was removed.
 - The Goal's single full backend invocation produced **1118 passed, 21 skipped, 7 failed, 44 warnings in 2205.57s**. All seven failures were stale historical assertions that Export tables did not exist; after correcting only those test expectations, the exact seven nodes passed **7/7**. No second full invocation was run.
 - Final M7 Schema/Storage/Service/API focused matrix: **81 passed, 1 skipped, 2 deselected, 2 warnings**. compileall, Secret/conflict scans and diff check pass.
+- M7.5 audited all seven historical contracts, found no removed/skip/xfail protection, and strengthened the current M7 Schema test from a seven-table subset to an exact seven-table set. P1/P2 columns/data, approved Review, published Asset and Content/Manifest/Review Hashes remain covered.
+- M7.5 gates: historical nodes **7 passed**; SQLite compatibility **128 passed, 1 skipped, 5 deselected**; isolated PostgreSQL compatibility **5 passed, 129 deselected**; fresh clean-export full backend **1125 passed, 21 skipped, 44 warnings, 0 failed in 144.93s**.
 - P1/P2 business/schema/data and Retrieval remain frozen; real Provider calls are 0. P3 has exactly seven tables and no eighth P3 business table.
-- Report: `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md`.
+- Reports: `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md` and `docs/83_P3_M7_POST_RELEASE_VALIDATION_REPORT.md`.
 - P3-M8 frontend has not started and requires a separate explicit instruction after M7 release Git closure.

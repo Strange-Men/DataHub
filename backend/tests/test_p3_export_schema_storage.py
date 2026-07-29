@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app import db_models as p1_p2_models
 from app.database import Base
 from app.p3_export_models import (
     P3ExportArtifact,
@@ -32,6 +33,8 @@ from app.p3_reuse_models import (
     ReuseGenerationMode,
     ReuseProject,
     ReuseProjectStatus,
+    ReuseReview,
+    ReuseReviewDecision,
 )
 from scripts.test_environment import require_test_database_url
 
@@ -173,12 +176,13 @@ def test_empty_database_creates_exactly_seven_p3_tables() -> None:
     try:
         Base.metadata.create_all(bind=engine)
         tables = set(inspect(engine).get_table_names())
-        assert EXPECTED_P3_TABLES <= tables
-        assert not {
-            "export_manifests",
-            "export_files",
-            "p3_export_rows",
-        } & tables
+        current_p3_tables = {
+            name
+            for name in tables
+            if name.startswith("reuse_") or name.startswith("export_")
+        }
+        assert current_p3_tables == EXPECTED_P3_TABLES
+        assert {"knowledge_candidates", "assets"} <= tables
     finally:
         engine.dispose()
 
@@ -189,21 +193,120 @@ def test_repeat_create_all_is_idempotent_and_preserves_old_p3_rows() -> None:
         old_tables = [
             table
             for name, table in Base.metadata.tables.items()
-            if name.startswith("reuse_")
+            if name not in {"export_jobs", "export_artifacts"}
         ]
         Base.metadata.create_all(bind=engine, tables=old_tables)
+        before_columns = {
+            table_name: tuple(
+                column["name"]
+                for column in inspect(engine).get_columns(table_name)
+            )
+            for table_name in ("knowledge_candidates", "assets")
+        }
         with Session(engine) as db:
+            db.add(
+                p1_p2_models.KnowledgeCandidate(
+                    id="m71_legacy_candidate",
+                    source_type="sanitized_batch",
+                    source_id="m71_legacy_batch",
+                    question="Existing P1 question",
+                    answer="Existing P1 answer",
+                    status="approved",
+                )
+            )
+            db.add(
+                p1_p2_models.Asset(
+                    id="m71_legacy_p2_asset",
+                    asset_type="image",
+                    file_name="existing.png",
+                    mime_type="image/png",
+                    size=1,
+                    storage_uri="test://existing.png",
+                    hash="f" * 64,
+                    status="uploaded",
+                )
+            )
             project = _project(db, "legacy_project")
             asset = _asset(db, project, "legacy_asset")
-            before = (project.id, asset.content_hash, asset.source_manifest_hash)
+            review = ReuseReview(
+                id="legacy_review",
+                asset_version_id=asset.id,
+                decision=ReuseReviewDecision.APPROVED,
+                comments=None,
+                checklist_payload={
+                    "structure_complete": True,
+                    "source_refs_valid": True,
+                    "no_unsupported_claims_confirmed": True,
+                    "safe_for_reuse": True,
+                },
+                review_policy_version="p3-review-v1",
+                reviewed_content_hash=asset.content_hash,
+                reviewed_source_manifest_hash=asset.source_manifest_hash,
+                reviewer_role="reviewer",
+                request_id="request_legacy_review",
+                idempotency_key="key_legacy_review",
+            )
+            db.add(review)
+            db.commit()
+            before = (
+                project.id,
+                project.status,
+                asset.status,
+                asset.content_hash,
+                asset.source_manifest_hash,
+                review.decision,
+                review.review_policy_version,
+                review.reviewed_content_hash,
+                review.reviewed_source_manifest_hash,
+                dict(review.checklist_payload),
+            )
         Base.metadata.create_all(bind=engine)
         Base.metadata.create_all(bind=engine)
         with Session(engine) as db:
             project = db.get(ReuseProject, "legacy_project")
             asset = db.get(ReuseAssetVersion, "legacy_asset")
-            assert project is not None and asset is not None
-            assert (project.id, asset.content_hash, asset.source_manifest_hash) == before
-        assert EXPECTED_P3_TABLES <= set(inspect(engine).get_table_names())
+            review = db.get(ReuseReview, "legacy_review")
+            candidate = db.get(
+                p1_p2_models.KnowledgeCandidate,
+                "m71_legacy_candidate",
+            )
+            p2_asset = db.get(p1_p2_models.Asset, "m71_legacy_p2_asset")
+            assert all(
+                row is not None
+                for row in (project, asset, review, candidate, p2_asset)
+            )
+            assert (
+                project.id,
+                project.status,
+                asset.status,
+                asset.content_hash,
+                asset.source_manifest_hash,
+                review.decision,
+                review.review_policy_version,
+                review.reviewed_content_hash,
+                review.reviewed_source_manifest_hash,
+                dict(review.checklist_payload),
+            ) == before
+            assert candidate.answer == "Existing P1 answer"
+            assert p2_asset.hash == "f" * 64
+            for table_name in ("export_jobs", "export_artifacts"):
+                assert db.execute(
+                    text(f"SELECT COUNT(*) FROM {table_name}")
+                ).scalar_one() == 0
+        tables = set(inspect(engine).get_table_names())
+        current_p3_tables = {
+            name
+            for name in tables
+            if name.startswith("reuse_") or name.startswith("export_")
+        }
+        assert current_p3_tables == EXPECTED_P3_TABLES
+        assert {
+            table_name: tuple(
+                column["name"]
+                for column in inspect(engine).get_columns(table_name)
+            )
+            for table_name in ("knowledge_candidates", "assets")
+        } == before_columns
     finally:
         engine.dispose()
 
@@ -552,7 +655,13 @@ def test_postgresql_export_constraints_and_repeat_create_all() -> None:
             with pytest.raises(IntegrityError):
                 db.commit()
             db.rollback()
-        assert EXPECTED_P3_TABLES <= set(inspect(engine).get_table_names())
+        tables = set(inspect(engine).get_table_names())
+        assert {
+            name
+            for name in tables
+            if name.startswith("reuse_") or name.startswith("export_")
+        } == EXPECTED_P3_TABLES
+        assert {"knowledge_candidates", "assets"} <= tables
     finally:
         Base.metadata.drop_all(bind=engine)
         engine.dispose()
