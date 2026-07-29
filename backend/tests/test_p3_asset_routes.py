@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -70,6 +71,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]
         monkeypatch.delenv(env_name, raising=False)
     db = SessionLocal()
     try:
+        # Defer FK checks until all dependent and self-referencing rows are
+        # removed in this teardown transaction.
+        db.execute(text("PRAGMA defer_foreign_keys=ON"))
         for model in (
             ReuseReview,
             ReuseAssetVersionSource,

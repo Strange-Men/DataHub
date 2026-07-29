@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.p3_reuse_models import (
     ReuseAssetType,
@@ -49,8 +50,36 @@ class P3PublishedAssetPage(BaseModel):
     offset: int
 
 
+class P3PublicationActionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class P3PublicationResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3PublicationOutcome
+    requestId: str
+
+
+class P3PublishedAssetResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3PublishedAssetSummary
+    requestId: str
+
+
+class P3PublishedAssetPageResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3PublishedAssetPage
+    requestId: str
+
+
 __all__ = [
     "P3PublicationOutcome",
+    "P3PublicationActionRequest",
+    "P3PublicationResponse",
     "P3PublishedAssetPage",
+    "P3PublishedAssetPageResponse",
+    "P3PublishedAssetResponse",
     "P3PublishedAssetSummary",
 ]
