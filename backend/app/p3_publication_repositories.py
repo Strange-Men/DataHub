@@ -187,6 +187,36 @@ def get_asset_publication_state(
     return row
 
 
+def get_asset_by_publish_idempotency_key(
+    db: Session,
+    idempotency_key: str,
+) -> ReuseAssetVersion:
+    normalized_key = _required_text(
+        idempotency_key,
+        "idempotency_key",
+        200,
+    )
+    row = _publish_by_key(db, normalized_key)
+    if row is None:
+        raise P3RepositoryNotFound("Published asset version was not found.")
+    return row
+
+
+def get_asset_by_archive_idempotency_key(
+    db: Session,
+    idempotency_key: str,
+) -> ReuseAssetVersion:
+    normalized_key = _required_text(
+        idempotency_key,
+        "idempotency_key",
+        200,
+    )
+    row = _archive_by_key(db, normalized_key)
+    if row is None:
+        raise P3RepositoryNotFound("Archived asset version was not found.")
+    return row
+
+
 def publish_approved_asset(
     db: Session,
     *,
@@ -399,6 +429,8 @@ def archive_asset(
 __all__ = [
     "P3PublicationResult",
     "archive_asset",
+    "get_asset_by_archive_idempotency_key",
+    "get_asset_by_publish_idempotency_key",
     "get_asset_publication_state",
     "get_current_published_asset",
     "list_current_published_assets",
