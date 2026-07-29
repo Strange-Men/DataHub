@@ -8,6 +8,7 @@
     "test": "vitest run",
     "test:m8.1": "vitest run src/p3/__tests__/contract.test.ts src/pages/__tests__/P3Entry.test.tsx",
     "test:m8.2": "vitest run src/p3/__tests__/contract.test.ts src/pages/__tests__/P3Entry.test.tsx src/pages/__tests__/P3ProjectSourceWorkspace.test.tsx",
+    "test:m8.3": "vitest run src/p3/__tests__/contract.test.ts src/pages/__tests__/P3Entry.test.tsx src/pages/__tests__/P3ProjectSourceWorkspace.test.tsx src/pages/__tests__/P3DraftReviewWorkspace.test.tsx",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "build": "tsc && vite build",

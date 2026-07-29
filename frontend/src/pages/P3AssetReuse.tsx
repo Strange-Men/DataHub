@@ -3,9 +3,15 @@ import { useAuth } from "../auth/AuthContext";
 import { ROLE_LABELS } from "../governance";
 import { ProjectActivationPanel } from "../p3/components/ProjectActivationPanel";
 import { ProjectPicker } from "../p3/components/ProjectPicker";
+import { AssetGenerationPanel } from "../p3/components/AssetGenerationPanel";
+import { AssetVersionList } from "../p3/components/AssetVersionList";
+import { ReviewWorkspace } from "../p3/components/ReviewWorkspace";
 import { SourceEligibilityForm } from "../p3/components/SourceEligibilityForm";
 import { SourceList } from "../p3/components/SourceList";
+import { StructuredAssetViewer } from "../p3/components/StructuredAssetViewer";
+import { StructuredRevisionEditor } from "../p3/components/StructuredRevisionEditor";
 import { WorkspaceError, WorkspaceNotice } from "../p3/components/WorkspaceFeedback";
+import { useAssetReviewWorkspace } from "../p3/hooks/useAssetReviewWorkspace";
 import { useProjectSourceWorkspace } from "../p3/hooks/useProjectSourceWorkspace";
 import { P3_PROJECT_STATUS_LABELS } from "../p3/presentation";
 
@@ -20,12 +26,17 @@ const WORKFLOW_STEPS = [
 export function P3AssetReuse() {
   const { role, authMode } = useAuth();
   const workspace = useProjectSourceWorkspace();
+  const assetWorkspace = useAssetReviewWorkspace(workspace.selectedProject, role);
   const currentStep = useMemo(() => {
     if (!workspace.selectedProject) return 1;
     if (workspace.selectedProject.status === "draft") return 2;
-    if (workspace.selectedProject.status === "active") return 3;
+    if (workspace.selectedProject.status === "active") {
+      if (!assetWorkspace.selectedAsset) return 3;
+      if (["generated", "needs_revision"].includes(assetWorkspace.selectedAsset.status)) return 3;
+      return 4;
+    }
     return 5;
-  }, [workspace.selectedProject]);
+  }, [assetWorkspace.selectedAsset, workspace.selectedProject]);
 
   return (
     <div className="p3-workspace">
@@ -66,6 +77,8 @@ export function P3AssetReuse() {
 
       <WorkspaceError error={workspace.error} onDismiss={workspace.clearError} />
       <WorkspaceNotice message={workspace.notice} />
+      <WorkspaceError error={assetWorkspace.error} onDismiss={assetWorkspace.clearError} />
+      <WorkspaceNotice message={assetWorkspace.notice} />
 
       <ProjectPicker
         role={role}
@@ -138,6 +151,72 @@ export function P3AssetReuse() {
             onActivate={() => void workspace.activateProject()}
             onArchive={() => void workspace.archiveProject()}
           />
+
+          {workspace.selectedProject.status !== "draft" && (
+            <>
+              {workspace.selectedProject.status === "active" && (
+                <AssetGenerationPanel
+                  role={role}
+                  project={workspace.selectedProject}
+                  busy={assetWorkspace.mutatingAsset}
+                  onGenerate={assetWorkspace.generateDeterministic}
+                  onGenerateLlm={assetWorkspace.generateLlm}
+                />
+              )}
+
+              <AssetVersionList
+                assets={assetWorkspace.assets}
+                total={assetWorkspace.assetTotal}
+                offset={assetWorkspace.assetOffset}
+                pageSize={assetWorkspace.assetPageSize}
+                filters={assetWorkspace.assetFilters}
+                selectedAsset={assetWorkspace.selectedAsset}
+                loading={assetWorkspace.loadingAssets}
+                onFilters={(filters) => void assetWorkspace.changeFilters(filters)}
+                onPage={(offset) => {
+                  if (workspace.selectedProject) {
+                    void assetWorkspace.loadAssets(
+                      workspace.selectedProject,
+                      offset,
+                      assetWorkspace.assetFilters,
+                    );
+                  }
+                }}
+                onSelect={(id) => void assetWorkspace.loadSelectedAsset(id)}
+              />
+
+              {assetWorkspace.selectedAsset && (
+                <>
+                  <StructuredAssetViewer
+                    asset={assetWorkspace.selectedAsset}
+                    sources={assetWorkspace.assetSources}
+                    loading={assetWorkspace.loadingDetail}
+                  />
+                  {workspace.selectedProject.status === "active" && (
+                    <>
+                      <StructuredRevisionEditor
+                        role={role}
+                        asset={assetWorkspace.selectedAsset}
+                        sources={assetWorkspace.assetSources}
+                        busy={assetWorkspace.mutatingAsset}
+                        onSave={assetWorkspace.createRevision}
+                      />
+                      <ReviewWorkspace
+                        role={role}
+                        asset={assetWorkspace.selectedAsset}
+                        sources={assetWorkspace.assetSources}
+                        review={assetWorkspace.review}
+                        history={assetWorkspace.reviewHistory}
+                        busy={assetWorkspace.mutatingAsset}
+                        onSubmit={assetWorkspace.submitReview}
+                        onDecide={assetWorkspace.decideReview}
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
         </div>
       ) : (
         <section className="p3-workspace-panel">

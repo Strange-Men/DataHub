@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { P3ApiError, p3Client, type P3Client } from "../client";
-import type { P3WorkspaceError } from "../components/WorkspaceFeedback";
+import { p3Client, type P3Client } from "../client";
+import {
+  toWorkspaceError,
+  type P3WorkspaceError,
+} from "../components/WorkspaceFeedback";
 import type {
   P3Project,
   P3ProjectStatus,
@@ -12,22 +15,6 @@ import type {
 
 const PROJECT_PAGE_SIZE = 8;
 const SOURCE_PAGE_SIZE = 12;
-
-function workspaceError(error: unknown): P3WorkspaceError {
-  if (error instanceof P3ApiError) {
-    return {
-      message: error.message,
-      code: error.code,
-      requestId: error.requestId,
-      status: error.status,
-    };
-  }
-  return {
-    message: "操作没有完成，请稍后重试。",
-    code: "P3_FRONTEND_UNEXPECTED_ERROR",
-    status: 500,
-  };
-}
 
 export type SourceFilters = {
   sourceType?: P3SourceType;
@@ -76,7 +63,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       setProjectOffset(response.data.offset);
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
     } finally {
       setLoadingProjects(false);
     }
@@ -107,7 +94,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       setSourceOffset(response.data.offset);
     } catch (caught) {
       if (caught instanceof DOMException && caught.name === "AbortError") return;
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
     } finally {
       setLoadingSources(false);
     }
@@ -133,7 +120,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
         staleCount: staleSources.data.total,
       });
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
     }
   }, [client]);
 
@@ -177,7 +164,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       await loadProjects(0);
       return project;
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
       return null;
     } finally {
       setMutating(false);
@@ -198,7 +185,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       await loadProjects(projectOffset);
       return response.data;
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
       return null;
     } finally {
       setMutating(false);
@@ -214,7 +201,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       setEligibility(response.data.decision);
       return response.data.decision;
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
       return null;
     } finally {
       setCheckingEligibility(false);
@@ -240,7 +227,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       ]);
       return response.data;
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
       return null;
     } finally {
       setMutating(false);
@@ -259,7 +246,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
         loadActivationSummary(selectedProject),
       ]);
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
     } finally {
       setMutating(false);
     }
@@ -281,7 +268,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
         loadActivationSummary(selectedProject),
       ]);
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
     } finally {
       setMutating(false);
     }
@@ -304,7 +291,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
         loadActivationSummary(selectedProject),
       ]);
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
     } finally {
       setMutating(false);
     }
@@ -322,7 +309,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       await loadSources(response.data, 0, sourceFilters);
       return response.data;
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
       return null;
     } finally {
       setMutating(false);
@@ -340,7 +327,7 @@ export function useProjectSourceWorkspace(client: P3Client = p3Client) {
       await loadProjects(projectOffset);
       return response.data;
     } catch (caught) {
-      setError(workspaceError(caught));
+      setError(toWorkspaceError(caught));
       return null;
     } finally {
       setMutating(false);

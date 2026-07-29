@@ -3,7 +3,9 @@ import type {
   P3AssetType,
   P3EligibilityReason,
   P3ExportStatus,
+  P3GenerationMode,
   P3ProjectStatus,
+  P3ReviewDecision,
   P3SourceDisplayStatus,
   P3SourceType,
 } from "./types";
@@ -53,6 +55,18 @@ export const P3_ASSET_TYPE_LABELS: Readonly<Record<P3AssetType, string>> = {
   service_script: "客服话术",
   qa_bank: "问答题库",
   sft_dataset: "SFT 数据集",
+};
+
+export const P3_GENERATION_MODE_LABELS: Readonly<Record<P3GenerationMode, string>> = {
+  deterministic_template: "确定性模板",
+  llm_draft: "LLM 草稿",
+  manual_revision: "人工修订",
+};
+
+export const P3_REVIEW_DECISION_LABELS: Readonly<Record<P3ReviewDecision, string>> = {
+  approved: "批准",
+  needs_revision: "退回修改",
+  rejected: "拒绝",
 };
 
 export const P3_ELIGIBILITY_REASON_LABELS: Readonly<Record<P3EligibilityReason, string>> = {

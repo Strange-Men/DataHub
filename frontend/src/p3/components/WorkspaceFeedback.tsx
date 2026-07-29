@@ -1,6 +1,22 @@
-import type { P3ApiError } from "../client";
+import { P3ApiError } from "../client";
 
 export type P3WorkspaceError = Pick<P3ApiError, "message" | "code" | "requestId" | "status">;
+
+export function toWorkspaceError(error: unknown): P3WorkspaceError {
+  if (error instanceof P3ApiError) {
+    return {
+      message: error.message,
+      code: error.code,
+      requestId: error.requestId,
+      status: error.status,
+    };
+  }
+  return {
+    message: "操作没有完成，请稍后重试。",
+    code: "P3_FRONTEND_UNEXPECTED_ERROR",
+    status: 500,
+  };
+}
 
 export function WorkspaceError({
   error,
