@@ -18,11 +18,13 @@ from sqlalchemy import (
     DateTime,
     Enum as SqlEnum,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     false,
+    text,
 )
 
 from app.database import Base
@@ -248,6 +250,22 @@ class ReuseAssetVersion(Base):
             "idempotency_key",
             name="uq_reuse_asset_versions_idempotency_key",
         ),
+        UniqueConstraint(
+            "publish_idempotency_key",
+            name="uq_reuse_asset_versions_publish_idempotency_key",
+        ),
+        UniqueConstraint(
+            "archive_idempotency_key",
+            name="uq_reuse_asset_versions_archive_idempotency_key",
+        ),
+        Index(
+            "uq_reuse_asset_versions_current_published",
+            "project_id",
+            "asset_type",
+            unique=True,
+            sqlite_where=text("status = 'published'"),
+            postgresql_where=text("status = 'published'"),
+        ),
     )
 
     id = Column(String(200), primary_key=True)
@@ -309,6 +327,22 @@ class ReuseAssetVersion(Base):
     published_at = Column(DateTime, nullable=True)
     superseded_at = Column(DateTime, nullable=True)
     archived_at = Column(DateTime, nullable=True)
+    published_by_role = Column(String(50), nullable=True)
+    publish_request_id = Column(String(200), nullable=True)
+    publish_idempotency_key = Column(String(200), nullable=True)
+    superseded_by_asset_version_id = Column(
+        String(200),
+        ForeignKey(
+            "reuse_asset_versions.id",
+            ondelete="RESTRICT",
+            name="fk_reuse_asset_versions_superseded_by",
+        ),
+        nullable=True,
+        index=True,
+    )
+    archived_by_role = Column(String(50), nullable=True)
+    archive_request_id = Column(String(200), nullable=True)
+    archive_idempotency_key = Column(String(200), nullable=True)
     failure_code = Column(String(100), nullable=True)
     failure_message = Column(Text, nullable=True)
     parent_asset_version_id = Column(

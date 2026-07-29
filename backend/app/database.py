@@ -108,6 +108,11 @@ def init_database_tables() -> None:
     )
 
     ensure_manual_revision_review_compatibility(engine)
+    from app.p3_publication_schema_compatibility import (
+        ensure_asset_publication_compatibility,
+    )
+
+    ensure_asset_publication_compatibility(engine)
 
     # Try to enable pgvector — safe no-op on SQLite, graceful failure on
     # PostgreSQL without the extension available (P1-M21.1).
