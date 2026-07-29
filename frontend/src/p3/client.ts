@@ -469,3 +469,5 @@ export const p3Client = {
     );
   },
 };
+
+export type P3Client = typeof p3Client;

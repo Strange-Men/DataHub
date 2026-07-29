@@ -17,6 +17,26 @@ export type FrontendPermission =
   | "p2.serve"
   | "p2.archive"
   | "p2.read"
+  | "p3.source.read"
+  | "p3.project.read"
+  | "p3.project.write"
+  | "p3.source.manage"
+  | "p3.project.activate"
+  | "p3.project.archive"
+  | "p3.asset.read"
+  | "p3.asset.generate"
+  | "p3.asset.generate_llm"
+  | "p3.asset.edit"
+  | "p3.asset.submit_review"
+  | "p3.review.read"
+  | "p3.review.decide"
+  | "p3.asset.publish"
+  | "p3.asset.archive"
+  | "p3.asset.read_published"
+  | "p3.export.read"
+  | "p3.export.create"
+  | "p3.export.download"
+  | "p3.export.revoke"
   | "retrieval.p1"
   | "retrieval.p2"
   | "retrieval.unified"
@@ -27,6 +47,11 @@ const ALL_PERMISSIONS: readonly FrontendPermission[] = [
   "p1.import", "p1.clean", "p1.revise", "p1.review", "p1.rag_sync", "p1.read",
   "p2.asset_upload", "p2.extract", "p2.revise", "p2.review", "p2.publish",
   "p2.index", "p2.embed", "p2.serve", "p2.archive", "p2.read",
+  "p3.source.read", "p3.project.read", "p3.project.write", "p3.source.manage",
+  "p3.project.activate", "p3.project.archive", "p3.asset.read", "p3.asset.generate",
+  "p3.asset.generate_llm", "p3.asset.edit", "p3.asset.submit_review", "p3.review.read",
+  "p3.review.decide", "p3.asset.publish", "p3.asset.archive", "p3.asset.read_published",
+  "p3.export.read", "p3.export.create", "p3.export.download", "p3.export.revoke",
   "retrieval.p1", "retrieval.p2", "retrieval.unified", "agent.customerops", "badcase.submit",
 ];
 
@@ -43,12 +68,27 @@ export const ROLE_PERMISSIONS: Record<AuthRole, ReadonlySet<FrontendPermission>>
   cleaner: new Set([
     "p1.import", "p1.clean", "p1.revise", "p1.read",
     "p2.asset_upload", "p2.extract", "p2.revise", "p2.read",
+    "p3.source.read", "p3.project.read", "p3.project.write", "p3.source.manage",
+    "p3.project.activate", "p3.asset.read", "p3.asset.generate",
+    "p3.asset.generate_llm", "p3.asset.edit", "p3.asset.submit_review",
+    "p3.review.read", "p3.asset.read_published", "p3.export.read", "p3.export.download",
   ]),
-  reviewer: new Set(["p1.read", "p1.review", "p2.read", "p2.review"]),
+  reviewer: new Set([
+    "p1.read", "p1.review", "p2.read", "p2.review",
+    "p3.source.read", "p3.project.read", "p3.asset.read", "p3.review.read",
+    "p3.review.decide", "p3.asset.read_published", "p3.export.read", "p3.export.download",
+  ]),
   service: new Set([
     "retrieval.p1", "retrieval.p2", "retrieval.unified", "agent.customerops", "badcase.submit",
+    "p3.source.read", "p3.project.read", "p3.asset.read", "p3.asset.generate",
+    "p3.asset.generate_llm", "p3.review.read", "p3.asset.read_published",
+    "p3.export.read", "p3.export.download",
   ]),
-  viewer: new Set(["p1.read", "p2.read", "retrieval.p1", "retrieval.p2"]),
+  viewer: new Set([
+    "p1.read", "p2.read", "retrieval.p1", "retrieval.p2",
+    "p3.source.read", "p3.project.read", "p3.asset.read", "p3.review.read",
+    "p3.asset.read_published", "p3.export.read", "p3.export.download",
+  ]),
 };
 
 export const FORBIDDEN_MESSAGE = "当前角色没有执行此操作的权限。";

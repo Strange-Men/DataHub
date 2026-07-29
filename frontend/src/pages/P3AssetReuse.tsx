@@ -1,5 +1,13 @@
+import { useMemo } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { ROLE_LABELS } from "../governance";
+import { ProjectActivationPanel } from "../p3/components/ProjectActivationPanel";
+import { ProjectPicker } from "../p3/components/ProjectPicker";
+import { SourceEligibilityForm } from "../p3/components/SourceEligibilityForm";
+import { SourceList } from "../p3/components/SourceList";
+import { WorkspaceError, WorkspaceNotice } from "../p3/components/WorkspaceFeedback";
+import { useProjectSourceWorkspace } from "../p3/hooks/useProjectSourceWorkspace";
+import { P3_PROJECT_STATUS_LABELS } from "../p3/presentation";
 
 const WORKFLOW_STEPS = [
   { number: 1, title: "创建项目", description: "定义本次复用目标" },
@@ -11,6 +19,13 @@ const WORKFLOW_STEPS = [
 
 export function P3AssetReuse() {
   const { role, authMode } = useAuth();
+  const workspace = useProjectSourceWorkspace();
+  const currentStep = useMemo(() => {
+    if (!workspace.selectedProject) return 1;
+    if (workspace.selectedProject.status === "draft") return 2;
+    if (workspace.selectedProject.status === "active") return 3;
+    return 5;
+  }, [workspace.selectedProject]);
 
   return (
     <div className="p3-workspace">
@@ -30,56 +45,115 @@ export function P3AssetReuse() {
       </header>
 
       <nav className="p3-stepper" aria-label="数据资产复用五阶段">
-        {WORKFLOW_STEPS.map((step, index) => (
-          <div
-            className={`p3-step ${index === 0 ? "current" : ""}`}
-            aria-current={index === 0 ? "step" : undefined}
-            key={step.number}
-          >
-            <span className="p3-step-number">{step.number}</span>
-            <span>
-              <strong>{step.title}</strong>
-              <small>{step.description}</small>
-            </span>
-          </div>
-        ))}
+        {WORKFLOW_STEPS.map((step) => {
+          const isCurrent = step.number === currentStep;
+          const isComplete = step.number < currentStep;
+          return (
+            <div
+              className={`p3-step ${isCurrent ? "current" : ""} ${isComplete ? "complete" : ""}`}
+              aria-current={isCurrent ? "step" : undefined}
+              key={step.number}
+            >
+              <span className="p3-step-number">{isComplete ? "✓" : step.number}</span>
+              <span>
+                <strong>{step.title}</strong>
+                <small>{step.description}</small>
+              </span>
+            </div>
+          );
+        })}
       </nav>
 
-      <section className="p3-workspace-panel" aria-labelledby="p3-project-entry-title">
-        <div className="p3-panel-heading">
-          <div>
-            <span className="p3-stage-label">第 1 阶段</span>
-            <h2 id="p3-project-entry-title">先选择或创建一个复用项目</h2>
-            <p>项目用于集中管理来源、草稿、审核记录以及最终导出。</p>
+      <WorkspaceError error={workspace.error} onDismiss={workspace.clearError} />
+      <WorkspaceNotice message={workspace.notice} />
+
+      <ProjectPicker
+        role={role}
+        projects={workspace.projects}
+        total={workspace.projectTotal}
+        offset={workspace.projectOffset}
+        pageSize={workspace.projectPageSize}
+        selectedProject={workspace.selectedProject}
+        loading={workspace.loadingProjects}
+        mutating={workspace.mutating}
+        onPage={(offset) => void workspace.loadProjects(offset)}
+        onSelect={(project) => void workspace.selectProject(project)}
+        onCreate={workspace.createProject}
+      />
+
+      {workspace.selectedProject ? (
+        <div className="p3-project-workspace">
+          <section className="p3-selected-project" aria-labelledby="p3-selected-project-title">
+            <div>
+              <span className="p3-stage-label">当前项目</span>
+              <h2 id="p3-selected-project-title">{workspace.selectedProject.name}</h2>
+              <p>{workspace.selectedProject.description || "未填写项目说明"}</p>
+            </div>
+            <span className={`p3-status-chip ${workspace.selectedProject.status}`}>
+              {P3_PROJECT_STATUS_LABELS[workspace.selectedProject.status]}
+            </span>
+          </section>
+
+          <SourceEligibilityForm
+            role={role}
+            project={workspace.selectedProject}
+            decision={workspace.eligibility}
+            checking={workspace.checkingEligibility}
+            mutating={workspace.mutating}
+            onCheck={workspace.checkEligibility}
+            onAdd={workspace.addCheckedSource}
+          />
+
+          <SourceList
+            role={role}
+            project={workspace.selectedProject}
+            sources={workspace.sources}
+            total={workspace.sourceTotal}
+            offset={workspace.sourceOffset}
+            pageSize={workspace.sourcePageSize}
+            filters={workspace.sourceFilters}
+            loading={workspace.loadingSources}
+            mutating={workspace.mutating}
+            onFilters={(filters) => void workspace.changeSourceFilters(filters)}
+            onPage={(offset) => {
+              if (workspace.selectedProject) {
+                void workspace.loadSources(
+                  workspace.selectedProject,
+                  offset,
+                  workspace.sourceFilters,
+                );
+              }
+            }}
+            onRevalidate={(id) => void workspace.revalidateSource(id)}
+            onRevalidateAll={() => void workspace.revalidateAllSources()}
+            onRemove={(id) => void workspace.removeSource(id)}
+          />
+
+          <ProjectActivationPanel
+            role={role}
+            project={workspace.selectedProject}
+            sourceCount={workspace.activationSummary.sourceCount}
+            staleCount={workspace.activationSummary.staleCount}
+            mutating={workspace.mutating}
+            onActivate={() => void workspace.activateProject()}
+            onArchive={() => void workspace.archiveProject()}
+          />
+        </div>
+      ) : (
+        <section className="p3-workspace-panel">
+          <div className="p3-empty-state" role="status">
+            <strong>选择或创建一个项目后开始</strong>
+            <p>工作台不会一次性加载全部历史项目，也不会展示未经审核的原始知识。</p>
           </div>
-          <span className="p3-status-chip neutral">尚未选择项目</span>
-        </div>
-
-        <div className="p3-entry-options">
-          <article>
-            <span className="p3-entry-icon" aria-hidden="true">01</span>
-            <h3>选择已有项目</h3>
-            <p>继续处理已经建立的复用任务，并查看当前进度。</p>
-          </article>
-          <article>
-            <span className="p3-entry-icon" aria-hidden="true">＋</span>
-            <h3>创建复用项目</h3>
-            <p>填写项目名称和说明后，从选择治理来源开始。</p>
-          </article>
-        </div>
-
-        <div className="p3-empty-state" role="status">
-          <strong>工作台基础已就绪</strong>
-          <p>项目选择和创建操作将在本流程下一步接入真实后端数据。</p>
-        </div>
-      </section>
+        </section>
+      )}
 
       <details className="p3-technical-details">
         <summary>技术详情</summary>
         <dl>
           <div><dt>工作区路由</dt><dd>/p3</dd></div>
           <div><dt>认证模式</dt><dd>{authMode}</dd></div>
-          <div><dt>当前阶段代码</dt><dd>project_setup</dd></div>
+          <div><dt>当前项目 ID</dt><dd>{workspace.selectedProject?.id ?? "未选择"}</dd></div>
         </dl>
       </details>
     </div>

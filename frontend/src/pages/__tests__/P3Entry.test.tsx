@@ -51,6 +51,13 @@ describe("P3 entry and route", () => {
       if (url.endsWith("/api/health")) {
         return jsonResponse({ status: "ok", service: "datahub", phase: "p3" });
       }
+      if (url.includes("/api/p3/reuse-projects")) {
+        return jsonResponse({
+          success: true,
+          data: { items: [], total: 0, limit: 8, offset: 0 },
+          requestId: "req_projects",
+        });
+      }
       return jsonResponse({
         success: true,
         data: { role: "admin", auth_mode: "disabled", authenticated: true },
@@ -66,7 +73,7 @@ describe("P3 entry and route", () => {
     for (const label of ["创建项目", "选择来源", "生成与修订", "提交与审核", "发布与导出"]) {
       expect(screen.getByText(label)).toBeVisible();
     }
-    expect(screen.getByText("先选择或创建一个复用项目")).toBeVisible();
+    expect(screen.getByText("选择或创建一个项目后开始")).toBeVisible();
     await waitFor(() => expect(screen.getByText("管理员")).toBeVisible());
     expect(screen.getByText("技术详情")).toBeVisible();
   });
