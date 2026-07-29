@@ -97,6 +97,7 @@ def init_database_tables() -> None:
     # Import models so they register on Base.metadata
     import app.db_models as _models  # noqa: F401
     import app.p3_reuse_models as _p3_reuse_models  # noqa: F401
+    import app.p3_export_models as _p3_export_models  # noqa: F401
     Base.metadata.create_all(bind=engine)
     from app.p3_llm_schema_compatibility import (
         ensure_llm_draft_generation_mode_compatibility,
