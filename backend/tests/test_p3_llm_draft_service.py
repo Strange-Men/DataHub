@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, inspect as sa_inspect
+from sqlalchemy import create_engine, inspect as sa_inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 
@@ -52,7 +52,7 @@ from app.p3_source_eligibility_schemas import P3SourceType  # noqa: E402
 from scripts.test_environment import require_test_database_url  # noqa: E402
 
 
-FUTURE_TABLES = {"export_jobs", "export_artifacts"}
+FROZEN_EXPORT_TABLES = {"export_jobs", "export_artifacts"}
 TEST_DATABASE_URL = os.getenv("DATAHUB_TEST_DATABASE_URL", "").strip()
 
 
@@ -515,10 +515,17 @@ def test_unknown_provider_error_persists_only_safe_message(db: Session) -> None:
     assert "credential-sentinel" not in version.failure_message.lower()
 
 
-def test_service_does_not_create_future_tables_or_call_sql_directly(
+def test_service_does_not_write_export_tables_or_call_sql_directly(
     sqlite_engine,
 ) -> None:
-    assert not FUTURE_TABLES & set(sa_inspect(sqlite_engine).get_table_names())
+    registered_export_tables = FROZEN_EXPORT_TABLES & set(
+        sa_inspect(sqlite_engine).get_table_names()
+    )
+    with sqlite_engine.connect() as connection:
+        for table_name in registered_export_tables:
+            assert connection.execute(
+                text(f"SELECT COUNT(*) FROM {table_name}")
+            ).scalar_one() == 0
     source = inspect.getsource(P3LLMDraftService)
     assert "execute(" not in source
     assert "SELECT " not in source

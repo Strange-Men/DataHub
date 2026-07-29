@@ -66,7 +66,7 @@ PUBLICATION_COLUMNS = {
     "archive_request_id",
     "archive_idempotency_key",
 }
-FORBIDDEN_TABLES = {"export_jobs", "export_artifacts"}
+FROZEN_EXPORT_TABLES = {"export_jobs", "export_artifacts"}
 
 
 def _sqlite_engine():
@@ -228,7 +228,7 @@ def _publish(
     )
 
 
-def test_fresh_schema_has_publication_fields_constraints_and_no_export() -> None:
+def test_fresh_schema_has_publication_fields_and_empty_export_tables() -> None:
     engine = _sqlite_engine()
     try:
         Base.metadata.create_all(bind=engine)
@@ -252,7 +252,14 @@ def test_fresh_schema_has_publication_fields_constraints_and_no_export() -> None
         assert (
             "fk_reuse_asset_versions_superseded_by" in foreign_keys
         )
-        assert FORBIDDEN_TABLES.isdisjoint(inspector.get_table_names())
+        registered_export_tables = FROZEN_EXPORT_TABLES & set(
+            inspector.get_table_names()
+        )
+        with engine.connect() as connection:
+            for table_name in registered_export_tables:
+                assert connection.execute(
+                    text(f"SELECT COUNT(*) FROM {table_name}")
+                ).scalar_one() == 0
     finally:
         engine.dispose()
 

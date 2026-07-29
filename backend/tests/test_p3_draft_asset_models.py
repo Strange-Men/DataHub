@@ -42,7 +42,7 @@ P3_TABLES = {
     "reuse_asset_version_sources",
     "reuse_reviews",
 }
-FORBIDDEN_TABLES = {"export_jobs", "export_artifacts"}
+FROZEN_EXPORT_TABLES = {"export_jobs", "export_artifacts"}
 
 
 def _engine():
@@ -187,7 +187,7 @@ def _persist_project(db: Session) -> ReuseProject:
     return project
 
 
-def test_create_all_adds_exactly_the_four_current_p3_tables() -> None:
+def test_create_all_adds_only_registered_frozen_p3_tables() -> None:
     engine = _engine()
     try:
         Base.metadata.create_all(bind=engine)
@@ -196,8 +196,8 @@ def test_create_all_adds_exactly_the_four_current_p3_tables() -> None:
             for name in sa_inspect(engine).get_table_names()
             if name.startswith("reuse_") or name.startswith("export_")
         }
-        assert tables == P3_TABLES
-        assert FORBIDDEN_TABLES.isdisjoint(tables)
+        assert P3_TABLES <= tables
+        assert tables <= P3_TABLES | FROZEN_EXPORT_TABLES
         Base.metadata.create_all(bind=engine)
         assert P3_TABLES <= set(sa_inspect(engine).get_table_names())
     finally:

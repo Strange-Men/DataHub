@@ -265,7 +265,7 @@ python scripts/run_p2_local_acceptance.py --auth-token-env DATAHUB_ADMIN_TOKEN
 - P2：上传 → Extraction → Review → Snapshot → 发布 → Index → Embed → Ready → Serve → Retrieval → Archive → Source Trace。
 - `ready · 向量已生成，尚未开放检索` 与 `serving · 已开放检索` 明确分开；Serve、Archive、Reject、RAG sync 和版本替换会说明影响并二次确认。
 - 检索验证页调用真实 P1/P2/Unified/CustomerOpsAgent API。CustomerOpsAgent 默认 P1-only，Unified 必须显式 opt-in。
-- P3-M6 受治理资产发布阶段已完成：`approved` 不会自动发布，只有 admin 可在来源、Review、Hash、Manifest 和 Grounding 门禁通过后显式 `published`；同类新版本会原子 supersede 旧 current，归档后不恢复历史版本。尚无导出或前端任务流，P3 页面仍显示“尚未开放”；`published` 不会自动进入 RAG、MCP 或 Agent，P3-M7 与 P4 尚未开始。
+- P3-M7 受治理导出阶段已完成：只有仍满足来源、Review、Hash、Manifest、Grounding 与 current published 门禁的资产，才能由 admin 确定性导出 JSONL/CSV；Artifact 保存 SHA、Manifest 和撤回审计。尚无 P3 前端任务流，P3 页面仍显示“尚未开放”；导出不会自动进入训练、RAG、MCP 或 Agent，P3-M8 与 P4 尚未开始。
 
 校验并启动：
 
@@ -731,7 +731,7 @@ M9.1-M9.5 已完成本地 Docker 维护版本封板：Eval 使用 run-scoped man
 
 本地权威结果：P1 Harness `10/10`、P2 Acceptance PASS、clean-export backend `460 passed / 5 skipped`、frontend production build PASS。CustomerOpsAgent 默认仍为 P1-only，Unified 仍需显式 opt-in。完整证据见 `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`。
 
-该结论仅覆盖本地 Docker。Render P2 持久化部署仍为 BLOCKED。P3-M0.1 数据资产复用规划已冻结，七表、状态机和 M1～M9 路线见 `docs/71_P3_DATA_ASSET_REUSE_PRD_AND_SCOPE.md` 至 `docs/74_P3_M0_PLANNING_FREEZE_DECISION.md`；P3-M1 来源资格、P3-M2 项目与来源、P3-M3 确定性草稿、P3-M4 受治理 LLM 辅助草稿、P3-M5 人工修订与审核和 P3-M6 受治理资产发布均已通过本地 Release Closure，证据见 `docs/75`～`docs/81`。P3-M7 与 P4 尚未开始。
+该结论仅覆盖本地 Docker。Render P2 持久化部署仍为 BLOCKED。P3-M0.1 数据资产复用规划已冻结，七表、状态机和 M1～M9 路线见 `docs/71_P3_DATA_ASSET_REUSE_PRD_AND_SCOPE.md` 至 `docs/74_P3_M0_PLANNING_FREEZE_DECISION.md`；P3-M1 来源资格至 P3-M7 受治理 JSONL/CSV 导出均已通过本地 Release Closure，证据见 `docs/75`～`docs/82`。P3-M8 中文前端与 P4 尚未开始。
 
 ## P3-M4 Governed LLM-assisted Draft Release
 
@@ -758,4 +758,15 @@ M9.1-M9.5 已完成本地 Docker 维护版本封板：Eval 使用 run-scoped man
 - 新增 publish/archive/current-published 四个 API 和 `p3.asset.publish`、`p3.asset.archive`、`p3.asset.read_published`；只有 admin 发布/归档，五角色均可读。
 - Docker 发布/替换/归档/stale/Auth Smoke 和独立 PostgreSQL 2 项通过；M1～M6/Auth/OpenAPI 为 **604 passed**，权威 clean-export backend 为 **1044 passed、18 skipped、44 warnings**。
 - P1/P2 与 Retrieval 零写入，真实 Provider 零调用；P3 仍只有五张表，未创建 Export 表。完整证据见 `docs/81_P3_M6_ASSET_PUBLICATION_RELEASE_REPORT.md`。
-- `published` 仍不会自动进入 RAG、导出、MCP 或 Agent；P3-M7 尚未开始，必须等待独立指令。
+- `published` 不会自动进入 RAG、MCP 或 Agent；M7 在后续独立 Goal 中完成，并继续要求 admin 显式创建受治理导出。
+
+## P3-M7 Governed JSONL and CSV Export Release
+
+- **Decision: PASS.** 新增冻结的 `export_jobs`、`export_artifacts`，P3 达到规划的七张表；未创建第八张业务表。
+- 只有仍为 current published 且通过 Project、Review、Hash、Manifest、Grounding 和来源重新验证门禁的资产可由 admin 新导出。
+- 五类资产确定性映射为 UTF-8 JSONL 或 UTF-8 BOM CSV；Artifact 保存文件 SHA-256、Canonical Export Manifest Hash、行数、编码与安全文件名。
+- 新增创建、列表、详情、Artifact Metadata、下载和 revoke API，以及集中式 read/create/download/revoke 权限；只有 admin 创建与撤回。
+- Artifact 不自动过期或物理删除；revoke 后禁止下载但保留文件和审计。来源 stale 阻止新导出，不改写历史 Artifact；历史未 revoke Artifact 可下载并显示 stale。
+- Docker 公开 API Smoke 和独立 PostgreSQL 验收通过。单次权威全量执行为 **1118 passed、21 skipped、7 个旧阶段过期断言失败、44 warnings**；修订这些测试边界后原 7 个节点为 **7 passed**，未违反“只运行一次全量”的约束。
+- P1/P2、Retrieval 与真实 Provider 均零修改/零写入/零调用；默认 Auth disabled、LLM flag false。完整证据见 `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md`。
+- M8 中文前端尚未开始，必须等待新的明确指令。

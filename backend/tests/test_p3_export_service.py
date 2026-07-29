@@ -32,11 +32,14 @@ from app.p3_export_models import (  # noqa: E402
     P3ExportJobStatus,
 )
 from app.p3_export_repositories import (  # noqa: E402
+    complete_export_job,
     create_pending_export_job,
+    fail_export_job,
     get_export_artifact_by_job_id,
     get_export_job_by_id,
     list_export_jobs,
     mark_export_job_running,
+    revoke_succeeded_export,
 )
 from app.p3_export_schemas import (  # noqa: E402
     P3_EXPORT_POLICY_VERSION,
@@ -60,8 +63,12 @@ from app.p3_reuse_models import (  # noqa: E402
     ReuseAssetVersionSource,
     ReuseAssetVersionStatus,
     ReuseProjectStatus,
+    ReuseSourceItem,
 )
-from app.p3_reuse_repositories import P3RepositoryConflict  # noqa: E402
+from app.p3_reuse_repositories import (  # noqa: E402
+    P3RepositoryConflict,
+    P3RepositoryNotFound,
+)
 from app.p3_asset_repositories import canonicalize_asset_content  # noqa: E402
 from test_p3_publication_service import (  # noqa: E402
     _approve,
@@ -759,7 +766,7 @@ def test_postgresql_export_idempotency_and_revoke_transaction():
             class_=Session,
         )
         with Session(engine, expire_on_commit=False) as session:
-            project, _source, asset, review = _published(
+            project, source, asset, review = _published(
                 session,
                 suffix="postgres_export",
             )
@@ -776,6 +783,7 @@ def test_postgresql_export_idempotency_and_revoke_transaction():
                 export_format=P3ExportFormat.JSONL,
             )
             project_id = project.id
+            source_id = source.id
             asset_id = asset.id
         barrier = Barrier(2)
 
@@ -805,9 +813,116 @@ def test_postgresql_export_idempotency_and_revoke_transaction():
         assert len(set(job_ids)) == 1
         with factory() as assertion_session:
             assert assertion_session.query(P3ExportJob).count() == 1
-            assert get_export_job_by_id(
+            job = get_export_job_by_id(
                 assertion_session,
                 job_ids[0],
-            ).status is P3ExportJobStatus.PENDING
+            )
+            assert job.status is P3ExportJobStatus.PENDING
+            mark_export_job_running(assertion_session, job.id)
+            succeeded = complete_export_job(
+                assertion_session,
+                job_id=job.id,
+                storage_backend="local_filesystem",
+                storage_key="postgres/succeeded.jsonl",
+                safe_file_name="training_material-v1.jsonl",
+                content_type="application/x-ndjson",
+                encoding="utf-8",
+                byte_size=12,
+                row_count=1,
+                artifact_sha256="a" * 64,
+                export_manifest_hash="b" * 64,
+            )
+            assert succeeded.job.status is P3ExportJobStatus.SUCCEEDED
+            assert succeeded.artifact is not None
+            assert assertion_session.query(P3ExportArtifact).count() == 1
+
+            failed = create_pending_export_job(
+                assertion_session,
+                project_id=project_id,
+                asset_version_id=asset_id,
+                export_format=P3ExportFormat.CSV,
+                export_policy_version=P3_EXPORT_POLICY_VERSION,
+                requested_by_role="admin",
+                request_id="postgres_failed_request",
+                idempotency_key="postgres_failed_key",
+                request_fingerprint="c" * 64,
+            ).job
+            mark_export_job_running(assertion_session, failed.id)
+            fail_export_job(
+                assertion_session,
+                job_id=failed.id,
+                failure_code="P3_EXPORT_STORAGE_FAILED",
+                failure_message="Injected isolated PostgreSQL failure.",
+            )
+            assert get_export_job_by_id(
+                assertion_session,
+                failed.id,
+            ).status is P3ExportJobStatus.FAILED
+            with pytest.raises(P3RepositoryNotFound):
+                get_export_artifact_by_job_id(assertion_session, failed.id)
+
+            rollback_job = create_pending_export_job(
+                assertion_session,
+                project_id=project_id,
+                asset_version_id=asset_id,
+                export_format=P3ExportFormat.JSONL,
+                export_policy_version=P3_EXPORT_POLICY_VERSION,
+                requested_by_role="admin",
+                request_id="postgres_rollback_request",
+                idempotency_key="postgres_rollback_key",
+                request_fingerprint="d" * 64,
+            ).job
+            mark_export_job_running(assertion_session, rollback_job.id)
+            with pytest.raises(P3RepositoryConflict):
+                complete_export_job(
+                    assertion_session,
+                    job_id=rollback_job.id,
+                    storage_backend="local_filesystem",
+                    storage_key="postgres/succeeded.jsonl",
+                    safe_file_name="training_material-v1.jsonl",
+                    content_type="application/x-ndjson",
+                    encoding="utf-8",
+                    byte_size=12,
+                    row_count=1,
+                    artifact_sha256="a" * 64,
+                    export_manifest_hash="b" * 64,
+                )
+            assert get_export_job_by_id(
+                assertion_session,
+                rollback_job.id,
+            ).status is P3ExportJobStatus.RUNNING
+            assert assertion_session.query(P3ExportArtifact).count() == 1
+            fail_export_job(
+                assertion_session,
+                job_id=rollback_job.id,
+                failure_code="P3_EXPORT_STORAGE_FAILED",
+                failure_message="Rollback verified.",
+            )
+
+            revoked = revoke_succeeded_export(
+                assertion_session,
+                job_id=job.id,
+                actor_role="admin",
+                request_id="postgres_revoke_request",
+                idempotency_key="postgres_revoke_key",
+            )
+            assert revoked.job.status is P3ExportJobStatus.REVOKED
+            assert revoked.artifact is not None
+            assert revoked.job.revoked_at == revoked.artifact.revoked_at
+            original_sha = revoked.artifact.artifact_sha256
+            original_manifest = revoked.artifact.export_manifest_hash
+            source_row = assertion_session.get(ReuseSourceItem, source_id)
+            assert source_row is not None
+            source_row.source_stale = True
+            assertion_session.commit()
+            artifact_after_stale = get_export_artifact_by_job_id(
+                assertion_session,
+                job.id,
+            )
+            assert artifact_after_stale.artifact_sha256 == original_sha
+            assert (
+                artifact_after_stale.export_manifest_hash
+                == original_manifest
+            )
     finally:
         engine.dispose()

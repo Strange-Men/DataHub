@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import create_engine, event, inspect as sa_inspect
+from sqlalchemy import create_engine, event, inspect as sa_inspect, text
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -45,6 +45,7 @@ FORBIDDEN_UNIMPLEMENTED_P3_TABLES = {
     "export_jobs",
     "export_artifacts",
 }
+FROZEN_EXPORT_TABLES = {"export_jobs", "export_artifacts"}
 TEST_DATABASE_URL = os.getenv("DATAHUB_TEST_DATABASE_URL", "").strip()
 
 
@@ -183,9 +184,13 @@ def test_additive_upgrade_and_repeated_create_all_preserve_p1_p2_data() -> None:
 
         tables = set(sa_inspect(engine).get_table_names())
         assert P3_M21_TABLES <= tables
-        assert FORBIDDEN_UNIMPLEMENTED_P3_TABLES.isdisjoint(tables)
+        registered_export_tables = FROZEN_EXPORT_TABLES & tables
         assert {"knowledge_candidates", "assets"} <= tables
         with Session(engine) as session:
+            for table_name in registered_export_tables:
+                assert session.execute(
+                    text(f"SELECT COUNT(*) FROM {table_name}")
+                ).scalar_one() == 0
             assert session.get(
                 p1_p2_models.KnowledgeCandidate,
                 "p3m21_existing_candidate",
@@ -222,6 +227,7 @@ def test_application_init_registers_current_p3_tables_idempotently(
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == (
+        "export_artifacts,export_jobs,"
         "reuse_asset_version_sources,reuse_asset_versions,"
         "reuse_projects,reuse_reviews,reuse_source_items"
     )

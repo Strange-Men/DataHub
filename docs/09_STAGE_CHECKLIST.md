@@ -2596,5 +2596,38 @@ Phase boundary:
 
 - **P3-M6: PASS and ready for the dedicated release commit/tag.**
 - `published` is governed P3 reuse state, not RAG Serving, export, MCP, Agent or training state.
-- P3-M7 has not started and requires a separate explicit instruction.
+- P3-M7 started only after the dedicated Goal and is closed by the checklist below.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M7 Governed JSONL and CSV Export Release
+
+- [x] Independently complete, test, commit, push and annotate M7.1, M7.2 and M7.3 before Release Closure.
+- [x] Add only `export_jobs` and `export_artifacts`; keep all five prior P3 tables and create no eighth P3 business table.
+- [x] Enforce JSONL/CSV formats, five Job states, RESTRICT foreign keys, unique create/revoke idempotency keys, unique Storage Key and at most one Artifact per Job.
+- [x] Implement root-confined local Storage with atomic write, absolute/traversal/symlink protection and no successful Artifact physical-delete API.
+- [x] Serialize all five Asset Types deterministically with fixed JSONL records and CSV columns, UTF-8 encoding contracts and canonical complex fields.
+- [x] Persist `p3-export-v1` Canonical Manifest Hash, final file SHA-256, row count, byte size, safe name and encoding.
+- [x] Require admin plus active Project, current published Asset, approved Review, matching Content/Review/Manifest/Grounding and freshly valid sources for new export.
+- [x] Reuse M2～M6 governance and perform no second eligibility, Review, publication or grounding implementation.
+- [x] Enforce pending/running/succeeded/failed/revoked, deterministic replay, stable conflict, safe failure trail and atomic Job/Artifact completion/revoke.
+- [x] Preserve successful Artifact files and audit on revoke; block revoked download with 410 and perform no physical delete.
+- [x] Block new export after source stale without rewriting existing Artifact/Manifest/SHA; expose stale/current eligibility on historical metadata.
+- [x] Add Export create/list/detail/metadata/download/revoke APIs through Service only.
+- [x] Add centralized `p3.export.read`, `p3.export.create`, `p3.export.download`, `p3.export.revoke`; admin writes and all five roles read/download.
+- [x] Validate download Storage adapter/key, state, revoke flag, file existence, byte size and SHA; expose no internal path or Secret.
+- [x] Pass Docker disabled/token Auth, JSONL/CSV, hash/manifest, idempotency, five-role, revoke-retention and stale-history Smoke.
+- [x] Restore Auth disabled and `P3_LLM_DRAFT_ENABLED=false`; remove exact temporary smoke rows and files without resetting development volumes.
+- [x] Pass isolated PostgreSQL release acceptance: **2 passed, 58 deselected** for schema, concurrency, lifecycle, atomicity, rollback, revoke and stale history.
+- [x] Run the Goal's only full backend invocation: **1118 passed, 21 skipped, 7 stale historical assertion failures, 44 warnings in 2205.57s**.
+- [x] Correct only those seven tests that treated the now-frozen Export tables as absent; pass the exact affected nodes **7/7** without running a second full suite.
+- [x] Pass final M7 Schema/Storage/Service/API focused matrix: **81 passed, 1 skipped, 2 deselected, 2 warnings**.
+- [x] Pass compileall, Secret diff scan, conflict marker scan and `git diff --check`.
+- [x] Keep P1/P2 business/schema/data and Retrieval frozen; call no real Provider.
+- [x] Add `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M7: PASS and ready for the dedicated release commit/tag.**
+- Export means a governed local Artifact, not training, RAG, MCP, Agent, cloud upload or public release.
+- P3 has exactly seven frozen tables; M8 frontend and P4 have not started.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.

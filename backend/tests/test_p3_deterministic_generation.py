@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, event, inspect as sa_inspect
+from sqlalchemy import create_engine, event, inspect as sa_inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -50,7 +50,7 @@ from app.p3_reuse_service import P3ReuseService, P3SourceIneligible  # noqa: E40
 from app.p3_source_eligibility_schemas import P3SourceType  # noqa: E402
 
 
-FUTURE_TABLES = {"export_jobs", "export_artifacts"}
+FROZEN_EXPORT_TABLES = {"export_jobs", "export_artifacts"}
 
 
 @pytest.fixture(scope="module")
@@ -723,7 +723,7 @@ def test_missing_approved_material_returns_stable_safe_error(db: Session) -> Non
     assert source.source_id not in caught.value.message
 
 
-def test_generation_does_not_modify_p1_p2_or_create_future_tables(
+def test_generation_does_not_modify_p1_p2_or_write_export_tables(
     db: Session,
     sqlite_engine,
 ) -> None:
@@ -746,7 +746,13 @@ def test_generation_does_not_modify_p1_p2_or_create_future_tables(
         candidate.status,
         review.snapshot_json,
     ) == before
-    assert FUTURE_TABLES.isdisjoint(sa_inspect(sqlite_engine).get_table_names())
+    registered_export_tables = FROZEN_EXPORT_TABLES & set(
+        sa_inspect(sqlite_engine).get_table_names()
+    )
+    for table_name in registered_export_tables:
+        assert db.execute(
+            text(f"SELECT COUNT(*) FROM {table_name}")
+        ).scalar_one() == 0
 
 
 def test_generation_boundary_has_no_provider_network_or_random_dependency() -> None:

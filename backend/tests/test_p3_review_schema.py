@@ -45,7 +45,7 @@ from scripts.test_environment import require_test_database_url
 
 
 TEST_DATABASE_URL = os.getenv("DATAHUB_TEST_DATABASE_URL", "").strip()
-FORBIDDEN_TABLES = {"export_jobs", "export_artifacts"}
+FROZEN_EXPORT_TABLES = {"export_jobs", "export_artifacts"}
 
 
 def _sqlite_engine():
@@ -385,14 +385,19 @@ def test_parent_and_review_foreign_keys_restrict_physical_delete(
     assert sqlite_session.get(ReuseReview, "review") is not None
 
 
-def test_create_all_is_idempotent_and_only_review_table_is_new() -> None:
+def test_create_all_is_idempotent_with_review_and_export_tables() -> None:
     engine = _sqlite_engine()
     try:
         Base.metadata.create_all(bind=engine)
         Base.metadata.create_all(bind=engine)
         tables = set(inspect(engine).get_table_names())
         assert "reuse_reviews" in tables
-        assert FORBIDDEN_TABLES.isdisjoint(tables)
+        registered_export_tables = FROZEN_EXPORT_TABLES & tables
+        with engine.connect() as connection:
+            for table_name in registered_export_tables:
+                assert connection.execute(
+                    text(f"SELECT COUNT(*) FROM {table_name}")
+                ).scalar_one() == 0
         columns = {item["name"] for item in inspect(engine).get_columns("reuse_reviews")}
         assert {
             "id",
