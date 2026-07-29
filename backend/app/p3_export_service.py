@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,10 +12,19 @@ from sqlalchemy.orm import Session
 from app import p3_export_repositories as repositories
 from app import p3_publication_repositories as publication_repositories
 from app import p3_review_repositories as review_repositories
-from app.p3_export_models import P3ExportFormat, P3ExportJobStatus
+from app.p3_export_models import (
+    P3ExportArtifact,
+    P3ExportFormat,
+    P3ExportJob,
+    P3ExportJobStatus,
+)
 from app.p3_export_schemas import (
     P3_EXPORT_POLICY_VERSION,
     P3_EXPORT_SCHEMA_VERSION,
+    P3ExportArtifactMetadata,
+    P3ExportDownload,
+    P3ExportJobMetadata,
+    P3ExportJobPage,
     P3ExportManifest,
     P3ExportOutcome,
     P3ExportRevokeOutcome,
@@ -36,6 +46,7 @@ from app.p3_publication_service import (
 )
 from app.p3_review_service import P3ReviewServiceError
 from app.p3_reuse_models import (
+    ReuseAssetType,
     ReuseAssetVersion,
     ReuseAssetVersionStatus,
     ReuseProject,
@@ -566,6 +577,245 @@ class P3ExportService:
             job=result.job,
             artifact=result.artifact,
             replayed=result.replayed,
+        )
+
+    def get_export_job(self, export_job_id: str) -> P3ExportJobMetadata:
+        try:
+            job = repositories.get_export_job_by_id(
+                self.db,
+                export_job_id,
+            )
+        except P3RepositoryNotFound as exc:
+            raise _error(
+                "P3_EXPORT_JOB_NOT_FOUND",
+                "Export Job was not found.",
+                export_job_id=export_job_id,
+            ) from exc
+        except (P3RepositoryValidationError, SQLAlchemyError) as exc:
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Job metadata is unavailable.",
+                export_job_id=export_job_id,
+            ) from exc
+        return P3ExportJobMetadata.model_validate(job)
+
+    def list_project_exports(
+        self,
+        *,
+        project_id: str,
+        export_format: P3ExportFormat | None = None,
+        status: P3ExportJobStatus | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> P3ExportJobPage:
+        try:
+            self.publication_service._project(project_id)
+            page = repositories.list_export_jobs(
+                self.db,
+                project_id=project_id,
+                export_format=export_format,
+                status=status,
+                limit=limit,
+                offset=offset,
+            )
+        except P3PublicationServiceError as exc:
+            raise _error(
+                "P3_EXPORT_PROJECT_NOT_FOUND",
+                "Reuse project was not found.",
+                project_id=project_id,
+            ) from exc
+        except (P3RepositoryValidationError, SQLAlchemyError) as exc:
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Job list is unavailable.",
+                project_id=project_id,
+            ) from exc
+        return P3ExportJobPage(
+            items=[
+                P3ExportJobMetadata.model_validate(item)
+                for item in page.items
+            ],
+            total=page.total,
+            limit=page.limit,
+            offset=page.offset,
+        )
+
+    def _artifact_eligibility(
+        self,
+        *,
+        project: ReuseProject,
+        asset_version_id: str,
+        asset_type: ReuseAssetType,
+    ) -> tuple[bool, bool]:
+        source_stale, sources_eligible = (
+            self.publication_service._project_reuse_eligibility(project)
+        )
+        if not sources_eligible:
+            return source_stale, False
+        try:
+            current = publication_repositories.get_current_published_asset(
+                self.db,
+                project_id=project.id,
+                asset_type=asset_type,
+            )
+        except P3RepositoryNotFound:
+            return source_stale, False
+        except (P3RepositoryValidationError, SQLAlchemyError) as exc:
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Current publication metadata is unavailable.",
+                asset_version_id=asset_version_id,
+            ) from exc
+        return source_stale, current.id == asset_version_id
+
+    def _artifact_metadata(
+        self,
+        *,
+        job: P3ExportJob,
+        artifact: P3ExportArtifact,
+    ) -> P3ExportArtifactMetadata:
+        project = self.publication_service._project(job.project_id)
+        asset = self.publication_service._asset(
+            project=project,
+            asset_version_id=job.asset_version_id,
+        )
+        source_stale, current_eligible = self._artifact_eligibility(
+            project=project,
+            asset_version_id=job.asset_version_id,
+            asset_type=asset.asset_type,
+        )
+        return P3ExportArtifactMetadata(
+            id=artifact.id,
+            export_job_id=artifact.export_job_id,
+            asset_version_id=artifact.asset_version_id,
+            export_format=artifact.export_format,
+            safe_file_name=artifact.safe_file_name,
+            content_type=artifact.content_type,
+            encoding=artifact.encoding,
+            byte_size=artifact.byte_size,
+            row_count=artifact.row_count,
+            artifact_sha256=artifact.artifact_sha256,
+            export_manifest_hash=artifact.export_manifest_hash,
+            created_at=artifact.created_at,
+            revoked_at=artifact.revoked_at,
+            source_stale=source_stale,
+            current_reuse_eligible=(
+                current_eligible
+                and job.status is P3ExportJobStatus.SUCCEEDED
+            ),
+        )
+
+    def get_export_artifact(
+        self,
+        export_job_id: str,
+    ) -> P3ExportArtifactMetadata:
+        try:
+            job = repositories.get_export_job_by_id(
+                self.db,
+                export_job_id,
+            )
+            artifact = repositories.get_export_artifact_by_job_id(
+                self.db,
+                job.id,
+            )
+            return self._artifact_metadata(job=job, artifact=artifact)
+        except P3RepositoryNotFound as exc:
+            raise _error(
+                "P3_EXPORT_ARTIFACT_NOT_FOUND",
+                "Export Artifact was not found.",
+                export_job_id=export_job_id,
+            ) from exc
+        except P3PublicationServiceError as exc:
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Artifact governance metadata is unavailable.",
+                export_job_id=export_job_id,
+            ) from exc
+        except (P3RepositoryValidationError, SQLAlchemyError) as exc:
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Artifact metadata is unavailable.",
+                export_job_id=export_job_id,
+            ) from exc
+
+    def get_artifact_download(self, artifact_id: str) -> P3ExportDownload:
+        try:
+            artifact = repositories.get_export_artifact_by_id(
+                self.db,
+                artifact_id,
+            )
+            job = repositories.get_export_job_by_id(
+                self.db,
+                artifact.export_job_id,
+            )
+        except P3RepositoryNotFound as exc:
+            raise _error(
+                "P3_EXPORT_ARTIFACT_NOT_FOUND",
+                "Export Artifact was not found.",
+                artifact_id=artifact_id,
+            ) from exc
+        except (P3RepositoryValidationError, SQLAlchemyError) as exc:
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Artifact metadata is unavailable.",
+                artifact_id=artifact_id,
+            ) from exc
+        if (
+            job.status is P3ExportJobStatus.REVOKED
+            or artifact.revoked_at is not None
+        ):
+            raise _error(
+                "P3_EXPORT_ARTIFACT_REVOKED",
+                "Export Artifact has been revoked.",
+                artifact_id=artifact.id,
+            )
+        if job.status is not P3ExportJobStatus.SUCCEEDED:
+            raise _error(
+                "P3_EXPORT_JOB_STATE_INVALID",
+                "Export Artifact is not available for download.",
+                export_job_id=job.id,
+            )
+        if (
+            not re.fullmatch(
+                r"[a-z0-9][a-z0-9._-]{0,254}",
+                artifact.safe_file_name,
+            )
+            or ".." in artifact.safe_file_name
+        ):
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Artifact file name is invalid.",
+                artifact_id=artifact.id,
+            )
+        try:
+            stat = self.storage.stat(artifact.storage_key)
+            if stat.byte_size != artifact.byte_size:
+                raise P3ExportStorageError(
+                    "Export Artifact size verification failed."
+                )
+            with self.storage.open_read(artifact.storage_key) as handle:
+                content = handle.read()
+        except P3ExportStorageError as exc:
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Artifact file is unavailable.",
+                artifact_id=artifact.id,
+            ) from exc
+        if (
+            len(content) != artifact.byte_size
+            or _sha256(content) != artifact.artifact_sha256
+        ):
+            raise _error(
+                "P3_EXPORT_STORAGE_FAILED",
+                "Export Artifact integrity verification failed.",
+                artifact_id=artifact.id,
+            )
+        return P3ExportDownload(
+            content=content,
+            safe_file_name=artifact.safe_file_name,
+            content_type=artifact.content_type,
+            artifact_sha256=artifact.artifact_sha256,
+            byte_size=artifact.byte_size,
         )
 
 

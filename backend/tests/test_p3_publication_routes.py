@@ -731,7 +731,7 @@ def test_route_is_thin_and_calls_only_publication_service() -> None:
     assert "Export" not in source
 
 
-def test_actual_flow_does_not_modify_p1_or_create_export_tables(
+def test_actual_flow_does_not_modify_p1_or_write_export_rows(
     client: TestClient,
 ) -> None:
     project, asset = _actual_asset(client, suffix="frozen")
@@ -758,6 +758,18 @@ def test_actual_flow_does_not_modify_p1_or_create_export_tables(
             db.query(KnowledgeCandidate).count(),
             db.query(ReviewRecord).count(),
         )
+        export_counts = (
+            db.execute(
+                __import__("sqlalchemy").text(
+                    "SELECT COUNT(*) FROM export_jobs"
+                )
+            ).scalar_one(),
+            db.execute(
+                __import__("sqlalchemy").text(
+                    "SELECT COUNT(*) FROM export_artifacts"
+                )
+            ).scalar_one(),
+        )
         tables = {
             row[0]
             for row in db.execute(
@@ -769,8 +781,8 @@ def test_actual_flow_does_not_modify_p1_or_create_export_tables(
     finally:
         db.close()
     assert after == before
-    assert "export_jobs" not in tables
-    assert "export_artifacts" not in tables
+    assert {"export_jobs", "export_artifacts"}.issubset(tables)
+    assert export_counts == (0, 0)
 
 
 def test_service_error_mapping_and_unknown_error_are_safe(

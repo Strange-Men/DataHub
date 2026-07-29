@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.p3_export_models import (
     P3ExportArtifact,
@@ -21,6 +21,7 @@ P3_EXPORT_SCHEMA_VERSION = "p3-export-v1"
 
 
 class P3ExportErrorCode(str, Enum):
+    PROJECT_NOT_FOUND = "P3_EXPORT_PROJECT_NOT_FOUND"
     PROJECT_NOT_ACTIVE = "P3_EXPORT_PROJECT_NOT_ACTIVE"
     ASSET_NOT_FOUND = "P3_EXPORT_ASSET_NOT_FOUND"
     ASSET_NOT_PUBLISHED = "P3_EXPORT_ASSET_NOT_PUBLISHED"
@@ -67,6 +68,26 @@ class P3ExportJobView(BaseModel):
     failure_message: str | None = None
 
 
+class P3ExportJobMetadata(BaseModel):
+    model_config = ConfigDict(from_attributes=True, frozen=True)
+
+    id: str
+    project_id: str
+    asset_version_id: str
+    export_format: P3ExportFormat
+    status: P3ExportJobStatus
+    export_policy_version: str
+    requested_by_role: str
+    request_id: str
+    created_at: datetime
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    failed_at: datetime | None = None
+    revoked_at: datetime | None = None
+    failure_code: str | None = None
+    failure_message: str | None = None
+
+
 class P3ExportArtifactView(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -87,6 +108,76 @@ class P3ExportArtifactView(BaseModel):
     revoked_at: datetime | None = None
     revoked_by_role: str | None = None
     revoke_request_id: str | None = None
+
+
+class P3ExportArtifactMetadata(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    export_job_id: str
+    asset_version_id: str
+    export_format: P3ExportFormat
+    safe_file_name: str
+    content_type: str
+    encoding: str
+    byte_size: int
+    row_count: int
+    artifact_sha256: str
+    export_manifest_hash: str
+    created_at: datetime
+    revoked_at: datetime | None = None
+    source_stale: bool
+    current_reuse_eligible: bool
+
+
+class P3ExportJobPage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    items: list[P3ExportJobMetadata]
+    total: int
+    limit: int
+    offset: int
+
+
+class P3ExportCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    export_format: P3ExportFormat
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class P3ExportRevokeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    idempotency_key: str = Field(min_length=1, max_length=200)
+
+
+class P3ExportJobResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3ExportJobMetadata
+    requestId: str
+
+
+class P3ExportJobPageResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3ExportJobPage
+    requestId: str
+
+
+class P3ExportArtifactResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3ExportArtifactMetadata
+    requestId: str
+
+
+class P3ExportDownload(BaseModel):
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+
+    content: bytes
+    safe_file_name: str
+    content_type: str
+    artifact_sha256: str
+    byte_size: int
 
 
 class P3ExportManifest(BaseModel):
@@ -121,6 +212,34 @@ class P3ExportRevokeOutcome(BaseModel):
     replayed: bool = False
 
 
+class P3ExportApiOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    job: P3ExportJobMetadata
+    artifact: P3ExportArtifactMetadata | None = None
+    replayed: bool = False
+
+
+class P3ExportApiRevokeOutcome(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    job: P3ExportJobMetadata
+    artifact: P3ExportArtifactMetadata
+    replayed: bool = False
+
+
+class P3ExportOutcomeResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3ExportApiOutcome
+    requestId: str
+
+
+class P3ExportRevokeResponse(BaseModel):
+    success: Literal[True] = True
+    data: P3ExportApiRevokeOutcome
+    requestId: str
+
+
 def export_outcome(
     job: P3ExportJob,
     artifact: P3ExportArtifact | None,
@@ -142,10 +261,23 @@ __all__ = [
     "P3_EXPORT_POLICY_VERSION",
     "P3_EXPORT_SCHEMA_VERSION",
     "P3ExportArtifactView",
+    "P3ExportApiOutcome",
+    "P3ExportApiRevokeOutcome",
+    "P3ExportArtifactMetadata",
+    "P3ExportArtifactResponse",
+    "P3ExportCreateRequest",
+    "P3ExportDownload",
     "P3ExportErrorCode",
     "P3ExportJobView",
+    "P3ExportJobMetadata",
+    "P3ExportJobPage",
+    "P3ExportJobPageResponse",
+    "P3ExportJobResponse",
     "P3ExportManifest",
     "P3ExportOutcome",
+    "P3ExportOutcomeResponse",
+    "P3ExportRevokeRequest",
     "P3ExportRevokeOutcome",
+    "P3ExportRevokeResponse",
     "export_outcome",
 ]

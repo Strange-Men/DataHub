@@ -74,6 +74,7 @@ from test_p3_publication_service import (  # noqa: E402
 TEST_DATABASE_URL = os.getenv("DATAHUB_TEST_DATABASE_URL", "").strip()
 ASSET_TYPES = list(ReuseAssetType)
 EXPECTED_ERROR_CODES = {
+    "P3_EXPORT_PROJECT_NOT_FOUND",
     "P3_EXPORT_PROJECT_NOT_ACTIVE",
     "P3_EXPORT_ASSET_NOT_FOUND",
     "P3_EXPORT_ASSET_NOT_PUBLISHED",

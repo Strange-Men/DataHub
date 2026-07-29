@@ -143,6 +143,19 @@ def get_export_artifact_by_job_id(
     return row
 
 
+def get_export_artifact_by_id(
+    db: Session,
+    artifact_id: str,
+) -> P3ExportArtifact:
+    row = db.get(
+        P3ExportArtifact,
+        _required_text(artifact_id, "artifact_id", 200),
+    )
+    if row is None:
+        raise P3RepositoryNotFound("Export Artifact was not found.")
+    return row
+
+
 def create_pending_export_job(
     db: Session,
     *,
@@ -375,6 +388,7 @@ def list_export_jobs(
     *,
     project_id: str | None = None,
     status: P3ExportJobStatus | None = None,
+    export_format: P3ExportFormat | None = None,
     limit: int = DEFAULT_PAGE_LIMIT,
     offset: int = 0,
 ) -> P3RepositoryPage[P3ExportJob]:
@@ -389,6 +403,10 @@ def list_export_jobs(
         if not isinstance(status, P3ExportJobStatus):
             raise P3RepositoryValidationError("status is invalid.")
         query = query.filter(P3ExportJob.status == status)
+    if export_format is not None:
+        if not isinstance(export_format, P3ExportFormat):
+            raise P3RepositoryValidationError("export_format is invalid.")
+        query = query.filter(P3ExportJob.export_format == export_format)
     total = query.with_entities(func.count(P3ExportJob.id)).scalar() or 0
     rows = (
         query.order_by(P3ExportJob.created_at.desc(), P3ExportJob.id.desc())
@@ -405,6 +423,7 @@ __all__ = [
     "create_pending_export_job",
     "fail_export_job",
     "get_export_artifact_by_job_id",
+    "get_export_artifact_by_id",
     "get_export_job_by_id",
     "get_export_job_by_idempotency_key",
     "get_export_job_by_revoke_idempotency_key",
