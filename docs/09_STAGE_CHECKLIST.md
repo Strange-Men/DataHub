@@ -2562,3 +2562,39 @@ Phase boundary:
 - P3-M6 has not started and requires a separate explicit instruction.
 - `approved` remains unpublished, unsearchable and non-exportable.
 - P1/P2 remain frozen; Render P2 persistence remains BLOCKED.
+
+## P3-M6 Governed Asset Publication Release
+
+- [x] Independently complete, test, commit, push and annotate M6.1, M6.2 and M6.3 before Release Closure.
+- [x] Add publication/archive audit fields and self-restricted `superseded_by_asset_version_id` to the existing Asset Version table.
+- [x] Add no table; keep P3 at exactly five tables and create no `export_jobs` or `export_artifacts`.
+- [x] Preserve old deterministic/LLM/manual Payload, Content Hash, Manifest Hash, Source Snapshot and Review across repeat-safe forward compatibility.
+- [x] Enforce at database level at most one current `published` per Project/Asset Type in SQLite and PostgreSQL.
+- [x] Atomically supersede old current and publish new approved version; roll back both sides on failure.
+- [x] Enforce publish/archive idempotency replay and stable conflict without changing original timestamps.
+- [x] Permit only active Project, `approved` Asset, approved `p3-review-v1`, complete checklist and matching Review/Content/Manifest evidence.
+- [x] Reuse M2 source revalidation, M3 canonical Hash/Manifest, M4 Grounding and M5 Review rules.
+- [x] Block new publication when Source is stale or evidence has changed; preserve all historical published content and evidence.
+- [x] Allow admin-only publish/archive; allow all five roles to read Current Published.
+- [x] Add centralized `p3.asset.publish`, `p3.asset.archive`, `p3.asset.read_published` without adding roles.
+- [x] Add publish, archive, Current Published list and by-type lookup through Publication Service only.
+- [x] Forbid caller-supplied status, audit fields, Review, Hash, Snapshot or supersede relationship.
+- [x] Archive approved/published/superseded versions logically; provide no restore and perform no physical delete.
+- [x] Leave no current after archiving current published; never auto-restore older superseded or auto-publish another approved version.
+- [x] Pass M6.1 Repository 30 plus PostgreSQL 1, M6.2 Service 25 plus PostgreSQL 1, and M6.3 API/RBAC 27.
+- [x] Pass Docker first-publish/replacement/archive/stale/three-mode/Auth Smoke; restore Auth disabled and LLM flag false.
+- [x] Preserve Docker P1/P2/Retrieval counts and immutable Source/Review/Hash evidence; remove exact temporary P3 rows.
+- [x] Pass isolated PostgreSQL release acceptance: 2 tests for compatibility, unique current, concurrency, rollback, idempotency, archive and history protection.
+- [x] Pass final M1～M6/Auth/OpenAPI matrix: **604 passed, 13 deselected, 2 warnings**.
+- [x] Run the Goal's only authoritative clean-export backend suite: **1044 passed, 18 skipped, 44 warnings in 131.31s**.
+- [x] Pass compileall, Secret scan, conflict marker scan, table inventory and `git diff --check`.
+- [x] Remove clean-export files, Smoke script and isolated database; preserve healthy development Docker volumes.
+- [x] Keep P1/P2 and Retrieval frozen, call no real Provider and enter no Export/frontend/P4 capability.
+- [x] Add `docs/81_P3_M6_ASSET_PUBLICATION_RELEASE_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M6: PASS and ready for the dedicated release commit/tag.**
+- `published` is governed P3 reuse state, not RAG Serving, export, MCP, Agent or training state.
+- P3-M7 has not started and requires a separate explicit instruction.
+- P1/P2 remain frozen; Render P2 persistence remains BLOCKED.

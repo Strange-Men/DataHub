@@ -2237,4 +2237,20 @@ This is a planning and documentation checkpoint only.
 - Three outdated historical tests were corrected to stop treating the now-implemented `reuse_reviews` as a future table; no product-code repair was required at Release Closure.
 - P1/P2 business/schema/data remain frozen. Real Provider calls are 0. No Export table, publish, frontend or P4 path was added.
 - `approved` remains unpublished, unsearchable and non-exportable. Report: `docs/80_P3_M5_MANUAL_REVISION_REVIEW_RELEASE_REPORT.md`.
-- P3-M6 has not started and requires a separate explicit instruction.
+
+## P3-M6 Governed Asset Publication Release
+
+- Status: **COMPLETE / PASS**, pending the dedicated release commit/tag in this closure turn.
+- M6.1 extends the existing `reuse_asset_versions` table with role/request/idempotency publication and archive audit, plus self-restricted `superseded_by_asset_version_id`; no new table is added.
+- SQLite/PostgreSQL database-level partial uniqueness permits at most one `status=published` row per Project/Asset Type. Forward compatibility is repeat-safe and preserves old deterministic/LLM/manual Payload, Hash, Snapshot and Review records.
+- M6.1 Repository supports current lookup/list, atomic publish/supersede, archive, state lookup and publish/archive idempotency replay. Failure rolls back the entire old-current/new-current transition.
+- M6.2 permits only active-Project, human-approved, Hash/Manifest/Grounding-valid, currently eligible assets to publish. It reuses M2/M3/M4/M5 governance rather than introducing a second rule set.
+- Only admin may publish or archive. Archived and superseded versions cannot republish; archiving current published leaves no current and never restores an older superseded version.
+- M6.3 exposes publish, archive, Current Published list and by-type lookup through Service-only routes. Central permissions are `p3.asset.publish`, `p3.asset.archive` and `p3.asset.read_published`; all five roles read, admin alone writes.
+- Docker Smoke passed deterministic/LLM/manual publication, first publish, replacement, archive, stale block, 401/403/200 and disabled restoration. Exact P3 smoke rows were removed; P1/P2/Retrieval counts and Source/Review/Hash evidence were unchanged.
+- Isolated PostgreSQL passed 2 tests for compatibility, unique current slot, concurrency, atomic rollback, idempotency, archive and history protection; the exact database was dropped.
+- Final P3-M1 through M6/Auth/OpenAPI matrix: **604 passed, 13 deselected, 2 warnings**. Authoritative clean-export backend: **1044 passed, 18 skipped, 44 warnings in 131.31s**.
+- One M6.1 ORM flush-order defect was fixed before its stage commit. M6.3 corrected only the shared SQLite Route test teardown for self-referencing rows; product delete semantics were unchanged.
+- P1/P2 business/schema/data and Retrieval remain frozen. Real Provider calls are 0. P3 still has exactly five tables; no `export_jobs` or `export_artifacts` exists.
+- `published` does not automatically enter RAG, export, MCP, Agent or training. Report: `docs/81_P3_M6_ASSET_PUBLICATION_RELEASE_REPORT.md`.
+- P3-M7 has not started and requires a separate explicit instruction.
