@@ -28,12 +28,12 @@ export function HomePage({
       disabled: false,
     },
     {
-      title: "P3 数据资产复用",
+      title: "数据资产复用",
       badge: "P3",
-      description: "数据资产复用能力将在后续阶段规划，当前没有可操作入口。",
-      status: "规划中",
-      path: "/p3-asset-reuse",
-      disabled: true,
+      description: "把已审核知识整理为培训材料、SOP、客服话术、问答题库或数据集，并保留来源与审核记录。",
+      status: "可使用",
+      path: "/p3",
+      disabled: false,
     },
     {
       title: "P4 MCP + Agent 集群",
@@ -63,8 +63,8 @@ export function HomePage({
         </div>
         <div className="hero-status-bar" aria-label="平台状态">
           <span><i className={`conn-indicator ${backendStatus.state}`} />{backendStatus.state === "connected" ? "服务正常" : backendStatus.state === "checking" ? "连接中" : "服务暂不可用"}</span>
-          <span><strong>可使用</strong> P1 · P2 · 检索与 Agent 验证</span>
-          <span><strong>规划中</strong> P3 · P4</span>
+          <span><strong>可使用</strong> P1 · P2 · P3 · 检索与 Agent 验证</span>
+          <span><strong>规划中</strong> P4</span>
           <button type="button" className="btn-small" onClick={onCheckBackend}>重新检测</button>
         </div>
       </section>

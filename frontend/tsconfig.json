@@ -11,6 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Node",
+    "types": ["vitest/globals"],
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
@@ -19,4 +20,3 @@
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-

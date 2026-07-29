@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { apiFetch as fetch, apiPath } from "./api";
 import type { BackendStatus } from "./types";
 import { Layout } from "./components/Layout";
@@ -72,7 +72,8 @@ export function App() {
           <Route path="/p2-material-center" element={<P2MaterialCenter />} />
           <Route path="/retrieval-validation" element={<RetrievalValidation />} />
           <Route path="/system-status" element={<SystemStatus backendStatus={backendStatus} onCheckBackend={checkBackendConnection} />} />
-          <Route path="/p3-asset-reuse" element={<P3AssetReuse />} />
+          <Route path="/p3" element={<P3AssetReuse />} />
+          <Route path="/p3-asset-reuse" element={<Navigate to="/p3" replace />} />
           <Route path="/p4-mcp-agents" element={<P4McpAgents />} />
           </Routes>
         </Layout>
