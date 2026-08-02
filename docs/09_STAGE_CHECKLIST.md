@@ -2654,4 +2654,35 @@ Phase boundary:
 
 - **P3-M7.5: PASS and ready for the dedicated validation commit/tag.**
 - M7 product scope and behavior are unchanged.
-- P3-M8 frontend and P4 have not started.
+- P3-M8 frontend is closed by the checklist below; P4 has not started.
+
+## P3-M8 Chinese Frontend Workflow Release
+
+- [x] Complete M8.1～M8.4 independently with focused tests, exact commit, push and annotated tag before M8.5.
+- [x] Enable the P3 home card and `/p3` route while preserving P1/P2 and keeping P4 disabled/planned.
+- [x] Provide a Chinese five-stage workspace: Project/Source, Draft, Revision/Review, Publication and Export Delivery.
+- [x] Use typed clients for the existing M1～M7 APIs; add no backend API, table or business semantic.
+- [x] Keep source governance server-derived; allow no caller-supplied approved/current/archived/Review/Snapshot/Trace/Hash fields.
+- [x] Support P1, P2 and approved Bad Case correction source eligibility; display raw/ineligible reasons as stable business outcomes.
+- [x] Generate all five asset types deterministically and keep LLM draft disabled by default.
+- [x] Create manual revisions as new versions; enforce Review checklist/comments and keep approved separate from published.
+- [x] Require explicit admin publication; show one Current Published and superseded/archive/stale boundaries.
+- [x] Create JSONL/CSV exports, download authorized Artifacts and revoke with confirmation/410 behavior.
+- [x] Use `/api/auth/me` for role UX; treat frontend button visibility as convenience and backend RBAC as authority.
+- [x] Provide Chinese status/error mappings plus Loading, Empty, Error and stable retry/idempotency behavior.
+- [x] Pass responsive checks at 1920/1440/1366/768/390 with no page-level horizontal overflow.
+- [x] Pass accessibility checks for labels, textual state, keyboard focus, Dialog trap/restore/Escape and destructive confirmation.
+- [x] Complete real Docker needs-revision → approved → published → export/download/revoke and rejected user paths.
+- [x] Preserve stale gates through existing backend contracts without mutating P1/P2 to fabricate stale data.
+- [x] Pass frontend full unit/component/contract suite: **49 passed**.
+- [x] Pass TypeScript and production build; lint has **0 errors** and one pre-existing P1 warning.
+- [x] Pass bounded Auth/RBAC/stale/OpenAPI backend regression: **8 passed**; retain M7.5 backend authority **1125 passed, 21 skipped, 0 failed**.
+- [x] Use no Preview Fixture and make no unsupported Vercel deployment claim; local Docker real API remains functional authority.
+- [x] Modify no backend business code, P1/P2, Provider, database table or P4 capability.
+- [x] Keep P3 at exactly seven frozen tables and call no real Provider.
+- [x] Add `docs/84_P3_M8_CHINESE_FRONTEND_RELEASE_REPORT.md`.
+
+Phase boundary:
+
+- **P3-M8: PASS and ready for the dedicated release commit/tag.**
+- P4 has not started and requires a separate explicit instruction.

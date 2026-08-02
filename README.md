@@ -265,7 +265,7 @@ python scripts/run_p2_local_acceptance.py --auth-token-env DATAHUB_ADMIN_TOKEN
 - P2：上传 → Extraction → Review → Snapshot → 发布 → Index → Embed → Ready → Serve → Retrieval → Archive → Source Trace。
 - `ready · 向量已生成，尚未开放检索` 与 `serving · 已开放检索` 明确分开；Serve、Archive、Reject、RAG sync 和版本替换会说明影响并二次确认。
 - 检索验证页调用真实 P1/P2/Unified/CustomerOpsAgent API。CustomerOpsAgent 默认 P1-only，Unified 必须显式 opt-in。
-- P3-M7 受治理导出阶段已完成：只有仍满足来源、Review、Hash、Manifest、Grounding 与 current published 门禁的资产，才能由 admin 确定性导出 JSONL/CSV；Artifact 保存 SHA、Manifest 和撤回审计。尚无 P3 前端任务流，P3 页面仍显示“尚未开放”；导出不会自动进入训练、RAG、MCP 或 Agent，P3-M8 与 P4 尚未开始。
+- P3-M8 中文任务流已完成：从治理来源选择、Project 激活、确定性草稿、人工修订/审核，到发布、JSONL/CSV 导出、下载与 revoke 均使用真实 P3 API。前端权限提示不替代后端 RBAC；published 不等于进入 RAG/Agent，export 不等于模型训练，P4 仍为规划中。
 
 校验并启动：
 
@@ -731,7 +731,7 @@ M9.1-M9.5 已完成本地 Docker 维护版本封板：Eval 使用 run-scoped man
 
 本地权威结果：P1 Harness `10/10`、P2 Acceptance PASS、clean-export backend `460 passed / 5 skipped`、frontend production build PASS。CustomerOpsAgent 默认仍为 P1-only，Unified 仍需显式 opt-in。完整证据见 `docs/68_M9_5_MAINTENANCE_RELEASE_CLOSURE_REPORT.md`。
 
-该结论仅覆盖本地 Docker。Render P2 持久化部署仍为 BLOCKED。P3-M0.1 数据资产复用规划已冻结，七表、状态机和 M1～M9 路线见 `docs/71_P3_DATA_ASSET_REUSE_PRD_AND_SCOPE.md` 至 `docs/74_P3_M0_PLANNING_FREEZE_DECISION.md`；P3-M1 来源资格至 P3-M7 受治理 JSONL/CSV 导出均已通过本地 Release Closure，证据见 `docs/75`～`docs/82`。P3-M8 中文前端与 P4 尚未开始。
+该结论仅覆盖本地 Docker。Render P2 持久化部署仍为 BLOCKED。P3-M0.1 数据资产复用规划已冻结，七表、状态机和 M1～M9 路线见 `docs/71_P3_DATA_ASSET_REUSE_PRD_AND_SCOPE.md` 至 `docs/74_P3_M0_PLANNING_FREEZE_DECISION.md`；P3-M1 来源资格至 P3-M8 中文前端任务流均已通过本地 Release Closure，证据见 `docs/75`～`docs/84`。P4 尚未开始。
 
 ## P3-M4 Governed LLM-assisted Draft Release
 
@@ -769,4 +769,13 @@ M9.1-M9.5 已完成本地 Docker 维护版本封板：Eval 使用 run-scoped man
 - Artifact 不自动过期或物理删除；revoke 后禁止下载但保留文件和审计。来源 stale 阻止新导出，不改写历史 Artifact；历史未 revoke Artifact 可下载并显示 stale。
 - Docker 公开 API Smoke 和独立 PostgreSQL 验收通过。M7.5 收紧“精确七表”契约并在全新 clean-export 上取得最终权威结果：**1125 passed、21 skipped、44 warnings、0 failed**。
 - P1/P2、Retrieval 与真实 Provider 均零修改/零写入/零调用；默认 Auth disabled、LLM flag false。Release 与发布后验证证据见 `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md`、`docs/83_P3_M7_POST_RELEASE_VALIDATION_REPORT.md`。
-- M8 中文前端尚未开始，必须等待新的明确指令。
+- M8 中文前端已完成并通过本地 Docker 真实流程、49 项前端全量测试、TypeScript/lint/build 与响应式/可访问性验收；完整证据见 `docs/84_P3_M8_CHINESE_FRONTEND_RELEASE_REPORT.md`。P4 尚未开始。
+
+## P3-M8 Chinese Frontend Workflow Release
+
+- **Decision: PASS.** `/p3` 提供“项目与来源 → 草稿生成 → 编辑与审核 → 发布管理 → 导出交付”五阶段中文工作区。
+- 五类资产支持确定性生成与结构化修订；人工 Review 明确区分 `needs_revision`、`approved`、`rejected`，且 `approved` 不等于 `published`。
+- admin 显式发布与导出；JSONL/CSV Artifact 可下载、逻辑 revoke，撤回后下载返回 410 并保留 Manifest、Hash 和审计。
+- 前端角色行为复用 `/api/auth/me` 与既有 Permission；隐藏/禁用按钮只改善体验，后端 RBAC 始终是安全边界。
+- 本地 Docker 两条完整生命周期通过；frontend 49 tests、TypeScript、production build 通过，lint 0 errors（1 条既有 P1 warning）。
+- P1/P2 与后端业务零修改，真实 Provider 零调用，P3 仍精确七表；LLM 默认关闭，P4 尚未开始。报告：`docs/84_P3_M8_CHINESE_FRONTEND_RELEASE_REPORT.md`。

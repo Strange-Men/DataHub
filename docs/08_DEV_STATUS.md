@@ -2274,4 +2274,19 @@ This is a planning and documentation checkpoint only.
 - M7.5 gates: historical nodes **7 passed**; SQLite compatibility **128 passed, 1 skipped, 5 deselected**; isolated PostgreSQL compatibility **5 passed, 129 deselected**; fresh clean-export full backend **1125 passed, 21 skipped, 44 warnings, 0 failed in 144.93s**.
 - P1/P2 business/schema/data and Retrieval remain frozen; real Provider calls are 0. P3 has exactly seven tables and no eighth P3 business table.
 - Reports: `docs/82_P3_M7_GOVERNED_EXPORT_RELEASE_REPORT.md` and `docs/83_P3_M7_POST_RELEASE_VALIDATION_REPORT.md`.
-- P3-M8 frontend has not started and requires a separate explicit instruction after M7 release Git closure.
+- P3-M8 frontend is complete and frozen by the release status below.
+
+## P3-M8 Chinese Frontend Workflow Release
+
+- Status: **COMPLETE / PASS**. M8.1～M8.4 were independently implemented, focused-tested, committed, pushed and annotated before M8.5 Release Closure.
+- `/p3` now exposes the real five-stage Chinese workflow: Project/Source selection, deterministic Draft, Revision/Review, Publication and Export/Download/Revoke.
+- P1/P2 remain available and unchanged; P3 is enabled on the home page; P4 remains disabled and marked planned.
+- Frontend API contracts cover M1～M7 routes without introducing caller-controlled governance fields or a second eligibility/review/publication rule set.
+- Role-aware visibility uses `/api/auth/me`; backend RBAC remains authoritative. LLM generation remains disabled by default.
+- Real retained-volume Docker acceptance completed one needs-revision → new-revision → approved → published → exported → downloaded → revoked path and one rejected path.
+- M8.5 frontend authority passed **49 tests**; TypeScript and production build passed; lint produced 0 errors and one pre-existing P1 hook warning. Bounded backend RBAC/stale/OpenAPI regression passed **8 tests**.
+- Responsive/browser acceptance covered 1920, 1440, 1366, 768 and 390 widths with no page-level overflow and no console warning/error. Accessibility covers labels, text status, focus trap/restore, Escape and explicit destructive confirmation.
+- No backend business file, API, table, P1/P2 behavior or P3 governance semantic changed. Real Provider calls are 0; the exact seven-table P3 model remains unchanged.
+- No Vercel Preview environment was available and no Preview Fixture was used. Local Docker real API is the functional authority.
+- Report: `docs/84_P3_M8_CHINESE_FRONTEND_RELEASE_REPORT.md`.
+- P4 has not started and requires a separate explicit instruction.
