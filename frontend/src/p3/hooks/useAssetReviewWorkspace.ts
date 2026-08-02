@@ -322,6 +322,7 @@ export function useAssetReviewWorkspace(
     submitReview,
     decideReview,
     changeFilters,
+    refreshCurrentProject,
     clearError: () => setError(null),
   };
 }

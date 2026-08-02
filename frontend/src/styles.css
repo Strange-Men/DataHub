@@ -3318,3 +3318,253 @@ label { display: grid; gap: 6px; color: #b4c4d9; font-size: 0.88rem; font-weight
   .p3-revision-editor .p3-form-actions { align-items: stretch; flex-direction: column; }
   .p3-revision-editor .p3-form-actions button { width: 100%; }
 }
+
+/* ================================================================
+   P3 M8.4 PUBLICATION / EXPORT
+   ================================================================ */
+.p3-publication-export {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-surface);
+  overflow: hidden;
+}
+
+.p3-publication-boundary {
+  display: grid;
+  gap: 4px;
+  padding: 13px 15px;
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  border-radius: 10px;
+  background: rgba(14, 90, 107, 0.09);
+}
+
+.p3-publication-boundary strong {
+  color: var(--text-primary);
+  font-size: 0.84rem;
+}
+
+.p3-publication-boundary span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.p3-selected-publication {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--bg-surface-soft);
+}
+
+.p3-selected-publication h3,
+.p3-current-published h3,
+.p3-export-history h3,
+.p3-published-grid h4,
+.p3-export-card-list h4 {
+  margin: 3px 0;
+  color: var(--text-primary);
+}
+
+.p3-selected-publication p,
+.p3-current-published > div:first-child p,
+.p3-export-history > div:first-child p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.p3-publication-actions,
+.p3-export-actions,
+.p3-artifact-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.p3-approval-not-published,
+.p3-current-published-label,
+.p3-readonly-note,
+.p3-permission-note {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.p3-approval-not-published {
+  color: #fde68a;
+}
+
+.p3-current-published-label {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 4px 9px;
+  border: 1px solid rgba(52, 211, 153, 0.32);
+  border-radius: var(--radius-pill);
+  background: rgba(20, 83, 45, 0.12);
+  color: #86efac;
+  font-weight: 700;
+}
+
+.p3-current-published,
+.p3-export-history {
+  display: grid;
+  gap: 13px;
+}
+
+.p3-published-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.p3-published-grid > article,
+.p3-export-card-list > article {
+  display: grid;
+  gap: 13px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--bg-surface-soft);
+}
+
+.p3-published-grid > article.stale {
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.p3-published-card-heading,
+.p3-export-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.p3-published-grid dl,
+.p3-artifact-metadata {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.p3-published-grid dl div,
+.p3-artifact-metadata div {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.22);
+}
+
+.p3-published-grid dt,
+.p3-artifact-metadata dt {
+  color: var(--text-faint);
+  font-size: 0.65rem;
+}
+
+.p3-published-grid dd,
+.p3-artifact-metadata dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+.p3-stale-warning {
+  padding: 10px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 8px;
+  background: rgba(120, 53, 15, 0.12);
+  color: #fde68a;
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
+
+.p3-export-actions button,
+.p3-artifact-actions button {
+  min-height: 40px;
+}
+
+.p3-export-card-list {
+  display: grid;
+  gap: 11px;
+}
+
+.p3-export-card-list > article.revoked {
+  opacity: 0.82;
+}
+
+.p3-revoked-note {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .p3-published-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .p3-selected-publication {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .p3-publication-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .p3-publication-export {
+    gap: 15px;
+    padding: 16px;
+  }
+
+  .p3-published-card-heading,
+  .p3-export-card-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .p3-published-grid dl,
+  .p3-artifact-metadata {
+    grid-template-columns: 1fr;
+  }
+
+  .p3-publication-actions,
+  .p3-export-actions,
+  .p3-artifact-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .p3-publication-actions button,
+  .p3-export-actions button,
+  .p3-artifact-actions button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .p3-dialog {
+    width: min(92vw, 520px);
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+  }
+}

@@ -3,6 +3,7 @@ import { useAuth } from "../auth/AuthContext";
 import { ROLE_LABELS } from "../governance";
 import { ProjectActivationPanel } from "../p3/components/ProjectActivationPanel";
 import { ProjectPicker } from "../p3/components/ProjectPicker";
+import { PublicationExportWorkspace } from "../p3/components/PublicationExportWorkspace";
 import { AssetGenerationPanel } from "../p3/components/AssetGenerationPanel";
 import { AssetVersionList } from "../p3/components/AssetVersionList";
 import { ReviewWorkspace } from "../p3/components/ReviewWorkspace";
@@ -12,6 +13,7 @@ import { StructuredAssetViewer } from "../p3/components/StructuredAssetViewer";
 import { StructuredRevisionEditor } from "../p3/components/StructuredRevisionEditor";
 import { WorkspaceError, WorkspaceNotice } from "../p3/components/WorkspaceFeedback";
 import { useAssetReviewWorkspace } from "../p3/hooks/useAssetReviewWorkspace";
+import { usePublicationExportWorkspace } from "../p3/hooks/usePublicationExportWorkspace";
 import { useProjectSourceWorkspace } from "../p3/hooks/useProjectSourceWorkspace";
 import { P3_PROJECT_STATUS_LABELS } from "../p3/presentation";
 
@@ -27,12 +29,18 @@ export function P3AssetReuse() {
   const { role, authMode } = useAuth();
   const workspace = useProjectSourceWorkspace();
   const assetWorkspace = useAssetReviewWorkspace(workspace.selectedProject, role);
+  const publicationWorkspace = usePublicationExportWorkspace(
+    workspace.selectedProject,
+    assetWorkspace.selectedAsset,
+    assetWorkspace.refreshCurrentProject,
+  );
   const currentStep = useMemo(() => {
     if (!workspace.selectedProject) return 1;
     if (workspace.selectedProject.status === "draft") return 2;
     if (workspace.selectedProject.status === "active") {
       if (!assetWorkspace.selectedAsset) return 3;
       if (["generated", "needs_revision"].includes(assetWorkspace.selectedAsset.status)) return 3;
+      if (["approved", "published", "superseded", "archived"].includes(assetWorkspace.selectedAsset.status)) return 5;
       return 4;
     }
     return 5;
@@ -79,6 +87,8 @@ export function P3AssetReuse() {
       <WorkspaceNotice message={workspace.notice} />
       <WorkspaceError error={assetWorkspace.error} onDismiss={assetWorkspace.clearError} />
       <WorkspaceNotice message={assetWorkspace.notice} />
+      <WorkspaceError error={publicationWorkspace.error} onDismiss={publicationWorkspace.clearError} />
+      <WorkspaceNotice message={publicationWorkspace.notice} />
 
       <ProjectPicker
         role={role}
@@ -213,6 +223,21 @@ export function P3AssetReuse() {
                       />
                     </>
                   )}
+                  <PublicationExportWorkspace
+                    role={role}
+                    selectedAsset={assetWorkspace.selectedAsset}
+                    publishedAssets={publicationWorkspace.publishedAssets}
+                    exportJobs={publicationWorkspace.exportJobs}
+                    artifacts={publicationWorkspace.artifacts}
+                    loading={publicationWorkspace.loading}
+                    busy={publicationWorkspace.mutating}
+                    onPublish={publicationWorkspace.publishSelected}
+                    onArchive={publicationWorkspace.archiveAsset}
+                    onCreateExport={publicationWorkspace.createExport}
+                    onDownload={publicationWorkspace.downloadArtifact}
+                    onRevoke={publicationWorkspace.revokeExport}
+                    onRefresh={publicationWorkspace.refresh}
+                  />
                 </>
               )}
             </>

@@ -156,6 +156,18 @@ function mockWorkspace(initialProject = project(), initialSources: P3SourceItem[
     limit: 100,
     offset: 0,
   }));
+  vi.spyOn(p3Client, "listPublishedAssets").mockResolvedValue(envelope({
+    items: [],
+    total: 0,
+    limit: 100,
+    offset: 0,
+  }));
+  vi.spyOn(p3Client, "listExports").mockResolvedValue(envelope({
+    items: [],
+    total: 0,
+    limit: 20,
+    offset: 0,
+  }));
 }
 
 async function selectInitialProject(user: ReturnType<typeof userEvent.setup>) {
