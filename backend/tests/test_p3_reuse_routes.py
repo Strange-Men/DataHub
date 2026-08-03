@@ -24,6 +24,10 @@ _TEMP_DATABASE_DIR = tempfile.TemporaryDirectory(prefix="datahub-p3-m2-4-")
 _DATABASE_PATH = Path(_TEMP_DATABASE_DIR.name) / "p3-reuse-api.db"
 os.environ["DATABASE_URL"] = f"sqlite:///{_DATABASE_PATH}"
 
+from app.migration_adoption import adopt_or_upgrade  # noqa: E402
+
+adopt_or_upgrade(os.environ["DATABASE_URL"])
+
 from app import p3_reuse_routes as routes_module  # noqa: E402
 from app.auth import (  # noqa: E402
     Permission,

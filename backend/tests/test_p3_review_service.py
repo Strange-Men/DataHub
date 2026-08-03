@@ -665,11 +665,13 @@ def test_postgresql_service_decision_is_atomic() -> None:
     engine = create_engine(
         url,
         pool_pre_ping=True,
-        connect_args={"options": f"-csearch_path={schema}"},
+        connect_args={"options": f"-csearch_path={schema},public"},
     )
     SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
     try:
-        Base.metadata.create_all(bind=engine)
+        # ``public`` exposes the installed vector type; disabling checkfirst
+        # prevents same-named public test tables from defeating schema isolation.
+        Base.metadata.create_all(bind=engine, checkfirst=False)
         with SessionLocal() as session:
             project, _source, asset = _generated(session, suffix="pg")
             service = P3ReviewService(session)

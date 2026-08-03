@@ -618,11 +618,13 @@ def test_postgresql_concurrent_revisions_and_decisions_are_atomic() -> None:
     engine = create_engine(
         url,
         pool_pre_ping=True,
-        connect_args={"options": f"-csearch_path={schema}"},
+        connect_args={"options": f"-csearch_path={schema},public"},
     )
     SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
     try:
-        Base.metadata.create_all(bind=engine)
+        # ``public`` exposes the installed vector type; disabling checkfirst
+        # prevents same-named public test tables from defeating schema isolation.
+        Base.metadata.create_all(bind=engine, checkfirst=False)
         with SessionLocal() as seed:
             parent = _seed_parent(seed)
             parent_id = parent.id

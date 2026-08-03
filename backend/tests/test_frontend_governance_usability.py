@@ -93,18 +93,21 @@ def test_errors_confirmations_and_loading_are_user_safe() -> None:
     assert "console.log" not in governance + p1 + p2 + retrieval
 
 
-def test_home_exposes_real_modules_and_disables_p3_p4() -> None:
+def test_home_exposes_real_modules_and_uses_runtime_capabilities() -> None:
     home = _read("pages/HomePage.tsx")
     layout = _read("components/Layout.tsx")
     styles = _read("styles.css")
     assert 'path: "/p2-material-center"' in home
     assert 'path: "/retrieval-validation"' in home
-    assert home.count('status: "规划中"') == 2
+    assert "getCapabilities" in home
+    assert 'p4: { status: "planned"' in home
+    assert 'module: "p3"' in home
+    assert home.count("entryDisabled: true") == 1
     assert "capability-mark" in home
     assert "💬" not in home and "🎨" not in home and "🔎" not in home
     assert "grid-template-columns: repeat(5, minmax(0, 1fr))" in styles
     assert "P1 文本知识治理" in layout
-    assert "P2 多模态知识治理" in layout
+    assert "P2 素材文本投影治理" in layout
     assert "检索与 Agent 验证" in home + layout
 
 

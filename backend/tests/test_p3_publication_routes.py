@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 
 TESTS_DIR = Path(__file__).resolve().parent
@@ -741,6 +742,12 @@ def test_actual_flow_does_not_modify_p1_or_write_export_rows(
             db.query(KnowledgeCandidate).count(),
             db.query(ReviewRecord).count(),
         )
+        before_export_counts = (
+            db.execute(text("SELECT COUNT(*) FROM export_jobs")).scalar_one(),
+            db.execute(
+                text("SELECT COUNT(*) FROM export_artifacts")
+            ).scalar_one(),
+        )
     finally:
         db.close()
     assert (
@@ -782,7 +789,7 @@ def test_actual_flow_does_not_modify_p1_or_write_export_rows(
         db.close()
     assert after == before
     assert {"export_jobs", "export_artifacts"}.issubset(tables)
-    assert export_counts == (0, 0)
+    assert export_counts == before_export_counts
 
 
 def test_service_error_mapping_and_unknown_error_are_safe(

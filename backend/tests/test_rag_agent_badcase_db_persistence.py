@@ -55,8 +55,8 @@ class RagAgentBadCaseDbPersistenceTest(unittest.TestCase):
         import app.main as _main_module
 
         importlib.reload(db_module)
-        db_module.init_database_tables()
         importlib.reload(_models_module)
+        db_module.init_database_tables()
         importlib.reload(_repo_module)
         importlib.reload(_storage_module)
         importlib.reload(_main_module)
