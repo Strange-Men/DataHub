@@ -1,9 +1,11 @@
-"""Initialize the DataHub database.
+"""DEPRECATED, ADMIN-ONLY legacy table creation utility.
 
-Creates all tables defined in db_models.py via Base.metadata.create_all.
-Works with both SQLite (local default) and PostgreSQL (production).
+This script calls ``Base.metadata.create_all`` and is intentionally excluded
+from Docker and normal application startup. It is not a migration mechanism and
+must not be used to adopt, upgrade, or repair an existing database. Use
+``python scripts/manage_migrations.py status|upgrade`` for managed databases.
 
-Usage:
+Explicit legacy/admin usage only:
     python scripts/init_database.py
 
 Environment:

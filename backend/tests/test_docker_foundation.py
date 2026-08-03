@@ -18,8 +18,10 @@ def _read(relative_path: str) -> str:
     return (ROOT_DIR / relative_path).read_text(encoding="utf-8")
 
 
-def test_compose_defines_health_gated_runtime_and_one_shot_initializers() -> None:
+def test_compose_defines_migration_gated_runtime_and_one_shot_initializers() -> None:
     compose = _read("compose.yaml")
+    db_init = compose[compose.index("  db-init:") : compose.index("  backend:")]
+    backend = compose[compose.index("  backend:") : compose.index("  frontend:")]
 
     for service in ("postgres", "volume-init", "db-init", "backend", "frontend"):
         assert f"  {service}:" in compose
@@ -32,15 +34,26 @@ def test_compose_defines_health_gated_runtime_and_one_shot_initializers() -> Non
     assert '127.0.0.1:${POSTGRES_PORT:-5433}:5432' in compose
     assert '127.0.0.1:${BACKEND_PORT:-8000}:8000' in compose
     assert '127.0.0.1:${FRONTEND_PORT:-5173}:80' in compose
-    assert "python scripts/check_pgvector_support.py && python scripts/init_database.py" in compose
-    assert compose.index("python scripts/check_pgvector_support.py") < compose.index(
-        "python scripts/init_database.py"
-    )
+    assert "      - scripts/manage_migrations.py" in db_init
+    assert "      - upgrade" in db_init
+    assert "environment: *database-environment" in db_init
+    assert "scripts/init_database.py" not in compose
+    assert "check_pgvector_support.py" not in db_init
+    assert "volumes:" not in db_init
+    assert "volume-init:" not in db_init
+    assert "condition: service_completed_successfully" in backend
+    assert "/health/ready" in backend
+    assert "manage_migrations.py" not in backend
+    assert "init_database.py" not in backend
     assert compose.count("condition: service_healthy") >= 2
-    assert compose.count("condition: service_completed_successfully") >= 3
+    assert compose.count("condition: service_completed_successfully") >= 2
     assert 'user: "0:0"' in compose
     assert "network_mode: none" in compose
     assert "chown -R 10001:10001" in compose
+    assert "/app/.local-data/p3-exports" in compose
+    assert "DATAHUB_ENV: local" in compose
+    assert "DATAHUB_ENV: docker" not in compose
+    assert "P2_RETRIEVAL_MIN_SCORE: ${P2_RETRIEVAL_MIN_SCORE:-0.45}" in compose
     assert "VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}" in compose
     assert "CORS_ALLOWED_ORIGINS:" in compose
     assert "FRONTEND_PORT:-5173" in compose
@@ -106,6 +119,8 @@ def test_backend_image_contains_runtime_tools_and_runs_as_non_root() -> None:
 
     assert "FROM python:3.11-slim-bookworm" in dockerfile
     assert "COPY --chown=10001:10001 backend/app /app/backend/app" in dockerfile
+    assert "COPY --chown=10001:10001 backend/migrations /app/backend/migrations" in dockerfile
+    assert "COPY --chown=10001:10001 alembic.ini /app/alembic.ini" in dockerfile
     assert "COPY --chown=10001:10001 scripts /app/scripts" in dockerfile
     assert "COPY --chown=10001:10001 samples /app/samples" in dockerfile
     assert "COPY docker/backend-entrypoint.sh /usr/local/bin/datahub-entrypoint" in dockerfile
@@ -115,6 +130,45 @@ def test_backend_image_contains_runtime_tools_and_runs_as_non_root() -> None:
     assert "COPY .env" not in dockerfile
     assert "DATABASE_URL=" not in dockerfile
     assert "API_KEY=" not in dockerfile
+
+
+def test_migration_command_files_ship_and_legacy_create_all_is_deprecated() -> None:
+    legacy_initializer = _read("scripts/init_database.py")
+
+    for path in (
+        "alembic.ini",
+        "backend/migrations/env.py",
+        "scripts/manage_migrations.py",
+    ):
+        assert (ROOT_DIR / path).is_file(), path
+    assert (ROOT_DIR / "backend/migrations/versions").is_dir()
+    assert "DEPRECATED, ADMIN-ONLY" in legacy_initializer
+    assert "manage_migrations.py status|upgrade" in legacy_initializer
+
+
+def test_local_environment_template_documents_effective_and_inert_contracts() -> None:
+    template = _read(".env.example")
+    render_guide = _read("docs/23_RENDER_DEPLOYMENT_GUIDE.md")
+
+    assert "DATAHUB_IMAGE_TAG=local" in template
+    assert "compose.yaml injects DATAHUB_ENV=local" in template
+    assert "Secret fields remain empty" in template
+    assert "Deprecated/inert generic LLM compatibility keys" in template
+    assert "LOG_LEVEL and DEBUG are not consumed" in template
+    assert "P2_RETRIEVAL_MIN_SCORE=0.45" in template
+    assert "OPENAI_API_KEY / OPENAI_BASE_URL aliases" in template
+    assert "RENDER is a platform-managed compatibility marker" in template
+    for secret in (
+        "POSTGRES_PASSWORD=",
+        "DATAHUB_ADMIN_TOKEN=",
+        "EMBEDDING_API_KEY=",
+        "P3_LLM_API_KEY=",
+    ):
+        assert secret in template
+    assert "not evidence that production" in render_guide
+    assert "python scripts/manage_migrations.py upgrade" in render_guide
+    assert "/health/ready" in render_guide
+    assert "P2_RETRIEVAL_MIN_SCORE" in render_guide
 
 
 def test_backend_entrypoint_url_encodes_database_credentials_without_logging_them() -> None:

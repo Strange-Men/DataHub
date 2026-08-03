@@ -18,6 +18,8 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install --requirement /tmp/requirements.txt
 
 COPY --chown=10001:10001 backend/app /app/backend/app
+COPY --chown=10001:10001 backend/migrations /app/backend/migrations
+COPY --chown=10001:10001 alembic.ini /app/alembic.ini
 COPY --chown=10001:10001 scripts /app/scripts
 COPY --chown=10001:10001 samples /app/samples
 COPY docker/backend-entrypoint.sh /usr/local/bin/datahub-entrypoint

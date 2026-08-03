@@ -6,13 +6,16 @@ x-backend-image: &backend-image
     context: .
     dockerfile: backend/Dockerfile
 
-x-backend-environment: &backend-environment
+x-database-environment: &database-environment
   POSTGRES_HOST: postgres
   POSTGRES_PORT: "5432"
   POSTGRES_DB: ${POSTGRES_DB:-datahub}
   POSTGRES_USER: ${POSTGRES_USER:-datahub}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-  DATAHUB_ENV: docker
+  DATAHUB_ENV: local
+
+x-backend-environment: &backend-environment
+  <<: *database-environment
   ASSET_STORAGE_BACKEND: local
   ASSET_STORAGE_ROOT: /data/assets
   ASSET_MAX_UPLOAD_BYTES: ${ASSET_MAX_UPLOAD_BYTES:-10485760}
@@ -24,6 +27,7 @@ x-backend-environment: &backend-environment
   EMBEDDING_TIMEOUT_SECONDS: ${EMBEDDING_TIMEOUT_SECONDS:-30}
   EMBEDDING_MAX_RETRIES: ${EMBEDDING_MAX_RETRIES:-3}
   P2_EMBEDDING_PROFILE: ${P2_EMBEDDING_PROFILE:-}
+  P2_RETRIEVAL_MIN_SCORE: ${P2_RETRIEVAL_MIN_SCORE:-0.45}
   DATAHUB_AUTH_MODE: ${DATAHUB_AUTH_MODE:-disabled}
   DATAHUB_ADMIN_TOKEN: ${DATAHUB_ADMIN_TOKEN:-}
   DATAHUB_CLEANER_TOKEN: ${DATAHUB_CLEANER_TOKEN:-}
@@ -44,6 +48,8 @@ x-backend-environment: &backend-environment
   UNIFIED_RETRIEVAL_RRF_K: ${UNIFIED_RETRIEVAL_RRF_K:-60}
   UNIFIED_RETRIEVAL_P2_ASSET_CHUNK_QUOTA: ${UNIFIED_RETRIEVAL_P2_ASSET_CHUNK_QUOTA:-2}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:${FRONTEND_PORT:-5173},http://127.0.0.1:${FRONTEND_PORT:-5173},https://data-hub-flame.vercel.app}
+  # Deprecated compatibility variables: the current backend runtime does not
+  # consume generic LLM_* configuration. P3 uses the explicit P3_LLM_* contract.
   LLM_PROVIDER: ${LLM_PROVIDER:-mock}
   LLM_BASE_URL: ${LLM_BASE_URL:-}
   LLM_API_KEY: ${LLM_API_KEY:-}
@@ -60,6 +66,8 @@ x-backend-environment: &backend-environment
   P3_LLM_TIMEOUT_SECONDS: ${P3_LLM_TIMEOUT_SECONDS:-120}
   P3_EXPORT_STORAGE_BACKEND: ${P3_EXPORT_STORAGE_BACKEND:-local_filesystem}
   P3_EXPORT_STORAGE_ROOT: ${P3_EXPORT_STORAGE_ROOT:-/app/.local-data/p3-exports}
+  # Inert compatibility variables retained for existing local .env files.
+  # Uvicorn logging/debug behavior is controlled by its command-line contract.
   LOG_LEVEL: ${LOG_LEVEL:-info}
   DEBUG: ${DEBUG:-false}
 
@@ -106,7 +114,8 @@ services:
       - sh
       - -c
       - >-
-        install -d -o 10001 -g 10001 /data/assets /app/backend/storage /app/.local-data
+        install -d -o 10001 -g 10001
+        /data/assets /app/backend/storage /app/.local-data /app/.local-data/p3-exports
         && chown -R 10001:10001 /data/assets /app/backend/storage /app/.local-data
     volumes: *backend-volumes
     restart: "no"
@@ -114,16 +123,13 @@ services:
   db-init:
     <<: *backend-image
     command:
-      - sh
-      - -c
-      - python scripts/check_pgvector_support.py && python scripts/init_database.py
-    environment: *backend-environment
-    volumes: *backend-volumes
+      - python
+      - scripts/manage_migrations.py
+      - upgrade
+    environment: *database-environment
     depends_on:
       postgres:
         condition: service_healthy
-      volume-init:
-        condition: service_completed_successfully
     restart: "no"
     networks:
       - datahub
@@ -147,12 +153,9 @@ services:
         - python
         - -c
         - >-
-          import json, urllib.request;
-          data = json.load(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5));
-          assert data['status'] == 'ok';
-          assert data['database_status']['status'] == 'ok';
-          assert data['pgvector_status']['pgvector_available'];
-          assert data['pgvector_status']['extension_create_ok']
+          import urllib.request;
+          response = urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5);
+          assert response.status == 200
       interval: 10s
       timeout: 5s
       retries: 20

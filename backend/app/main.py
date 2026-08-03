@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import os
 from uuid import uuid4
 
@@ -6,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.answerability import (
-    AnswerabilityConfig,
     AnswerabilityEvidence,
     SAFE_ABSTENTION_MESSAGE,
     evaluate_answerability,
@@ -24,10 +24,12 @@ from app.schemas import (
     RagSearchRequest,
     ReviewDecisionRequest,
 )
-from app.database import SessionLocal, check_database_connection, check_pgvector_available, ensure_pgvector_extension, init_database_tables
-from app.auth import Permission, require_permission, validate_auth_configuration
+from app.database import SessionLocal
+from app.auth import Permission, require_permission
 from app.auth_routes import router as auth_router
 from app.capability_routes import router as capability_router
+from app.health_routes import router as health_router
+from app.runtime_config import validate_runtime_configuration
 from app.asset_routes import router as asset_router
 from app.extraction_repositories import get_extraction_job as get_asset_extraction_job
 from app.extraction_routes import router as asset_extraction_router
@@ -75,7 +77,16 @@ from app.storage import (
     update_knowledge_candidate,
 )
 
-app = FastAPI(title="DataHub API", version="0.1.0")
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    """Validate runtime safety at startup without database or filesystem writes."""
+
+    validate_runtime_configuration()
+    yield
+
+
+app = FastAPI(title="DataHub API", version="0.1.0", lifespan=_lifespan)
+app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(capability_router)
 app.include_router(asset_router)
@@ -93,26 +104,6 @@ app.include_router(p3_publication_router)
 app.include_router(p3_export_router)
 app.include_router(unified_retrieval_router)
 app.include_router(customerops_unified_router)
-
-# Ensure tables exist on module load (idempotent, safe for both tests and production).
-# Also runs on startup event for environments where module-level init is insufficient.
-try:
-    init_database_tables()
-except Exception:
-    pass
-
-
-@app.on_event("startup")
-def _startup_init_database() -> None:
-    """Idempotent: ensure all tables exist on startup (P1-M17)."""
-    validate_auth_configuration()
-    AnswerabilityConfig.from_environment()
-    try:
-        init_database_tables()
-    except Exception:
-        # Startup must not fail if DB is temporarily unreachable;
-        # health check will report the error status.
-        pass
 
 _DEFAULT_CORS_ALLOWED_ORIGINS = (
     "http://localhost:5173",
@@ -213,29 +204,6 @@ def _authorize_customerops_client(client_header: str | None) -> JSONResponse | N
             status_code=401,
         )
     return None
-
-
-@app.get("/health")
-def health() -> dict[str, object]:
-    pgvec = check_pgvector_available()
-    pgext = ensure_pgvector_extension()
-    return {
-        "status": "ok",
-        "service": "datahub-api",
-        "phase": "P1-M24.3",
-        "p2_phase": "P2-M8.3",
-        "database_status": check_database_connection(),
-        "pgvector_status": {
-            "pgvector_available": pgvec.get("pgvector_available", False),
-            "extension_create_ok": pgext.get("extension_create_ok", False),
-            "backend": pgvec.get("backend", "unknown"),
-        },
-    }
-
-
-@app.get("/api/health")
-def api_health() -> dict[str, object]:
-    return health()
 
 
 @app.post("/api/legacy-rag/import", response_model=ApiResponse, dependencies=[Depends(require_permission(Permission.P1_IMPORT))])

@@ -210,6 +210,7 @@ Copy-Item .env.example .env
 
 | 变量 | 必需性 | 安全默认/说明 |
 |---|---|---|
+| `DATAHUB_IMAGE_TAG` | 可选 | 本地镜像标签，默认 `local` |
 | `POSTGRES_DB` | 必需 | 默认 `datahub` |
 | `POSTGRES_USER` | 必需 | 默认 `datahub` |
 | `POSTGRES_PASSWORD` | 必需 | 模板留空，Compose 会拒绝启动；在本地 `.env` 填写且不要提交 |
@@ -217,6 +218,8 @@ Copy-Item .env.example .env
 | `BACKEND_PORT` | 可选 | 默认 `8000` |
 | `FRONTEND_PORT` | 可选 | 默认 `5173` |
 | `VITE_API_BASE_URL` | 可选 | 浏览器可访问的后端地址，默认 `http://localhost:8000` |
+| `DATAHUB_ENV` | 不可覆盖 | Compose 固定注入 `local`；staging/production 必须使用独立部署配置 |
+| `CORS_ALLOWED_ORIGINS` | 可选 | 默认随 `FRONTEND_PORT` 生成本地 Origins，并保留当前公开前端 Origin |
 | `ASSET_MAX_UPLOAD_BYTES` | 可选 | 默认 10 MiB |
 | `DATAHUB_AUTH_MODE` | 可选 | `disabled` 保持受信本地兼容；暴露的 Docker 环境建议设为 `token` |
 | `DATAHUB_*_TOKEN` | token 模式至少一个 | admin/cleaner/reviewer/service/viewer 的互异运行时 Token；缺失角色不可用 |
@@ -290,12 +293,21 @@ docker compose ps
 
 使用 `--quiet` 只校验配置，不把展开后的环境变量或秘密打印到终端、CI 日志或验收报告。
 
-启动顺序由健康门禁控制：`postgres` 健康后运行一次性 `volume-init` / `db-init`，完成 pgvector 和数据库表初始化，再启动 `backend`；`frontend` 等待后端健康。首次启动无需手工建表。如需单独重跑初始化：
+启动顺序由健康门禁控制：`postgres` 健康后，`db-init` 只执行一次
+`python scripts/manage_migrations.py upgrade`；`volume-init` 独立准备 Asset、兼容存储和 P3 Export named volumes。`backend` 必须等待两者成功，且自身启动不执行 Migration、`create_all` 或其他隐式 DDL；`frontend` 等待后端 readiness。Migration CLI 负责空库升级、严格等价旧库接管和已迁移库的幂等重跑。如需显式重跑安全初始化步骤：
 
 ```bash
 docker compose run --rm volume-init
 docker compose run --rm db-init
 ```
+
+只读查看 Migration 状态可执行：
+
+```bash
+docker compose run --rm db-init python scripts/manage_migrations.py status
+```
+
+旧 `scripts/init_database.py` 是 deprecated/admin-only 的 `create_all` 工具，不属于普通启动、Migration 或故障恢复流程。
 
 ### Mock 与真实 SiliconFlow
 
@@ -336,12 +348,14 @@ docker compose up -d --build backend
 如修改 `FRONTEND_PORT`，Compose 会把对应浏览器 Origin 同步给后端 CORS 配置；如同时修改 `BACKEND_PORT`，仍需把 `VITE_API_BASE_URL` 改成浏览器实际可访问的后端地址并重建前端。
 
 ```bash
-curl http://localhost:8000/api/health
+curl --fail http://localhost:8000/health/live
+curl --fail http://localhost:8000/health/ready
+curl --fail http://localhost:8000/api/capabilities
 curl -I http://localhost:5173
 docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT extversion FROM pg_extension WHERE extname = '\''vector'\'';"'
 ```
 
-后端健康结果应显示 PostgreSQL 可连接和 pgvector 可用。`docker compose ps` 中 `postgres`、`backend`、`frontend` 应为 healthy；`volume-init` 与 `db-init` 成功退出是正常状态。
+`/health/live` 只证明进程存活且不访问数据库；`/health/ready` 以纯读方式检查 Migration、PostgreSQL/pgvector、Storage 和 Auth，未就绪时返回 503。`/health` 与 `/api/health` 仅保留兼容用途，Compose 使用 `/health/ready`。`docker compose ps` 中 `postgres`、`backend`、`frontend` 应为 healthy；`volume-init` 与 `db-init` 成功退出是正常状态。
 
 ### 上传素材
 
@@ -509,7 +523,8 @@ docker compose down -v --remove-orphans
 ### 常见问题
 
 - **端口占用**：在 `.env` 修改 `POSTGRES_PORT`、`BACKEND_PORT` 或 `FRONTEND_PORT`。Compose 自动把自定义前端端口同步到后端 CORS；修改后端端口时还要更新 `VITE_API_BASE_URL` 并重建前端。
-- **`backend` unhealthy**：运行 `docker compose logs backend db-init postgres`，确认数据库健康、初始化成功且密码变量一致。
+- **`backend` unhealthy**：运行 `docker compose logs backend db-init postgres`，再用 `python scripts/manage_migrations.py status` 检查 revision；不要在 backend 启动命令中临时加入 Migration 或 `create_all`。
+- **Migration 被拒绝**：保留数据库与 named volume，检查 schema/revision 差异；禁止通过删库、重置 volume 或 `init_database.py` 掩盖不匹配。
 - **pgvector 不可用**：检查 `db-init` 是否成功，并用上面的 SQL 查询 extension；不要用 SQLite 冒充发布验收。
 - **Asset 上传 503**：检查 `volume-init`、Asset named volume 和容器内存储路径。Docker 不依赖宿主机固定路径。
 - **SiliconFlow 失败**：确认 provider/model/dimension、API host、网络和本地 Key；安全日志不能打印完整 Key。

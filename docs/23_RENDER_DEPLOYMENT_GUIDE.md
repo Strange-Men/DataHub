@@ -1,102 +1,105 @@
-# DataHub Render Deployment Guide
+# DataHub Render Deployment Configuration Guide
 
-This document explains how to deploy the DataHub FastAPI backend on Render as a Web Service.
+This document records the current deployment contract for a Render-style
+deployed backend. It is configuration guidance, not evidence that production
+deployment, persistent storage, migrations, or end-to-end workflows have been
+accepted. Local Docker remains the authoritative runtime environment for the
+current release line.
 
-## Service Type
+## Service and build contract
 
-**Web Service** — DataHub is a FastAPI HTTP server, not a background worker or static site.
-
-## Repository
-
-- **GitHub**: `Strange-Men/DataHub`
-- **Branch**: `main`
-
-## Render Configuration
+DataHub is a Python 3.11 FastAPI web service. Configure the repository root as
+the working directory so `alembic.ini`, `backend/migrations`, and `scripts` are
+available to both the migration command and the application process.
 
 | Setting | Value |
 |---|---|
-| **Root Directory** | (leave empty) |
-| **Environment** | Python |
-| **Python Version** | 3.11.9 (pinned by `.python-version` in repo root) |
-| **Build Command** | `pip install -r backend/requirements.txt` |
-| **Start Command** | `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` |
-| **Plan** | Free (starter) |
+| Service type | Web service |
+| Runtime | Python 3.11 |
+| Build command | `python -m pip install -r backend/requirements.txt` |
+| Migration/release command | `python scripts/manage_migrations.py upgrade` |
+| Start command | `python -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port $PORT` |
+| Liveness path | `/health/live` |
+| Readiness path | `/health/ready` |
 
-## Why `backend/requirements.txt`
+The migration command must complete successfully before the web process is
+promoted. It handles a new database, an exactly matching legacy database, and
+an already migrated database. A mismatched schema is refused. Do not place
+`scripts/init_database.py`, `create_all`, or implicit DDL in the normal start
+command.
 
-DataHub keeps the Python requirements file at `backend/requirements.txt`, not at the repository root. The Render build command must include the `backend/` prefix — otherwise Render fails with:
+`python scripts/manage_migrations.py status` is a read-only diagnostic. It
+returns a non-zero exit status until the schema is at the repository migration
+head. Re-running `upgrade` is the supported idempotent operation; neither
+command deletes or resets database data.
 
-```
-ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'
-```
+## Environment contract
 
-## Python Version
+Configure secrets through the deployment platform's secret store. The table
+describes whether a secret is configured; real values must never be copied into
+repository files, build arguments, logs, health responses, or screenshots.
 
-Render defaults to a recent Python (e.g., 3.14.x), but DataHub is developed and tested on Python 3.11+. The `.python-version` file at the repository root pins the version to `3.11.9` so Render picks the correct runtime.
-
-## Verify the Deployment
-
-After Render deploys successfully, check the health endpoint:
-
-```
-GET https://<your-service-name>.onrender.com/api/health
-```
-
-Expected response:
-
-```json
-{
-  "status": "ok",
-  "phase": "P1-M15"
-}
-```
-
-Replace `<your-service-name>` with the actual Render service name (e.g., `datahub-api`).
-
-## Common Issues
-
-### 1. `requirements.txt` not found
-
-**Symptom**: `ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'`
-
-**Fix**: Change the Build Command from `pip install -r requirements.txt` to `pip install -r backend/requirements.txt`.
-
-### 2. Uvicorn import path error
-
-**Symptom**: `ModuleNotFoundError: No module named 'main'` or similar.
-
-**Fix**: The Start Command must use the full dotted path: `uvicorn backend.app.main:app`. If the path is wrong, Uvicorn cannot find the FastAPI `app` object.
-
-### 3. Python version mismatch
-
-**Symptom**: Deprecation warnings, unexpected syntax errors, or dependency incompatibilities.
-
-**Fix**: Ensure `.python-version` exists in the repository root with `3.11.9`. Render reads this file to select the Python runtime.
-
-### 4. Render free instance cold start
-
-**Symptom**: First request after idle takes 30–60 seconds.
-
-**Fix**: This is expected behavior for Render's free tier. The service spins down after inactivity and restarts on the next request. Upgrade to a paid plan to eliminate cold starts.
-
-### 5. `backend/storage` is not persistent
-
-**Symptom**: Data disappears after redeploy or restart.
-
-**Fix**: `backend/storage/` uses the local filesystem and the Render free tier does not provide persistent disk. This is acceptable for P1 demonstration — the storage directory holds temporary runtime data only. For production, replace with a database and object storage (planned for Phase 2+).
-
-## Local Development vs Render
-
-| Aspect | Local | Render |
+| Variable | Deployment requirement | Default and scope |
 |---|---|---|
-| **Start** | `uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000` | `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` |
-| **Port** | Fixed 8000 | `$PORT` env var (Render assigned) |
-| **Reload** | `--reload` for dev | No reload in production |
-| **Host** | `127.0.0.1` (localhost only) | `0.0.0.0` (all interfaces) |
-| **Storage** | Persistent local disk | Ephemeral (free tier) |
+| `DATAHUB_ENV` | Required, set to `production` (or `staging`) | No deployed default should be relied on; local Compose injects `local` |
+| `RENDER` | Platform-managed marker | Render supplies this marker; do not set it in local `.env`. A true value forces deployed authority even if an unsafe local/test label is present |
+| `DATABASE_URL` | Required secret | SQLAlchemy PostgreSQL URL used by migration and backend processes |
+| `DATAHUB_AUTH_MODE` | Required, set to `token` | `disabled` is accepted only for trusted local/test authority |
+| `DATAHUB_ADMIN_TOKEN`, `DATAHUB_CLEANER_TOKEN`, `DATAHUB_REVIEWER_TOKEN`, `DATAHUB_SERVICE_TOKEN`, `DATAHUB_VIEWER_TOKEN` | Secret; configure at least one unique role token | An unconfigured role is unavailable; token values are never reported |
+| `CORS_ALLOWED_ORIGINS` | Required for browser clients | Comma-separated HTTPS origins, no wildcard-with-credentials fallback |
+| `ASSET_STORAGE_BACKEND` | Optional | Current implementation: `local` |
+| `ASSET_STORAGE_ROOT` | Required only when P2 storage is expected | Must point to an explicitly provisioned persistent mount in a deployed environment |
+| `P3_EXPORT_STORAGE_BACKEND` | Optional | Current implementation: `local_filesystem` |
+| `P3_EXPORT_STORAGE_ROOT` | Required only when durable P3 exports are expected | Must point to an explicitly provisioned persistent mount |
+| `EMBEDDING_PROVIDER` | Optional | `mock`; real provider use is separate acceptance work |
+| `EMBEDDING_API_KEY` | Optional secret | Configure only with a reviewed real embedding provider profile |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL` | Deprecated embedding aliases | Direct-runtime compatibility fallback only; prefer `EMBEDDING_API_KEY` and `EMBEDDING_BASE_URL`, and do not configure both contracts |
+| `P2_RETRIEVAL_MIN_SCORE` | Optional | Frozen current default `0.45`; changing retrieval thresholds requires a separate controlled rollout |
+| `P3_LLM_DRAFT_ENABLED` | Optional | `false`; explicit opt-in only |
+| `P3_LLM_API_KEY` | Optional secret | Required only when the reviewed P3 LLM draft profile is enabled |
+| Unified retrieval and no-answer variables | Optional | Frozen defaults are documented in `.env.example`; changing them is a separate controlled rollout |
 
-## References
+Generic `LLM_*`, `LOG_LEVEL`, and `DEBUG` entries are retained only as
+deprecated/inert local compatibility settings. The current backend uses
+`P3_LLM_*` for governed P3 drafts, and Uvicorn command-line options control its
+logging/runtime mode.
 
-- [Render Web Services Docs](https://render.com/docs/web-services)
-- [Render Python Deployment Guide](https://render.com/docs/deploy-fastapi)
-- DataHub root `README.md` for local startup instructions.
+Native source deployments use `DATABASE_URL` directly. The discrete
+`POSTGRES_*` variables and URL-encoding entrypoint belong to the local Docker
+image/Compose contract and are not a substitute for a deployment-platform
+database secret.
+
+## Storage boundary
+
+The repository does not provision a Render persistent disk or cloud object
+storage. Without separately configured persistent mounts, P2 assets and P3
+exports are local/ephemeral and must not be described as production-ready or
+durable. A successful web deploy or CI run does not close this storage gap.
+
+Do not point storage roots at repository paths or temporary build directories.
+Do not reset a database or remove a volume as part of migration or deployment
+troubleshooting.
+
+## Safe verification
+
+After the migration job and web process have started:
+
+```bash
+curl --fail https://<service-host>/health/live
+curl --fail https://<service-host>/health/ready
+curl --fail https://<service-host>/api/capabilities
+```
+
+- `/health/live` proves only that the process can respond and does not access
+  the database.
+- `/health/ready` is read-only and returns HTTP 503 when migrations,
+  PostgreSQL/pgvector, storage, or auth safety are not ready.
+- `/api/capabilities` reports sanitized runtime status and must not expose a
+  database URL, token, provider key, absolute storage path, or internal
+  exception.
+- `/health` and `/api/health` remain compatibility endpoints; deployment
+  orchestration should use `/health/ready`.
+
+Record the actual platform run, migration revision, readiness response, storage
+configuration, and restart durability before making any production acceptance
+claim. This guide alone does not provide that evidence.

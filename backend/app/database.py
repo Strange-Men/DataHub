@@ -10,9 +10,11 @@ Security:
 """
 
 import os
+from pathlib import Path
 from typing import Generator
 
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.engine import Engine
 
@@ -84,6 +86,24 @@ def _backend_label() -> str:
     return "unknown"
 
 
+def _missing_file_backed_sqlite_database(database_url: str) -> bool:
+    """Detect an uninitialized SQLite file without opening or creating it."""
+
+    try:
+        parsed = make_url(database_url)
+    except Exception:
+        return False
+    if parsed.get_backend_name() != "sqlite":
+        return False
+    database = parsed.database
+    if database in {None, "", ":memory:"}:
+        return False
+    try:
+        return not Path(database).expanduser().exists()
+    except (OSError, RuntimeError):
+        return True
+
+
 def init_database_tables() -> None:
     """Idempotent: create all tables if they don't exist.
 
@@ -133,6 +153,9 @@ def check_database_connection() -> dict[str, object]:
         "enabled": True,
         "backend": _backend_label(),
     }
+    if _missing_file_backed_sqlite_database(DATABASE_URL):
+        result["status"] = "error"
+        return result
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))

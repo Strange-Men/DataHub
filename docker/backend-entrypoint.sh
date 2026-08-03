@@ -3,7 +3,9 @@ set -eu
 
 # Compose provides discrete PostgreSQL values so reserved characters in the
 # password cannot corrupt a hand-built URL. The generated URL stays inside the
-# process environment and is never printed.
+# process environment and is never printed. This entrypoint only prepares the
+# connection setting: migrations belong to the one-shot db-init service, never
+# to normal backend startup.
 if [ -z "${DATABASE_URL:-}" ]; then
     : "${POSTGRES_HOST:?POSTGRES_HOST is required when DATABASE_URL is unset}"
     : "${POSTGRES_PORT:?POSTGRES_PORT is required when DATABASE_URL is unset}"

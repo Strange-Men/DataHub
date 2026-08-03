@@ -6,7 +6,7 @@ import os
 from typing import Callable, TypeVar
 
 from app import capability_probes
-from app.auth import AuthConfigurationError, AuthMode, AuthSettings
+from app.auth import inspect_auth_configuration
 from app.capability_schemas import (
     AuthCapability,
     AuthorityName,
@@ -25,13 +25,10 @@ from app.capability_schemas import (
     RuntimeModuleCapability,
     StorageStatus,
 )
+from app.runtime_environment import RuntimeEnvironmentContext, resolve_runtime_environment
 
 
 _TRUE_VALUES = frozenset({"1", "true", "yes", "on"})
-_LOCAL_ENV_ALIASES = frozenset({"", "local", "dev", "development", "docker"})
-_TEST_ENV_ALIASES = frozenset({"test", "testing", "pytest"})
-_STAGING_ENV_ALIASES = frozenset({"stage", "staging"})
-_PRODUCTION_ENV_ALIASES = frozenset({"prod", "production"})
 _REASON_ORDER = {code: index for index, code in enumerate(CapabilityReasonCode)}
 
 T = TypeVar("T")
@@ -48,64 +45,16 @@ def _enabled(name: str) -> bool:
     return os.getenv(name, "").strip().lower() in _TRUE_VALUES
 
 
-def _environment_and_authority() -> tuple[EnvironmentName, AuthorityName]:
-    raw = os.getenv("DATAHUB_ENV", "").strip().lower()
-    render_deployment = _enabled("RENDER")
-
-    if render_deployment:
-        environment = (
-            EnvironmentName.STAGING
-            if raw in _STAGING_ENV_ALIASES
-            else EnvironmentName.PRODUCTION
-        )
-    elif raw in _TEST_ENV_ALIASES:
-        environment = EnvironmentName.TEST
-    elif raw in _STAGING_ENV_ALIASES:
-        environment = EnvironmentName.STAGING
-    elif raw in _PRODUCTION_ENV_ALIASES:
-        environment = EnvironmentName.PRODUCTION
-    elif raw in _LOCAL_ENV_ALIASES:
-        environment = EnvironmentName.LOCAL
-    else:
-        # An unknown deployment label is treated conservatively as production.
-        environment = EnvironmentName.PRODUCTION
-
-    deployed = (
-        environment in {EnvironmentName.STAGING, EnvironmentName.PRODUCTION}
-        or render_deployment
-    )
-    authority = (
-        AuthorityName.DEPLOYED_ENVIRONMENT if deployed else AuthorityName.LOCAL_DOCKER
-    )
-    return environment, authority
-
-
 def _auth_capability(
-    environment: EnvironmentName,
-    authority: AuthorityName,
+    context: RuntimeEnvironmentContext,
 ) -> tuple[AuthCapability, bool]:
-    raw_mode = os.getenv("DATAHUB_AUTH_MODE", AuthMode.DISABLED.value).strip().lower()
-    try:
-        settings = AuthSettings.from_environment()
-    except (AuthConfigurationError, ValueError):
-        mode = (
-            ReportedAuthMode.TOKEN
-            if raw_mode == AuthMode.TOKEN.value
-            else ReportedAuthMode.DISABLED
-        )
-        return AuthCapability(mode=mode, safe_for_environment=False), False
-
-    mode = ReportedAuthMode(settings.mode.value)
-    disabled_is_safe = (
-        environment in {EnvironmentName.LOCAL, EnvironmentName.TEST}
-        and authority is AuthorityName.LOCAL_DOCKER
-    )
+    status = inspect_auth_configuration(context)
     return (
         AuthCapability(
-            mode=mode,
-            safe_for_environment=(settings.mode is AuthMode.TOKEN or disabled_is_safe),
+            mode=ReportedAuthMode(status.mode.value),
+            safe_for_environment=status.safe_for_environment,
         ),
-        True,
+        context.configuration_valid and status.configuration_valid,
     )
 
 
@@ -223,8 +172,10 @@ def _p3_module(
 def get_capabilities() -> CapabilitiesResponse:
     """Build a deterministic response from read-only, fail-safe observations."""
 
-    environment, authority = _environment_and_authority()
-    auth, auth_configuration_valid = _auth_capability(environment, authority)
+    context = resolve_runtime_environment(fail_closed=True)
+    environment = EnvironmentName(context.environment.value)
+    authority = AuthorityName(context.authority.value)
+    auth, auth_configuration_valid = _auth_capability(context)
     auth_reason = _auth_reason(auth, auth_configuration_valid)
     database = (
         AvailabilityStatus.AVAILABLE

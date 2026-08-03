@@ -9,8 +9,15 @@ import logging
 import os
 from typing import Callable
 
-from fastapi import HTTPException, Security
+from fastapi import HTTPException, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from app.runtime_environment import (
+    RuntimeEnvironment,
+    RuntimeEnvironmentContext,
+    RuntimeEnvironmentError,
+    resolve_runtime_environment,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -165,8 +172,19 @@ ROLE_TOKEN_ENV: dict[Role, str] = {
 }
 
 
+class AuthConfigurationIssue(StrEnum):
+    INVALID_MODE = "invalid_mode"
+    TOKEN_REQUIRED = "token_required"
+    TOKEN_DUPLICATE = "token_duplicate"
+    DISABLED_UNSAFE = "disabled_unsafe"
+
+
 class AuthConfigurationError(RuntimeError):
-    """Raised when token mode cannot be configured safely."""
+    """Raised when authentication cannot be configured safely."""
+
+    def __init__(self, issue: AuthConfigurationIssue, message: str) -> None:
+        super().__init__(message)
+        self.issue = issue
 
 
 @dataclass(frozen=True)
@@ -176,12 +194,17 @@ class AuthSettings:
     missing_roles: tuple[Role, ...]
 
     @classmethod
-    def from_environment(cls) -> "AuthSettings":
+    def from_environment(
+        cls,
+        environment: RuntimeEnvironment | None = None,
+    ) -> "AuthSettings":
+        environment = environment or resolve_runtime_environment().environment
         raw_mode = os.getenv("DATAHUB_AUTH_MODE", AuthMode.DISABLED.value).strip().lower()
         try:
             mode = AuthMode(raw_mode)
         except ValueError as exc:
             raise AuthConfigurationError(
+                AuthConfigurationIssue.INVALID_MODE,
                 "DATAHUB_AUTH_MODE must be disabled or token."
             ) from exc
 
@@ -197,6 +220,7 @@ class AuthSettings:
         if mode is AuthMode.TOKEN:
             if not role_tokens:
                 raise AuthConfigurationError(
+                    AuthConfigurationIssue.TOKEN_REQUIRED,
                     "Token auth requires at least one configured role token."
                 )
             configured = list(role_tokens.items())
@@ -204,15 +228,61 @@ class AuthSettings:
                 for right_role, right_token in configured[index + 1 :]:
                     if hmac.compare_digest(left_token, right_token):
                         raise AuthConfigurationError(
+                            AuthConfigurationIssue.TOKEN_DUPLICATE,
                             "Role tokens must be unique: "
                             f"{left_role.value} and {right_role.value} conflict."
                         )
+
+        if mode is AuthMode.DISABLED and environment in {
+            RuntimeEnvironment.STAGING,
+            RuntimeEnvironment.PRODUCTION,
+        }:
+            raise AuthConfigurationError(
+                AuthConfigurationIssue.DISABLED_UNSAFE,
+                "Disabled authentication is allowed only in local or test environments.",
+            )
 
         return cls(
             mode=mode,
             role_tokens=role_tokens,
             missing_roles=tuple(missing_roles),
         )
+
+
+@dataclass(frozen=True)
+class SafeAuthConfiguration:
+    mode: AuthMode
+    safe_for_environment: bool
+    configuration_valid: bool
+
+
+def inspect_auth_configuration(
+    context: RuntimeEnvironmentContext | None = None,
+) -> SafeAuthConfiguration:
+    """Return a secret-free auth summary for public health and capability routes."""
+
+    context = context or resolve_runtime_environment(fail_closed=True)
+    raw_mode = os.getenv("DATAHUB_AUTH_MODE", AuthMode.DISABLED.value).strip().lower()
+    reported_mode = AuthMode.TOKEN if raw_mode == AuthMode.TOKEN.value else AuthMode.DISABLED
+    if not context.configuration_valid:
+        return SafeAuthConfiguration(
+            mode=reported_mode,
+            safe_for_environment=False,
+            configuration_valid=False,
+        )
+    try:
+        settings = AuthSettings.from_environment(context.environment)
+    except AuthConfigurationError as exc:
+        return SafeAuthConfiguration(
+            mode=reported_mode,
+            safe_for_environment=False,
+            configuration_valid=exc.issue is AuthConfigurationIssue.DISABLED_UNSAFE,
+        )
+    return SafeAuthConfiguration(
+        mode=settings.mode,
+        safe_for_environment=True,
+        configuration_valid=True,
+    )
 
 
 @dataclass(frozen=True)
@@ -238,9 +308,11 @@ def _auth_error(status_code: int, code: str, message: str) -> HTTPException:
     )
 
 
-def validate_auth_configuration() -> AuthSettings:
+def validate_auth_configuration(
+    environment: RuntimeEnvironment | None = None,
+) -> AuthSettings:
     """Validate startup configuration without exposing token values."""
-    settings = AuthSettings.from_environment()
+    settings = AuthSettings.from_environment(environment)
     if settings.mode is AuthMode.TOKEN:
         available = sorted(role.value for role in settings.role_tokens)
         logger.info("DataHub token authentication enabled for roles: %s", available)
@@ -262,11 +334,21 @@ def authenticate_token(token: str, settings: AuthSettings) -> Role | None:
 
 
 def get_current_principal(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Security(_bearer),
 ) -> Principal:
+    if any(
+        name.lower() in {"token", "access_token", "auth_token", "api_key", "authorization"}
+        for name in request.query_params.keys()
+    ):
+        raise _auth_error(
+            400,
+            "AUTH_QUERY_TOKEN_FORBIDDEN",
+            "Access tokens must be sent only in the Authorization header.",
+        )
     try:
         settings = AuthSettings.from_environment()
-    except AuthConfigurationError as exc:
+    except (AuthConfigurationError, RuntimeEnvironmentError) as exc:
         raise _auth_error(
             503,
             "AUTH_CONFIGURATION_INVALID",
