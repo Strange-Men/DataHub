@@ -41,6 +41,7 @@ class RagAgentBadCaseDbPersistenceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         # Create a temporary SQLite database file
+        cls._previous_database_url = os.environ.get("DATABASE_URL")
         cls._tmpfile = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
         cls._tmpfile.close()
         cls._db_path = cls._tmpfile.name
@@ -68,6 +69,26 @@ class RagAgentBadCaseDbPersistenceTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
+        cls.client.close()
+        cls.db.engine.dispose()
+        if cls._previous_database_url is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = cls._previous_database_url
+
+        import importlib
+        import app.database as db_module
+        import app.db_models as models_module
+        import app.db_repositories as repo_module
+        import app.storage as storage_module
+        import app.main as main_module
+
+        importlib.reload(db_module)
+        importlib.reload(models_module)
+        importlib.reload(repo_module)
+        importlib.reload(storage_module)
+        importlib.reload(main_module)
+
         try:
             os.unlink(cls._db_path)
         except OSError:
