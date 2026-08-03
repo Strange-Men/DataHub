@@ -1,0 +1,363 @@
+name: P1-P3 R1 Quality Gates
+
+"on":
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-p3-r1-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-unit:
+    name: backend-unit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      PYTHONPATH: backend
+      DATAHUB_ENV: test
+      DATAHUB_TEST_MODE: offline
+      DATABASE_URL: sqlite:///${{ runner.temp }}/datahub-ci-unit-test.db
+      DATAHUB_TEST_DATABASE_URL: sqlite:///${{ runner.temp }}/datahub-ci-unit-test.db
+      ASSET_STORAGE_BACKEND: local
+      ASSET_STORAGE_ROOT: ${{ runner.temp }}/asset-storage-ci-test
+      P3_EXPORT_STORAGE_BACKEND: local_filesystem
+      P3_EXPORT_STORAGE_ROOT: ${{ runner.temp }}/export-storage-ci-test
+      EMBEDDING_PROVIDER: mock
+      EMBEDDING_MODEL: mock-deterministic
+      EMBEDDING_DIMENSION: "1536"
+      EMBEDDING_API_KEY: ""
+      LLM_PROVIDER: mock
+      LLM_MODEL: mock
+      LLM_API_KEY: ""
+      OPENAI_API_KEY: ""
+      P3_LLM_DRAFT_ENABLED: "false"
+      P3_LLM_API_KEY: ""
+      DATAHUB_AUTH_MODE: disabled
+      DATAHUB_NO_ANSWER_MODE: disabled
+      UNIFIED_RETRIEVAL_ENABLED: "false"
+      P2_RETRIEVAL_ENABLED: "false"
+      UNIFIED_RETRIEVAL_SHADOW_MODE: "false"
+      CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: >-
+          python -m pip install -r backend/requirements.txt
+          pytest==8.3.3
+          pytest-asyncio==0.24.0
+          PyYAML==6.0.2
+
+      - name: Prepare isolated local storage
+        run: >-
+          mkdir -p
+          "${ASSET_STORAGE_ROOT}"
+          "${P3_EXPORT_STORAGE_ROOT}"
+
+      - name: Initialize isolated SQLite schema
+        run: python scripts/manage_migrations.py upgrade
+
+      - name: Run offline backend tests
+        env:
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          NO_PROXY: 127.0.0.1,localhost
+        run: python -m pytest backend/tests -m "not postgres_integration" -q
+
+      - name: Compile Python sources
+        run: python -m compileall -q backend scripts
+
+  frontend-quality:
+    name: frontend-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      CI: "true"
+      VITE_API_BASE_URL: http://127.0.0.1:18000
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run frontend tests
+        run: npm test
+
+      - name: Type-check frontend
+        run: npm run typecheck
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+  postgres-integration:
+    name: postgres-integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: backend
+      DATAHUB_ENV: test
+      DATAHUB_TEST_MODE: integration
+      DATABASE_URL: postgresql+psycopg2://datahub_ci:datahub_ci_test_password@127.0.0.1:5432/datahub_ci_test
+      DATAHUB_TEST_DATABASE_URL: postgresql+psycopg2://datahub_ci:datahub_ci_test_password@127.0.0.1:5432/datahub_ci_test
+      ASSET_STORAGE_BACKEND: local
+      ASSET_STORAGE_ROOT: ${{ runner.temp }}/asset-storage-pg-ci-test
+      P3_EXPORT_STORAGE_BACKEND: local_filesystem
+      P3_EXPORT_STORAGE_ROOT: ${{ runner.temp }}/export-storage-pg-ci-test
+      EMBEDDING_PROVIDER: mock
+      EMBEDDING_MODEL: mock-deterministic
+      EMBEDDING_DIMENSION: "1536"
+      EMBEDDING_API_KEY: ""
+      LLM_PROVIDER: mock
+      LLM_MODEL: mock
+      LLM_API_KEY: ""
+      OPENAI_API_KEY: ""
+      P3_LLM_DRAFT_ENABLED: "false"
+      P3_LLM_API_KEY: ""
+      DATAHUB_AUTH_MODE: disabled
+      DATAHUB_NO_ANSWER_MODE: disabled
+      UNIFIED_RETRIEVAL_ENABLED: "false"
+      P2_RETRIEVAL_ENABLED: "false"
+      UNIFIED_RETRIEVAL_SHADOW_MODE: "false"
+      CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED: "false"
+    services:
+      postgres-ci:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: datahub_ci_test
+          POSTGRES_USER: datahub_ci
+          POSTGRES_PASSWORD: datahub_ci_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U datahub_ci -d datahub_ci_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: >-
+          python -m pip install -r backend/requirements.txt
+          pytest==8.3.3
+          pytest-asyncio==0.24.0
+          PyYAML==6.0.2
+
+      - name: Prepare isolated local storage
+        run: >-
+          mkdir -p
+          "${ASSET_STORAGE_ROOT}"
+          "${P3_EXPORT_STORAGE_ROOT}"
+
+      - name: Require readiness failure before migration
+        run: |
+          if python scripts/manage_migrations.py status; then
+            echo "Fresh PostgreSQL unexpectedly reported migration-ready." >&2
+            exit 1
+          fi
+          python - <<'PY'
+          from app.health_service import ready_health
+
+          payload, ready = ready_health()
+          migration = payload["checks"]["migration"]
+          assert ready is False
+          assert migration["status"] == "error"
+          assert "MIGRATION_REQUIRED" in migration["reason_codes"]
+          PY
+
+      - name: Upgrade fresh PostgreSQL database
+        run: python scripts/manage_migrations.py upgrade
+
+      - name: Verify migration upgrade idempotency
+        run: python scripts/manage_migrations.py upgrade
+
+      - name: Require readiness success after migration
+        run: |
+          python scripts/manage_migrations.py status
+          python - <<'PY'
+          from app.health_service import ready_health
+
+          payload, ready = ready_health()
+          assert ready is True, payload
+          assert payload["checks"]["migration"]["status"] == "ok"
+          assert payload["checks"]["pgvector"]["installed"] is True
+          PY
+
+      - name: Run migration and pgvector concurrency gates
+        env:
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          NO_PROXY: 127.0.0.1,localhost
+        run: >-
+          python -m pytest -q
+          backend/tests/test_migration_postgres.py
+          backend/tests/test_postgres_pgvector_reliability.py
+
+      - name: Run remaining PostgreSQL marker gates
+        env:
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          NO_PROXY: 127.0.0.1,localhost
+        run: >-
+          python -m pytest backend/tests -m postgres_integration -q
+          --ignore=backend/tests/test_migration_postgres.py
+          --ignore=backend/tests/test_postgres_pgvector_reliability.py
+
+  contract-safety:
+    name: contract-safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: backend
+      DATAHUB_ENV: test
+      DATAHUB_TEST_MODE: offline
+      DATABASE_URL: sqlite:///${{ runner.temp }}/datahub-contract-ci-test.db
+      DATAHUB_TEST_DATABASE_URL: sqlite:///${{ runner.temp }}/datahub-contract-ci-test.db
+      ASSET_STORAGE_BACKEND: local
+      ASSET_STORAGE_ROOT: ${{ runner.temp }}/asset-contract-ci-test
+      P3_EXPORT_STORAGE_BACKEND: local_filesystem
+      P3_EXPORT_STORAGE_ROOT: ${{ runner.temp }}/export-contract-ci-test
+      EMBEDDING_PROVIDER: mock
+      EMBEDDING_MODEL: mock-deterministic
+      EMBEDDING_DIMENSION: "1536"
+      EMBEDDING_API_KEY: ""
+      LLM_PROVIDER: mock
+      LLM_MODEL: mock
+      LLM_API_KEY: ""
+      OPENAI_API_KEY: ""
+      P3_LLM_DRAFT_ENABLED: "false"
+      P3_LLM_API_KEY: ""
+      DATAHUB_AUTH_MODE: disabled
+      DATAHUB_NO_ANSWER_MODE: disabled
+      UNIFIED_RETRIEVAL_ENABLED: "false"
+      P2_RETRIEVAL_ENABLED: "false"
+      UNIFIED_RETRIEVAL_SHADOW_MODE: "false"
+      CUSTOMEROPS_UNIFIED_RETRIEVAL_ENABLED: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: >-
+          python -m pip install -r backend/requirements.txt
+          pytest==8.3.3
+          pytest-asyncio==0.24.0
+          PyYAML==6.0.2
+
+      - name: Prepare isolated local storage
+        run: >-
+          mkdir -p
+          "${ASSET_STORAGE_ROOT}"
+          "${P3_EXPORT_STORAGE_ROOT}"
+
+      - name: Validate CI contract safety
+        run: python scripts/check_ci_contract_safety.py
+
+      - name: Run API, auth, health, capability, and migration contracts
+        env:
+          HTTP_PROXY: http://127.0.0.1:9
+          HTTPS_PROXY: http://127.0.0.1:9
+          NO_PROXY: 127.0.0.1,localhost
+        run: >-
+          python -m pytest -q
+          backend/tests/test_governance_auth_rbac.py
+          backend/tests/test_capability_service.py
+          backend/tests/test_capability_route_safety.py
+          backend/tests/test_runtime_health.py
+          backend/tests/test_migration_baseline.py
+          backend/tests/test_test_environment_isolation.py
+          backend/tests/test_docker_foundation.py
+
+      - name: Verify immutable Alembic head
+        run: |
+          test "$(python -m alembic heads)" = "20260803_0001 (head)"
+
+      - name: Scan tracked files for high-confidence secrets
+        run: |
+          pattern='(-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}|sk-proj-[A-Za-z0-9_-]{20,})'
+          if git grep -nE -e "$pattern" -- .; then
+            echo "High-confidence secret pattern found in tracked files." >&2
+            exit 1
+          fi
+
+      - name: Scan tracked files for conflict markers
+        run: |
+          if git grep -nE -e '^(<<<<<<< |=======|>>>>>>> )' -- .; then
+            echo "Merge conflict marker found in tracked files." >&2
+            exit 1
+          fi
+
+      - name: Verify current contract status text
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          required = {
+              "README.md": (
+                  "P3-M9 \u5c1a\u672a\u5b8c\u6210",
+                  "P4",
+                  "\u5c1a\u672a\u5f00\u59cb",
+              ),
+              "README.en.md": ("P3-M9 is incomplete", "P4", "has not started"),
+              "docs/08_DEV_STATUS.md": ("P3-M9", "P4", "not started"),
+              "docs/09_STAGE_CHECKLIST.md": ("P3-M9 is incomplete", "P4 has not started"),
+          }
+          for file_name, facts in required.items():
+              text = Path(file_name).read_text(encoding="utf-8")
+              missing = [fact for fact in facts if fact not in text]
+              assert not missing, f"{file_name} missing current facts: {missing}"
+          PY
+
+      - name: Check latest commit whitespace
+        run: |
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^ HEAD
+          else
+            git show --check --format= HEAD
+          fi
