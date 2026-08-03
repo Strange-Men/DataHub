@@ -580,16 +580,71 @@ label { display: grid; gap: 6px; color: #b4c4d9; font-size: 0.88rem; font-weight
   border-radius: var(--radius-pill);
 }
 
-.capability-status.active {
+.capability-status.status-available {
   border: 1px solid rgba(52, 211, 153, 0.28);
   background: rgba(20, 83, 45, 0.25);
   color: #86efac;
 }
 
-.capability-status.inactive {
+.capability-status.status-local_only {
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(14, 116, 144, 0.18);
+  color: #a5f3fc;
+}
+
+.capability-status.status-degraded {
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(146, 64, 14, 0.2);
+  color: #fde68a;
+}
+
+.capability-status.status-unavailable {
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  background: rgba(127, 29, 29, 0.2);
+  color: #fca5a5;
+}
+
+.capability-status.status-unknown {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: rgba(51, 65, 85, 0.22);
+  color: #cbd5e1;
+}
+
+.capability-status.status-planned {
   border: 1px solid rgba(167, 139, 250, 0.22);
   background: rgba(76, 29, 149, 0.18);
   color: #c4b5fd;
+}
+
+.capability-technical-details {
+  color: var(--text-faint);
+  font-size: 0.72rem;
+}
+
+.capability-technical-details summary {
+  width: max-content;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 650;
+}
+
+.capability-technical-details ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.capability-technical-details li {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.capability-technical-details code {
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
 }
 
 /* ================================================================

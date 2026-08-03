@@ -545,8 +545,8 @@ export function P2MaterialCenter() {
   return (
     <div className="p2-page">
       <div className="page-hero">
-        <h1>P2 多模态知识治理</h1>
-        <p>按五个用户阶段完成素材治理、知识发布、开放检索和归档，系统会根据真实后端状态提示下一步。</p>
+        <h1>P2 素材文本投影治理</h1>
+        <p>按五个用户阶段完成素材文本投影治理、人工修订、知识发布、开放检索和归档，系统会根据真实后端状态提示下一步。</p>
       </div>
 
       <P2WorkflowHeader currentStage={currentStage} status={workflowStatus} nextAction={nextAction} onNext={goToNextAction} />

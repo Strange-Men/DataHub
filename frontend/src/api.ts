@@ -61,4 +61,11 @@ export async function apiFetch(
   return response;
 }
 
+export async function publicApiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  return window.fetch(input, init);
+}
+
 export { API_BASE_URL };

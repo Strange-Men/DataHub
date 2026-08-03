@@ -13,6 +13,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.storage_readiness import StorageReadiness, existing_directory_ready
+
 
 class AssetStorageError(RuntimeError):
     """Safe storage failure that does not expose credentials or filesystem paths."""
@@ -104,8 +106,14 @@ def _default_storage_root() -> Path:
     return Path(__file__).resolve().parent.parent / "storage" / "asset_objects"
 
 
-def get_asset_storage_adapter() -> AssetStorageAdapter:
-    """Build the configured storage adapter without caching environment state."""
+@dataclass(frozen=True)
+class _AssetStorageConfiguration:
+    root: Path
+    persistent_deployment: bool
+
+
+def _asset_storage_configuration() -> _AssetStorageConfiguration:
+    """Resolve and validate the one configuration shared by factory and probe."""
 
     backend = os.getenv("ASSET_STORAGE_BACKEND", "local").strip().lower() or "local"
     if backend != "local":
@@ -121,4 +129,24 @@ def get_asset_storage_adapter() -> AssetStorageAdapter:
     if on_render and not Path(configured_root).is_absolute():
         raise AssetStorageError("ASSET_STORAGE_ROOT must be an absolute path on Render.")
     root = Path(configured_root) if configured_root else _default_storage_root()
-    return LocalFilesystemAssetStorage(root)
+    return _AssetStorageConfiguration(root=root, persistent_deployment=on_render)
+
+
+def check_asset_storage_readiness() -> StorageReadiness:
+    """Inspect configured storage without instantiating the mkdir-capable adapter."""
+
+    try:
+        configuration = _asset_storage_configuration()
+    except AssetStorageError:
+        return StorageReadiness(ready=False, local_only=False)
+    return StorageReadiness(
+        ready=existing_directory_ready(configuration.root),
+        local_only=not configuration.persistent_deployment,
+    )
+
+
+def get_asset_storage_adapter() -> AssetStorageAdapter:
+    """Build the configured storage adapter without caching environment state."""
+
+    configuration = _asset_storage_configuration()
+    return LocalFilesystemAssetStorage(configuration.root)

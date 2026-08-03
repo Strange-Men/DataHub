@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
+from app.storage_readiness import StorageReadiness, existing_directory_ready
+
 
 class P3ExportStorageError(RuntimeError):
     """Safe storage error that never exposes an absolute filesystem path."""
@@ -183,8 +185,13 @@ def _default_export_root() -> Path:
     return Path(__file__).resolve().parents[2] / ".local-data" / "p3-exports"
 
 
-def get_p3_export_storage() -> P3ExportArtifactStorage:
-    """Build the configured local storage adapter without caching env state."""
+@dataclass(frozen=True)
+class _P3ExportStorageConfiguration:
+    root: Path
+
+
+def _p3_export_storage_configuration() -> _P3ExportStorageConfiguration:
+    """Resolve and validate the one configuration shared by factory and probe."""
 
     backend = (
         os.getenv("P3_EXPORT_STORAGE_BACKEND", "local_filesystem")
@@ -198,7 +205,30 @@ def get_p3_export_storage() -> P3ExportArtifactStorage:
         )
     configured_root = os.getenv("P3_EXPORT_STORAGE_ROOT", "").strip()
     root = Path(configured_root) if configured_root else _default_export_root()
-    return LocalFilesystemP3ExportStorage(root)
+    return _P3ExportStorageConfiguration(root=root)
+
+
+def check_p3_export_storage_readiness() -> StorageReadiness:
+    """Inspect configured storage without instantiating the mkdir-capable adapter."""
+
+    try:
+        configuration = _p3_export_storage_configuration()
+    except P3ExportStorageError:
+        return StorageReadiness(ready=False, local_only=True)
+    return StorageReadiness(
+        ready=existing_directory_ready(
+            configuration.root,
+            reject_root_symlink=True,
+        ),
+        local_only=True,
+    )
+
+
+def get_p3_export_storage() -> P3ExportArtifactStorage:
+    """Build the configured local storage adapter without caching env state."""
+
+    configuration = _p3_export_storage_configuration()
+    return LocalFilesystemP3ExportStorage(configuration.root)
 
 
 __all__ = [
@@ -207,5 +237,6 @@ __all__ = [
     "P3ExportArtifactStorage",
     "P3ExportStorageError",
     "P3StoredArtifact",
+    "check_p3_export_storage_readiness",
     "get_p3_export_storage",
 ]

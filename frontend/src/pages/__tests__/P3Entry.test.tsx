@@ -27,7 +27,7 @@ describe("P3 entry and route", () => {
     );
 
     const p1 = screen.getByRole("heading", { name: "P1 文本知识治理" }).closest("article");
-    const p2 = screen.getByRole("heading", { name: "P2 多模态知识治理" }).closest("article");
+    const p2 = screen.getByRole("heading", { name: "P2 素材文本投影治理" }).closest("article");
     const p3 = screen.getByRole("heading", { name: "数据资产复用" }).closest("article");
     const p4 = screen.getByRole("heading", { name: "P4 MCP + Agent 集群" }).closest("article");
 

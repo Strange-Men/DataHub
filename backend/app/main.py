@@ -27,6 +27,7 @@ from app.schemas import (
 from app.database import SessionLocal, check_database_connection, check_pgvector_available, ensure_pgvector_extension, init_database_tables
 from app.auth import Permission, require_permission, validate_auth_configuration
 from app.auth_routes import router as auth_router
+from app.capability_routes import router as capability_router
 from app.asset_routes import router as asset_router
 from app.extraction_repositories import get_extraction_job as get_asset_extraction_job
 from app.extraction_routes import router as asset_extraction_router
@@ -76,6 +77,7 @@ from app.storage import (
 
 app = FastAPI(title="DataHub API", version="0.1.0")
 app.include_router(auth_router)
+app.include_router(capability_router)
 app.include_router(asset_router)
 app.include_router(asset_extraction_router)
 app.include_router(review_router)
