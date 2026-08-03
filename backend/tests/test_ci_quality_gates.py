@@ -73,12 +73,12 @@ def test_stable_job_names_and_failure_masking_are_enforced(tmp_path: Path) -> No
             "REAL_PROVIDER",
         ),
         (
-            "      DATABASE_URL: sqlite:///${{ runner.temp }}/datahub-ci-unit-test.db\n",
+            "      DATABASE_URL: sqlite:////tmp/datahub-ci-unit-test.db\n",
             "      DATABASE_URL: postgresql://127.0.0.1:5433/datahub\n",
             "CI_ISOLATION",
         ),
         (
-            "      DATABASE_URL: sqlite:///${{ runner.temp }}/datahub-ci-unit-test.db\n",
+            "      DATABASE_URL: sqlite:////tmp/datahub-ci-unit-test.db\n",
             "      DATABASE_URL: postgresql://datahub_ci:ci_password@127.0.0.1:5432/datahub\n",
             "DATABASE_SCOPE",
         ),
@@ -129,6 +129,16 @@ def test_postgres_service_user_must_be_explicitly_ci_scoped(tmp_path: Path) -> N
     )
 
     assert "POSTGRES_SCOPE" in _codes(ci_safety._audit_workflow(ROOT, workflow))
+
+
+def test_runner_context_is_rejected_in_job_level_environment(tmp_path: Path) -> None:
+    workflow = _mutated_workflow(
+        tmp_path,
+        "      ASSET_STORAGE_ROOT: /tmp/datahub-ci-unit-asset-test\n",
+        "      ASSET_STORAGE_ROOT: ${{ runner.temp }}/datahub-ci-unit-asset-test\n",
+    )
+
+    assert "JOB_CONTEXT" in _codes(ci_safety._audit_workflow(ROOT, workflow))
 
 
 def test_conflict_marker_scan_reports_location_without_source_text(

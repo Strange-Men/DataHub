@@ -120,7 +120,7 @@ def _database_target_is_test(database_url: str) -> bool:
         "postgresql+psycopg2://", "postgresql://", 1
     )
     parsed = urlsplit(normalized)
-    target = Path(parsed.path).name.lower()
+    target = parsed.path.rstrip("/").rsplit("/", 1)[-1].lower()
     return any(marker in target for marker in ("test", "ci"))
 
 
@@ -182,6 +182,18 @@ def _audit_workflow(root: Path, relative: Path) -> list[Finding]:
         if masking in text.lower():
             findings.append(
                 _finding("FAILURE_MASKING", relative, "CI failures must not be masked", _line(text, masking))
+            )
+    for job_id, job in jobs.items():
+        job_env = job.get("env", {}) if isinstance(job, dict) else {}
+        if isinstance(job_env, dict) and any(
+            "${{ runner." in str(value).lower() for value in job_env.values()
+        ):
+            findings.append(
+                _finding(
+                    "JOB_CONTEXT",
+                    relative,
+                    f"{job_id} job-level env cannot use the runner context",
+                )
             )
     for unsafe in (
         "${{ secrets.", "api.openai.com", "api.siliconflow.cn", "api.jina.ai",
