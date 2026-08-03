@@ -2,9 +2,27 @@
 
 ## Current Stage
 
-P3-M7 Governed JSONL and CSV Export is released. P1/P2 remain formally frozen at the post-release patch baseline; CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, Render P2 persistence remains BLOCKED, and local Docker remains the authoritative runtime boundary. P3 now has exactly seven frozen additive tables and supports governed source selection, deterministic/optional-LLM drafts, human review, publication and deterministic local JSONL/CSV export with Artifact SHA, Manifest, idempotency, download RBAC and logical revoke. M8 frontend and P4 have not started.
+P3-M8 Chinese Frontend Workflow is **COMPLETE / PASS**. P3-M9 is incomplete, so P3-M8 is not the final P3 freeze. P4 has not started. P1/P2 historical release baselines remain protected while the explicitly ordered follow-up Goals address known technical debt and gaps. CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, and Render P2 persistence remains **BLOCKED**.
 
-The cumulative P1/P2 chronology below is historical. Any older “current checkpoint” wording is superseded by this P3-M7 release status.
+## Current Product Positioning and Boundaries
+
+- **P1 | Customer-service text knowledge governance center**: import, cleaning, review, RAG, retrieval, and Bad Case feedback are implemented. JSON/database dual writes and compatibility fallbacks remain technical debt. The frozen P1 business/retrieval baseline does not mean that a single source of truth has been completed; that migration is a separate upcoming Goal.
+- **P2 | Material text-projection governance center**: JPEG, PNG, and WebP assets are governed through human revision, Snapshots, publication, independent indexing, the Serving Gate, and P2-only Retrieval. Formal Extraction remains deterministic mock, not real OCR, Caption, or native image understanding.
+- **P3 | Governed-knowledge reuse asset production and delivery center**: eligible P1, P2, and approved Bad Case sources can produce `training_material`, `sop`, `service_script`, `qa_bank`, and `sft_dataset` through deterministic or optional-LLM drafts, manual revision/review, publication, and JSONL/CSV export. `approved` is not `published`; `published` does not mean entry into RAG, an Agent, or training; `export` does not mean model training. P3-M9 remains incomplete.
+- **P4**: not started.
+
+Local Docker is the authoritative current functional and release-acceptance boundary for P2/P3, not production hardening or complete Render online acceptance. P2/P3 must not be described as fully available online while Render lacks persistent Asset storage.
+
+## Ordered Next Goals
+
+1. Contracts and infrastructure.
+2. P1 single source of truth.
+3. P2/P3 core gaps.
+4. Final unified closure of P1 through P3.
+
+## Historical Chronology
+
+The cumulative chronology below preserves checkpoint-time facts and release evidence. Any older “current checkpoint”, “not implemented”, or Roadmap wording is scoped to its historical milestone and is superseded as a statement of present status by the sections above; historical release conclusions themselves are not rewritten.
 
 M6 completed. M6.1 final vision documentation completed. M6.2 documentation consistency completed. M6.5 RAG quality hardening completed. M7 CustomerOpsAgent restricted retrieval completed. M7.5 retrieval contract polish completed. M8 Bad Case feedback completed. M8.5 Bad Case resolution to draft completed. P1-M9 Phase-One Release Freeze completed. P1-M9.5 Public Dataset Evaluation completed. P1-M10 Legacy RAG Migration completed. P1-M11 Unified DataHub RAG Release completed. P1-M12 Advanced Data Cleaning completed. P1-M13 Chinese Admin Console & Manual Cleaning Workbench completed. P1-M14 Knowledge Review Quality Console completed. P1-M15 High-quality DataHub Final Release completed. P1-M15.5 Frontend UX Cleanup & Project Boundary Review completed. P1-M15.6 Render Deployment Config completed. P1-M15.7 Product UX Redesign & Deployment Link Fix completed. P1-M15.8 Homepage UX Cleanup & Public Surface Cleanup completed. P1-M15.9 Database Persistence Roadmap Lock completed. P1-M16 Database Foundation completed. P1-M17 Import & Cleaning DB Persistence completed. P1-M18 Manual Cleaning & Review DB Persistence completed. P1-M19 RAG / Agent / Bad Case DB Persistence completed. P1-M20 DB Release & Online Smoke Test completed. P1-M20.5 Simplify P1 Workflow UX completed. P1-M20.6 Global Frontend Visual System Polish completed. P1-M20.7 Lightweight Pipeline Harness completed. P1-M21 Vector RAG Foundation + Eval Set completed. P1-M21.1 pgvector Readiness Verification Gate completed. P1-M22 Approved Knowledge Sync to Vector RAG completed. P1-M22.1 Online Vector Sync Verification completed. P1-M22.2 Vector Dimension Fix completed. P1-M23 CustomerOpsAgent Semantic Retrieval completed. P1-M23.2 RAG corpus cleanup & embedding readiness verification completed. P1-M24 Real RAG Online Smoke Test + P1 Release Readiness completed. P1-M24.3 Real Embedding Online Verification & Final Release Gate completed. P2-M0 Planning completed. P2-M1 Material Ingestion Foundation completed. P2-M2 Extraction Foundation completed. P2-M3 Human Review Foundation completed. P2-M4 Knowledge Asset Foundation completed. P2-M5 Knowledge Index Planning Gate completed. P2-M6 Knowledge Index Foundation completed. P2-M7 Text Bridge Semantic Index completed. P2-M8 Unified Retrieval Planning Gate completed. P2-M8.1 P2-only Retrieval Foundation completed. P2-M8.1.1 Local Acceptance Closure completed. P2 Docker Foundation `64c95c0`, M8.2 Shadow Gate `e0eb6b6`, and M8.3 Agent Opt-in `8113150` are pushed. Current checkpoint: M9 final local Docker gates are complete; release Git/tag closure is pending. Render Deployment Acceptance remains blocked on persistent Asset storage.
 

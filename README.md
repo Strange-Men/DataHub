@@ -20,14 +20,27 @@ English version: [README.en.md](./README.en.md)
 
 当前线上 Demo 已支持 P1 主流程演示。P1 数据库持久化链路已完成线上 smoke test，覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。Approved knowledge can be synced into the sealed P1 vector RAG table，CustomerOpsAgent 默认保持 `customerops_vector_retrieval`。P1 正式版本为 `p1-m24.3-real-embedding-online-release`。
 
-DataHub 是一个面向 AI Agent 集群的数据资产中心。P1 治理客服文本知识；P2 将图片、商品素材及其 OCR、Caption、Metadata 文本投影治理为可追溯的知识资产。两者使用独立物理索引，P1 合约保持封板；版本化 Unified Retrieval 只在逻辑查询层通过 rank-only RRF 融合证据。
+## 当前定位与边界
 
-当前实现包含 P1 文本治理闭环，以及 P2 的 Asset、Extraction、Human Review、Snapshot、Knowledge Asset、独立 Chunk/Embedding、显式 Serving Gate、P2-only Retrieval、Unified Shadow/RRF 和默认关闭的 CustomerOpsAgent 显式 opt-in。P2 的“多模态”边界是 OCR、Caption、Metadata 的文本桥接；原生图片向量、CLIP、多模态 reranker、S3/R2 Adapter 和 Render Persistent Disk 均为延期项。前端保持全中文暗色管理台，不把本地 Docker 验收描述为 Render 线上验收。
+DataHub 当前包含三个已落地的中心，但 P1～P3 尚未完成最终统一封板：
 
-当前封板目标为 `p2-m9-local-docker-release`：它表示本地 Docker Release Closure，不表示 Render online release。CustomerOpsAgent 默认仍为 P1-only；Unified 只能通过版本化接口和显式 opt-in 使用。
+- **P1｜客服文本知识治理中心**：覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。当前仍保留 JSON/数据库双写及兼容 fallback 技术债；“P1 封板”仅表示既有业务与检索合约基线稳定，不表示单一真相源改造已经完成。P1 单一真相源属于后续独立 Goal。
+- **P2｜素材文本投影治理中心**：接收 JPEG、PNG、WebP 素材；正式 Extraction 仍是 deterministic mock，不代表真实 OCR、Caption 或原生图片理解。当前真实价值在于素材治理、人工修订、Snapshot、发布、独立 Chunk/Embedding、Serving Gate、P2-only Retrieval，以及显式 opt-in 的 Unified/CustomerOpsAgent 证据融合。
+- **P3｜已治理知识复用资产生产和交付中心**：从合格的 P1、P2 与已批准 Bad Case 来源生产 `training_material`、`sop`、`service_script`、`qa_bank`、`sft_dataset` 五类资产，支持确定性草稿、默认关闭的可选 LLM 草稿、人工修订与审核、发布及 JSONL/CSV 导出。`approved` 不等于 `published`；`published` 不等于进入 RAG、Agent 或训练；`export` 不等于模型训练。P3-M8 已完成，P3-M9 尚未完成，因此 P3 不是最终封板状态。
+- **P4**：尚未开始。
+
+本地 Docker 是 P2/P3 当前权威的功能与发布验收边界，但不等同于生产加固或 Render 线上完整验收。Render 缺少持久化素材存储时，不得宣称 P2/P3 在线完整可用；CustomerOpsAgent 默认仍为 P1-only，Unified 只能通过版本化接口与显式 opt-in 使用。
+
+后续 Goal 必须按以下顺序推进：
+
+1. 契约与基础设施。
+2. P1 单一真相源。
+3. P2/P3 核心缺口。
+4. P1～P3 最终统一封板。
 
 ## 目录
 
+- [当前定位与边界](#当前定位与边界)
 - [为什么做](#为什么做)
 - [DataHub 做什么](#datahub-做什么)
 - [核心工作流](#核心工作流)
@@ -40,7 +53,7 @@ DataHub 是一个面向 AI Agent 集群的数据资产中心。P1 治理客服�
 - [技术栈](#技术栈)
 - [安全边界](#安全边界)
 - [测试命令](#测试命令)
-- [架构预留能力](#架构预留能力)
+- [当前能力与 Roadmap](#当前能力与-roadmap)
 - [项目目录](#项目目录)
 
 ## 为什么做
@@ -698,17 +711,21 @@ python backend\tests\test_legacy_rag_migration.py
 python backend\tests\test_unified_rag_release.py
 ```
 
-## 架构预留能力
+## 当前能力与 Roadmap
 
-DataHub 的完整产品形态面向 Agent 集群：
+当前仓库已经实现：
 
-- AI 素材中心：图片、视频、海报素材导入、OCR、Caption、标签、SKU 绑定与多模态审核。
-- 高质量数据复用：FAQ、SOP、话术手册、典型案例、测验题。
-- 微调数据导出：SFT / Preference 数据集，服务品牌语气、客服风格和拒答规范优化。
+- P2 的 JPEG/PNG/WebP 素材治理，以及 deterministic mock 生成的 OCR/Caption/Metadata 文本投影、人工修订、Snapshot、发布和独立检索。
+- P3 的五类受治理复用资产、人工审核与发布，以及 JSONL/CSV Artifact 导出；这些导出不是训练作业，也不会自动进入 RAG 或 Agent。
+
+以下仍属于架构支持和 Roadmap 能力：
+
+- 真实 OCR/Caption/图片理解 Provider、原生图片 embedding、image-to-image retrieval、CLIP、多模态 reranker 与视频语义索引。
+- DataHub 内部 LLM 最终答案生成、真实模型训练、Preference 数据集生产流水线与云端 Artifact 分发。
 - MCP Tools：`search_customer_knowledge`、`submit_bad_case`、`export_training_dataset` 等工具接口。
 - Agent 集群调用：CustomerOpsAgent、SalesAgent、OpsAgent、MaterialAgent 通过统一入口调用 DataHub。
 
-以上属于架构支持和 Roadmap 能力；当前仓库尚未接入真实多模态、DataHub 内部 LLM answer generation 或 MCP 运行层。
+当前仓库尚未接入真实多模态、DataHub 内部 LLM answer generation 或 MCP 运行层；P3-M9 仍待完成，P4 尚未开始。
 
 ## 项目目录
 

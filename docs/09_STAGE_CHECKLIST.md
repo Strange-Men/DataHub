@@ -1,5 +1,21 @@
 # DataHub Stage Checklist
 
+## Current Unified Boundary
+
+- **P1 | Customer-service text knowledge governance center** is implemented, but JSON/database dual writes and compatibility fallbacks remain technical debt. Its historical freeze protects the existing business/retrieval baseline; P1 single-source-of-truth migration remains a separate upcoming Goal.
+- **P2 | Material text-projection governance center** supports JPEG, PNG, and WebP governance, human revision, Snapshots, publication, independent indexing, the Serving Gate, and P2-only Retrieval. Formal Extraction remains deterministic mock rather than real OCR, Caption, or native image understanding. Local Docker is the functional/release acceptance authority, not production or complete Render online acceptance; missing persistent Render Asset storage keeps online P2 acceptance **BLOCKED**.
+- **P3 | Governed-knowledge reuse asset production and delivery center** accepts eligible P1, P2, and approved Bad Case sources and produces `training_material`, `sop`, `service_script`, `qa_bank`, and `sft_dataset` through deterministic or optional-LLM drafts, manual revision/review, publication, and JSONL/CSV export. `approved` is not `published`; `published` does not mean entry into RAG, an Agent, or training; `export` does not mean model training. P3-M8 is complete, but P3-M9 is incomplete and P3 is not finally frozen.
+- **P4** has not started.
+
+The next Goals must proceed in this order:
+
+1. Contracts and infrastructure.
+2. P1 single source of truth.
+3. P2/P3 core gaps.
+4. Final unified closure of P1 through P3.
+
+> Historical-scope rule: every milestone checklist and phase boundary below records the facts and forbidden scope at that checkpoint. Older statements such as “P2/P3 not implemented”, “M8 not started”, or “Roadmap only” remain historical evidence; they do not override the current boundary above and must not be rewritten as if they were current claims.
+
 Use this checklist before every development stage.
 
 ## 1. Required Reading

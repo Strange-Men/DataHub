@@ -16,18 +16,31 @@
 - Backend API: https://datahub-jr8x.onrender.com
 - Health Check: https://datahub-jr8x.onrender.com/api/health
 
-> Note: Render free instances may experience cold starts (30-60 seconds on first access). The frontend connects to the backend via the `VITE_API_BASE_URL` environment variable. If the backend is not connected, the frontend displays a friendly status hint instead of a red error.
+> Note: Render free instances may experience cold starts (30-60 seconds on first access). The frontend connects to the backend via the `VITE_API_BASE_URL` environment variable. If the backend is not connected, the frontend displays a friendly status hint instead of a red error. Render currently covers only P1 online acceptance. Without persistent Asset storage, P2 upload safely returns `503 ASSET_STORAGE_UNAVAILABLE`; this must not be described as complete P2 or P3 online availability.
 
-Current online demo uses the P1 workflow. P1 database-backed persistence has passed online smoke testing, covering import, cleaning, review, RAG, retrieval, and Bad Case workflows. Approved knowledge can now be synced into the vector RAG table. CustomerOpsAgent can now retrieve from the vector RAG table with keyword fallback. P1 real vector RAG online readiness has been verified; final release depends on the documented readiness report.
+The current online demo supports the P1 workflow. P1 database-backed persistence has passed online smoke testing for import, cleaning, review, RAG, retrieval, and Bad Case feedback. Approved knowledge can be synchronized to the sealed P1 vector RAG table, and CustomerOpsAgent remains on `customerops_vector_retrieval` by default. The formal P1 release is `p1-m24.3-real-embedding-online-release`.
 
-DataHub is a data asset center for AI agent systems. It turns customer chat logs, legacy knowledge assets, public evaluation samples, Bad Case corrections, and future multimodal materials into governed, traceable knowledge that can be consumed by agents through restricted APIs.
+## Current Positioning and Boundaries
 
-The current implementation focuses on the text customer-service knowledge loop. It includes local JSON storage, local keyword retrieval, machine cleaning, manual cleaning, Chinese knowledge review, Bad Case feedback, and legacy RAG migration. Multimodal assets, sales-training exports, fine-tuning datasets, and MCP tools are architectural extensions, not production-connected features in this repository.
+DataHub currently contains three implemented centers, but final unified closure of P1 through P3 is not complete:
 
-The frontend is a Chinese dark admin console for data governance operators. It keeps the text customer-service workflow operational while showing future multimodal, dataset reuse, and MCP/Agent-cluster capabilities as roadmap entries only. The console presents the main flow as import -> machine cleaning -> manual cleaning -> knowledge review -> RAG / Agent, and shows friendly backend connection status. The homepage uses a clean Hero section with four capability cards as the unified entry point. API Base URL and backend technical boundaries are not exposed in the public UI.
+- **P1 | Customer-service text knowledge governance center**: covers import, cleaning, review, RAG, retrieval, and Bad Case feedback. JSON/database dual writes and compatibility fallbacks remain technical debt. “P1 frozen” means that the existing business and retrieval contract baseline is stable; it does not mean that the single-source-of-truth migration is complete. That migration is a separate upcoming Goal.
+- **P2 | Material text-projection governance center**: accepts JPEG, PNG, and WebP assets. The formal Extraction path is still deterministic mock and is not real OCR, Caption, or native image understanding. Its current value is asset governance, human revision, Snapshots, publication, an independent Chunk/Embedding index, the Serving Gate, P2-only Retrieval, and explicitly opted-in Unified/CustomerOpsAgent evidence fusion.
+- **P3 | Governed-knowledge reuse asset production and delivery center**: produces five asset types—`training_material`, `sop`, `service_script`, `qa_bank`, and `sft_dataset`—from eligible P1, P2, and approved Bad Case sources. It supports deterministic drafts, optional LLM drafts that are disabled by default, manual revision and review, publication, and JSONL/CSV export. `approved` is not `published`; `published` does not mean entry into RAG, an Agent, or training; `export` does not mean model training. P3-M8 is complete, but P3-M9 is incomplete, so P3 is not finally frozen.
+- **P4**: has not started.
+
+Local Docker is the current authoritative functional and release-acceptance boundary for P2/P3, not production hardening or complete Render online acceptance. P2/P3 must not be described as fully available online while Render lacks persistent Asset storage. CustomerOpsAgent remains P1-only by default, and Unified requires a versioned API plus explicit opt-in.
+
+The next Goals must proceed in this order:
+
+1. Contracts and infrastructure.
+2. P1 single source of truth.
+3. P2/P3 core gaps.
+4. Final unified closure of P1 through P3.
 
 ## Contents
 
+- [Current Positioning and Boundaries](#current-positioning-and-boundaries)
 - [Why DataHub](#why-datahub)
 - [What DataHub Provides](#what-datahub-provides)
 - [Governance Workflow](#governance-workflow)
@@ -39,7 +52,7 @@ The frontend is a Chinese dark admin console for data governance operators. It k
 - [Tech Stack](#tech-stack)
 - [Safety Boundaries](#safety-boundaries)
 - [Test Commands](#test-commands)
-- [Roadmap Capabilities](#roadmap-capabilities)
+- [Current Capabilities and Roadmap](#current-capabilities-and-roadmap)
 - [Project Layout](#project-layout)
 
 ## Why DataHub
@@ -138,7 +151,7 @@ Only verified repository results are listed here:
 | advanced cleaning tests | passed |
 | manual cleaning / review quality / high-quality release tests | passed |
 
-These results validate the workflow, not production-grade retrieval quality. The current retrieval implementation is still local keyword/mock retrieval.
+These legacy sample results validate the workflow, not production-grade retrieval quality. The current retrieval path is semantic vector retrieval first, with keyword retrieval retained as a safe fallback.
 
 ## Quick Start
 
@@ -266,17 +279,21 @@ python backend\tests\test_legacy_rag_migration.py
 python backend\tests\test_unified_rag_release.py
 ```
 
-## Roadmap Capabilities
+## Current Capabilities and Roadmap
 
-The full DataHub product shape is agent-cluster oriented:
+The current repository implements:
 
-- AI Material Center: image, video, poster ingestion, OCR, Caption, tags, SKU binding, multimodal review.
-- High-quality data reuse: FAQ, SOP, scripts, typical cases, quizzes.
-- Fine-tuning dataset export: SFT and preference datasets for brand voice and refusal behavior.
+- P2 governance for JPEG/PNG/WebP assets, deterministic-mock OCR/Caption/Metadata text projection, human revision, Snapshots, publication, and isolated retrieval.
+- P3 production, review, and publication of five governed reuse asset types, plus JSONL/CSV Artifact export. An export is not a training job and does not automatically enter RAG or an Agent.
+
+The following remain architectural or roadmap capabilities:
+
+- Real OCR/Caption/image-understanding providers, native image embeddings, image-to-image retrieval, CLIP, multimodal reranking, and video semantic indexing.
+- DataHub-internal final-answer generation, real model training, a Preference-dataset production pipeline, and cloud Artifact delivery.
 - MCP tools: `search_customer_knowledge`, `submit_bad_case`, `export_training_dataset`, and related tools.
 - Agent cluster access: CustomerOpsAgent, SalesAgent, OpsAgent, and MaterialAgent through a unified DataHub entry point.
 
-These are architectural and roadmap capabilities. This repository does not yet connect a real multimodal pipeline, DataHub-internal LLM answer generation, or an MCP runtime.
+This repository does not yet connect a real multimodal pipeline, DataHub-internal LLM answer generation, or an MCP runtime. P3-M9 remains incomplete, and P4 has not started.
 
 ## Project Layout
 
