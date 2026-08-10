@@ -7,12 +7,23 @@
 - **P3 | Governed-knowledge reuse asset production and delivery center** accepts eligible P1, P2, and approved Bad Case sources and produces `training_material`, `sop`, `service_script`, `qa_bank`, and `sft_dataset` through deterministic or optional-LLM drafts, manual revision/review, publication, and JSONL/CSV export. `approved` is not `published`; `published` does not mean entry into RAG, an Agent, or training; `export` does not mean model training. P3-M8 is complete, but P3-M9 is incomplete and P3 is not finally frozen.
 - **P4** has not started.
 
-The next Goals must proceed in this order:
+## P1-P3-R1 Contract and Infrastructure Hardening Closure
 
-1. Contracts and infrastructure.
-2. P1 single source of truth.
-3. P2/P3 core gaps.
-4. Final unified closure of P1 through P3.
+- [x] R1.1 freezes the unified product/ownership/retrieval/environment contract and ordered Goal boundary.
+- [x] R1.2 exposes read-only Runtime Capabilities and truthfully maps P1/P2/P3/P4 on the home page.
+- [x] R1.3 owns Schema through Alembic `20260803_0001`, adopts equivalent existing databases safely, initializes empty databases, removes startup/Health DDL, separates Live/Ready, fails closed for production disabled Auth, and gates Docker startup on Migration.
+- [x] R1.4 provides `backend-unit`, `frontend-quality`, `postgres-integration`, and `contract-safety`; remote run `30831703683` is green at the corrected R1.4 head.
+- [x] Stage E backend, frontend, PostgreSQL, Docker, Health/Capabilities/Auth, Secret, conflict-marker, and diff gates pass; no test database/container/network/volume/clone remains.
+- [x] The single Stage E exception is recorded without deletion or baseline rewrite: one real SiliconFlow query embedding and one `retrieval_logs` audit increment. User acceptance was explicit on 2026-08-10; no further Provider-capable request was made.
+- [x] Aside from the accepted audit row, 26/26 other business-table count/hash snapshots, 107 indexes, 324 constraints, and exactly seven P3 tables remain unchanged.
+- [x] Only P1-P3-R1 Contract and Infrastructure Hardening is marked complete. P1 data refactoring, real P2 multimodal/cloud storage, P3-M9, OIDC/human identity, and P4 remain incomplete.
+- [x] Authoritative report: `docs/86_P1_P3_R1_CONTRACT_INFRASTRUCTURE_RELEASE_REPORT.md`.
+
+The remaining Goals must proceed in this order:
+
+1. P1 single source of truth.
+2. P2/P3 core gaps.
+3. Final unified closure of P1 through P3.
 
 > Historical-scope rule: every milestone checklist and phase boundary below records the facts and forbidden scope at that checkpoint. Older statements such as “P2/P3 not implemented”, “M8 not started”, or “Roadmap only” remain historical evidence; they do not override the current boundary above and must not be rewritten as if they were current claims.
 

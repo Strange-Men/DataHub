@@ -2,7 +2,7 @@
 
 ## Current Stage
 
-P3-M8 Chinese Frontend Workflow is **COMPLETE / PASS**. P3-M9 is incomplete, so P3-M8 is not the final P3 freeze. P4 has not started. P1/P2 historical release baselines remain protected while the explicitly ordered follow-up Goals address known technical debt and gaps. CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, and Render P2 persistence remains **BLOCKED**.
+P1-P3-R1 Contract and Infrastructure Hardening is **COMPLETE / PASS WITH AN APPROVED STAGE E EXCEPTION**. P3-M8 remains complete, but P3-M9 is incomplete and P4 has not started. P1/P2 historical release baselines remain protected while the explicitly ordered follow-up Goals address known technical debt and gaps. CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, and Render P2 persistence remains **BLOCKED**.
 
 ## Current Product Positioning and Boundaries
 
@@ -13,12 +13,22 @@ P3-M8 Chinese Frontend Workflow is **COMPLETE / PASS**. P3-M9 is incomplete, so 
 
 Local Docker is the authoritative current functional and release-acceptance boundary for P2/P3, not production hardening or complete Render online acceptance. P2/P3 must not be described as fully available online while Render lacks persistent Asset storage.
 
+## P1-P3-R1 Contract and Infrastructure Hardening Release
+
+- **Status:** complete on 2026-08-10; full evidence is in `docs/86_P1_P3_R1_CONTRACT_INFRASTRUCTURE_RELEASE_REPORT.md`.
+- R1.1 froze the unified product, ownership, retrieval-isolation, environment, and ordered-Goal contract in `docs/85_P1_P3_R1_CONTRACT_FREEZE_AND_PLATFORM_ADR.md`.
+- R1.2 made `GET /api/capabilities` the read-only deployment truth source and mapped P1/P2/P3/P4 home states without static availability claims.
+- R1.3 established Alembic head `20260803_0001`, strict existing-database adoption, empty-database migration, DDL-free startup/Health, Live/Ready separation, production Auth fail-closed behavior, and migration-gated Docker startup.
+- R1.4 added the four required GitHub checks: `backend-unit`, `frontend-quality`, `postgres-integration`, and `contract-safety`. Remote run `30831703683` is green at `5d7e86f50a254515180a234b01baff665527fb44`.
+- Stage E authoritative results: corrected backend full `1200 passed / 1 skipped`, frontend `59 passed` plus typecheck/lint/build, PostgreSQL `6 passed` plus `14 passed`, and healthy retained-volume Docker services.
+- Approved exception: one P2 Retrieval smoke made one real SiliconFlow query-embedding call and persisted one required audit row. `retrieval_logs` changed from 968 to 969; the other 26 business-table count/hash snapshots, 107-index fingerprint, 324-constraint fingerprint, and exact seven P3 tables did not change. The record is retained and the preflight is not rewritten.
+- This release changes no P1/P2/P3 business semantics. It does not complete P1 single-source-of-truth, real P2 multimodal Providers/cloud storage, P3-M9, OIDC/human identity, or P4. Green CI and local Docker acceptance are not production deployment acceptance.
+
 ## Ordered Next Goals
 
-1. Contracts and infrastructure.
-2. P1 single source of truth.
-3. P2/P3 core gaps.
-4. Final unified closure of P1 through P3.
+1. P1 single source of truth.
+2. P2/P3 core gaps.
+3. Final unified closure of P1 through P3.
 
 ## Historical Chronology
 

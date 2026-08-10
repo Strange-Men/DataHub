@@ -31,16 +31,24 @@ DataHub currently contains three implemented centers, but final unified closure 
 
 Local Docker is the current authoritative functional and release-acceptance boundary for P2/P3, not production hardening or complete Render online acceptance. P2/P3 must not be described as fully available online while Render lacks persistent Asset storage. CustomerOpsAgent remains P1-only by default, and Unified requires a versioned API plus explicit opt-in.
 
-The next Goals must proceed in this order:
+## P1-P3-R1 Contract and Infrastructure Hardening
 
-1. Contracts and infrastructure.
-2. P1 single source of truth.
-3. P2/P3 core gaps.
-4. Final unified closure of P1 through P3.
+**P1-P3-R1 Contract and Infrastructure Hardening is complete.** R1 froze the P1/P2/P3 product and data-ownership contracts, added read-only `GET /api/capabilities`, established the Alembic baseline, DDL-free startup, Live/Ready separation, production Auth fail-closed behavior, the local Docker migration gate, and four GitHub Actions checks: `backend-unit`, `frontend-quality`, `postgres-integration`, and `contract-safety`. See the [Release Report](docs/86_P1_P3_R1_CONTRACT_INFRASTRUCTURE_RELEASE_REPORT.md) for the full evidence.
+
+Stage E accidentally issued one real SiliconFlow query embedding and persisted one contract-required `retrieval_logs` audit row. The user explicitly accepted this exception; the audit row is retained and the preflight was not rewritten. The other 26 business-table count/hash snapshots, the Schema fingerprints, and the exact seven P3 tables remained unchanged. This exception does not mean that a real Provider business capability has been delivered.
+
+R1 closes only contract and infrastructure hardening. P1 JSON/database dual writes, real P2 OCR/Caption/Vision and cloud storage, P3-M9, OIDC/human identity, and P4 remain incomplete. Local Docker remains authoritative, and green CI is not production deployment acceptance.
+
+The remaining Goals must proceed in this order:
+
+1. P1 single source of truth.
+2. P2/P3 core gaps.
+3. Final unified closure of P1 through P3.
 
 ## Contents
 
 - [Current Positioning and Boundaries](#current-positioning-and-boundaries)
+- [P1-P3-R1 Contract and Infrastructure Hardening](#p1-p3-r1-contract-and-infrastructure-hardening)
 - [Why DataHub](#why-datahub)
 - [What DataHub Provides](#what-datahub-provides)
 - [Governance Workflow](#governance-workflow)

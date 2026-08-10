@@ -31,16 +31,24 @@ DataHub 当前包含三个已落地的中心，但 P1～P3 尚未完成最终统
 
 本地 Docker 是 P2/P3 当前权威的功能与发布验收边界，但不等同于生产加固或 Render 线上完整验收。Render 缺少持久化素材存储时，不得宣称 P2/P3 在线完整可用；CustomerOpsAgent 默认仍为 P1-only，Unified 只能通过版本化接口与显式 opt-in 使用。
 
-后续 Goal 必须按以下顺序推进：
+## P1-P3-R1 合同与基础设施加固
 
-1. 契约与基础设施。
-2. P1 单一真相源。
-3. P2/P3 核心缺口。
-4. P1～P3 最终统一封板。
+**P1-P3-R1 Contract and Infrastructure Hardening 已完成。** R1 冻结了 P1/P2/P3 产品与数据所有权契约，上线只读 `GET /api/capabilities`，建立 Alembic baseline、无隐式 DDL startup、Live/Ready、production Auth fail-closed、本地 Docker migration gate，以及 `backend-unit`、`frontend-quality`、`postgres-integration`、`contract-safety` 四项 GitHub Actions 门禁。完整证据见 [Release 报告](docs/86_P1_P3_R1_CONTRACT_INFRASTRUCTURE_RELEASE_REPORT.md)。
+
+Stage E 曾误触发一次真实 SiliconFlow query embedding，并按既有审计契约新增一条 `retrieval_logs`；该例外已获用户明确接受，审计记录保留，未删除或改写 preflight。除该审计增量外，其余 26 张业务表 count/hash、Schema 指纹和 P3 精确七表均保持不变。该例外不代表真实 Provider 业务能力已经交付。
+
+R1 只完成合同与基础设施加固。P1 JSON/数据库双写、P2 真实 OCR/Caption/Vision 与云存储、P3-M9、OIDC/自然人身份以及 P4 均未完成；本地 Docker 仍是当前权威环境，CI 通过不等于生产部署验收。
+
+R1 完成后的 Goal 必须按以下顺序推进：
+
+1. P1 单一真相源。
+2. P2/P3 核心缺口。
+3. P1～P3 最终统一封板。
 
 ## 目录
 
 - [当前定位与边界](#当前定位与边界)
+- [P1-P3-R1 合同与基础设施加固](#p1-p3-r1-合同与基础设施加固)
 - [为什么做](#为什么做)
 - [DataHub 做什么](#datahub-做什么)
 - [核心工作流](#核心工作流)
@@ -275,7 +283,7 @@ python scripts/run_p2_local_acceptance.py --auth-token-env DATAHUB_ADMIN_TOKEN
 
 ### 中文治理工作台
 
-前端主导航按任务收敛为“P1 文本知识治理”“P2 多模态知识治理”“检索验证”“系统状态”。当前角色只来自 `/api/auth/me`；无权限按钮会禁用并说明原因，后端 RBAC 仍是最终安全边界。
+前端主导航按任务收敛为“P1 文本知识治理”“P2 素材文本投影治理”“P3 数据资产复用”“检索与 Agent 验证”“系统状态”。当前角色只来自 `/api/auth/me`；无权限按钮会禁用并说明原因，后端 RBAC 仍是最终安全边界。
 
 - P1：导入 → 机器清洗 → 手工修订 → 候选知识 → 审核 → RAG 同步 → CustomerOpsAgent → Bad Case。
 - P2：上传 → Extraction → Review → Snapshot → 发布 → Index → Embed → Ready → Serve → Retrieval → Archive → Source Trace。
