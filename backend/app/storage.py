@@ -1,9 +1,7 @@
-import json
 import re
 from difflib import SequenceMatcher
 from hashlib import sha1
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -25,7 +23,6 @@ from app.schemas import (
     KnowledgeCandidate,
     LegacyRagImportMetadata,
     LegacyRagImportRequest,
-    LegacyRagItem,
     ManualCleanRequest,
     ManualCleaningRecord,
     RagBuildResult,
@@ -37,12 +34,31 @@ from app.schemas import (
     SanitizedMessage,
     SourceBatchMetadata,
 )
-from app.database import SessionLocal
+from app.database import SessionLocal as _SessionLocal
 import app.db_repositories as db_repo
 from app.embedding import get_embedding_provider
 import logging
 
 _logger = logging.getLogger(__name__)
+
+
+class P1PersistenceError(RuntimeError):
+    """Stable, safe failure raised when P1 database persistence is unavailable."""
+
+    code = "P1_DATABASE_UNAVAILABLE"
+
+
+def SessionLocal():
+    """Open a database session while normalizing connection failures."""
+    try:
+        return _SessionLocal()
+    except Exception as exc:
+        raise _persistence_failure("open session", exc) from None
+
+
+def _persistence_failure(operation: str, exc: Exception) -> P1PersistenceError:
+    _logger.exception("P1 database operation failed: %s", operation)
+    return P1PersistenceError(P1PersistenceError.code)
 
 
 def _safe_error_message(exc: Exception) -> str:
@@ -54,31 +70,6 @@ def _safe_error_message(exc: Exception) -> str:
     msg = _re.sub(r"sqlite:///[^\s]+", "[REDACTED_SQLITE_PATH]", msg)
     return msg
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-STORAGE_DIR = BASE_DIR / "storage"
-RAW_BATCH_DIR = STORAGE_DIR / "raw_batches"
-SANITIZED_BATCH_DIR = STORAGE_DIR / "sanitized_batches"
-CLEANING_JOB_DIR = STORAGE_DIR / "cleaning_jobs"
-EXTRACTION_JOB_DIR = STORAGE_DIR / "extraction_jobs"
-KNOWLEDGE_CANDIDATE_DIR = STORAGE_DIR / "knowledge_candidates"
-REVIEW_RECORD_DIR = STORAGE_DIR / "review_records"
-RAG_CHUNK_DIR = STORAGE_DIR / "rag_chunks"
-RETRIEVAL_LOG_DIR = STORAGE_DIR / "retrieval_logs"
-BAD_CASE_DIR = STORAGE_DIR / "bad_cases"
-LEGACY_RAG_IMPORT_DIR = STORAGE_DIR / "legacy_rag_imports"
-MANUAL_CLEANING_RECORD_DIR = STORAGE_DIR / "manual_cleaning_records"
-INDEX_FILE = RAW_BATCH_DIR / "index.json"
-SANITIZED_INDEX_FILE = SANITIZED_BATCH_DIR / "index.json"
-CLEANING_JOB_INDEX_FILE = CLEANING_JOB_DIR / "index.json"
-EXTRACTION_JOB_INDEX_FILE = EXTRACTION_JOB_DIR / "index.json"
-KNOWLEDGE_CANDIDATE_INDEX_FILE = KNOWLEDGE_CANDIDATE_DIR / "index.json"
-REVIEW_RECORD_INDEX_FILE = REVIEW_RECORD_DIR / "index.json"
-RAG_CHUNK_INDEX_FILE = RAG_CHUNK_DIR / "index.json"
-RETRIEVAL_LOG_INDEX_FILE = RETRIEVAL_LOG_DIR / "index.json"
-BAD_CASE_INDEX_FILE = BAD_CASE_DIR / "index.json"
-LEGACY_RAG_IMPORT_INDEX_FILE = LEGACY_RAG_IMPORT_DIR / "index.json"
-MANUAL_CLEANING_RECORD_INDEX_FILE = MANUAL_CLEANING_RECORD_DIR / "index.json"
 
 EMAIL_PATTERN = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 PHONE_PATTERN = re.compile(
@@ -138,63 +129,7 @@ QUESTION_TERMS = [
 ]
 
 
-def _ensure_storage() -> None:
-    RAW_BATCH_DIR.mkdir(parents=True, exist_ok=True)
-    SANITIZED_BATCH_DIR.mkdir(parents=True, exist_ok=True)
-    CLEANING_JOB_DIR.mkdir(parents=True, exist_ok=True)
-    EXTRACTION_JOB_DIR.mkdir(parents=True, exist_ok=True)
-    KNOWLEDGE_CANDIDATE_DIR.mkdir(parents=True, exist_ok=True)
-    REVIEW_RECORD_DIR.mkdir(parents=True, exist_ok=True)
-    RAG_CHUNK_DIR.mkdir(parents=True, exist_ok=True)
-    RETRIEVAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
-    BAD_CASE_DIR.mkdir(parents=True, exist_ok=True)
-    LEGACY_RAG_IMPORT_DIR.mkdir(parents=True, exist_ok=True)
-    MANUAL_CLEANING_RECORD_DIR.mkdir(parents=True, exist_ok=True)
-    if not INDEX_FILE.exists():
-        INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not SANITIZED_INDEX_FILE.exists():
-        SANITIZED_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not CLEANING_JOB_INDEX_FILE.exists():
-        CLEANING_JOB_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not EXTRACTION_JOB_INDEX_FILE.exists():
-        EXTRACTION_JOB_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not KNOWLEDGE_CANDIDATE_INDEX_FILE.exists():
-        KNOWLEDGE_CANDIDATE_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not REVIEW_RECORD_INDEX_FILE.exists():
-        REVIEW_RECORD_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not RAG_CHUNK_INDEX_FILE.exists():
-        RAG_CHUNK_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not RETRIEVAL_LOG_INDEX_FILE.exists():
-        RETRIEVAL_LOG_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not BAD_CASE_INDEX_FILE.exists():
-        BAD_CASE_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not LEGACY_RAG_IMPORT_INDEX_FILE.exists():
-        LEGACY_RAG_IMPORT_INDEX_FILE.write_text("[]", encoding="utf-8")
-    if not MANUAL_CLEANING_RECORD_INDEX_FILE.exists():
-        MANUAL_CLEANING_RECORD_INDEX_FILE.write_text("[]", encoding="utf-8")
-
-
-def _read_json_list(path: Path) -> list[dict[str, object]]:
-    _ensure_storage()
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(data, list):
-        return []
-    return data
-
-
-def _write_json_list(path: Path, items: list[dict[str, object]]) -> None:
-    _ensure_storage()
-    path.write_text(
-        json.dumps(items, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-
 def create_raw_batch(payload: ImportJsonRequest) -> SourceBatchMetadata:
-    _ensure_storage()
     batch_id = f"batch_{uuid4().hex[:12]}"
     created_at = datetime.now(UTC).isoformat()
     message_count = sum(len(conversation.messages) for conversation in payload.conversations)
@@ -207,27 +142,9 @@ def create_raw_batch(payload: ImportJsonRequest) -> SourceBatchMetadata:
         status="raw_imported",
     )
 
-    batch_file = RAW_BATCH_DIR / f"{batch_id}.json"
-    batch_file.write_text(
-        json.dumps(
-            {
-                "metadata": metadata.model_dump(),
-                "raw_payload": payload.model_dump(),
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-
-    items = _read_json_list(INDEX_FILE)
-    items.append(metadata.model_dump())
-    _write_json_list(INDEX_FILE, items)
-
-    # Dual-write to database (P1-M17)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
+        with db.begin():
             db_repo.save_raw_batch_to_db(
                 db,
                 batch_id=batch_id,
@@ -240,74 +157,45 @@ def create_raw_batch(payload: ImportJsonRequest) -> SourceBatchMetadata:
                 conversations=[
                     conv.model_dump() for conv in payload.conversations
                 ],
+                commit=False,
             )
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to save raw batch %s to database", batch_id)
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("import", exc) from None
+    finally:
+        db.close()
 
     return metadata
 
 
 def list_raw_batches() -> list[SourceBatchMetadata]:
-    # Try DB first (P1-M17)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_results = db_repo.list_raw_batches_from_db(db)
-            if db_results:
-                return db_results
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to list raw batches from database")
-
-    return [SourceBatchMetadata(**item) for item in _read_json_list(INDEX_FILE)]
+        return db_repo.list_raw_batches_from_db(db)
+    except Exception as exc:
+        raise _persistence_failure("list raw batches", exc) from None
+    finally:
+        db.close()
 
 
 def get_raw_batch_metadata(batch_id: str) -> SourceBatchMetadata | None:
-    # Try DB first (P1-M17)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_result = db_repo.get_raw_batch_from_db(db, batch_id)
-            if db_result is not None:
-                return db_result
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to get raw batch %s from database", batch_id)
-
-    for item in _read_json_list(INDEX_FILE):
-        if item.get("batch_id") == batch_id:
-            return SourceBatchMetadata(**item)
-    return None
+        return db_repo.get_raw_batch_from_db(db, batch_id)
+    except Exception as exc:
+        raise _persistence_failure("get raw batch", exc) from None
+    finally:
+        db.close()
 
 
 def get_raw_batch_document(batch_id: str) -> dict[str, object] | None:
-    # Try DB first (P1-M17)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_doc = db_repo.get_raw_batch_document_from_db(db, batch_id)
-            if db_doc is not None:
-                return db_doc
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to get raw batch document %s from database", batch_id)
-
-    _ensure_storage()
-    batch_file = RAW_BATCH_DIR / f"{batch_id}.json"
-    if not batch_file.exists():
-        return None
-    try:
-        data = json.loads(batch_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return data
+        return db_repo.get_raw_batch_document_from_db(db, batch_id)
+    except Exception as exc:
+        raise _persistence_failure("get raw batch document", exc) from None
+    finally:
+        db.close()
 
 
 def _standardize_role(value: object) -> tuple[str, list[str]]:
@@ -601,130 +489,62 @@ def run_cleaning(batch_id: str) -> CleaningJobMetadata | None:
         completed_at=completed_at,
     )
 
-    _ensure_storage()
-    (SANITIZED_BATCH_DIR / f"{batch_id}.json").write_text(
-        json.dumps(sanitized_batch.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    (CLEANING_JOB_DIR / f"{job_id}.json").write_text(
-        json.dumps(job.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-    sanitized_items = [
-        item for item in _read_json_list(SANITIZED_INDEX_FILE)
-        if item.get("batch_id") != batch_id
-    ]
-    sanitized_items.append(
-        {
-            "batch_id": sanitized_batch.batch_id,
-            "source_batch_id": sanitized_batch.source_batch_id,
-            "status": sanitized_batch.status,
-            "raw_message_count": sanitized_batch.raw_message_count,
-            "sanitized_message_count": sanitized_batch.sanitized_message_count,
-            "dropped_message_count": sanitized_batch.dropped_message_count,
-            "pii_detected_count": sanitized_batch.pii_detected_count,
-            "exact_duplicate_count": sanitized_batch.exact_duplicate_count,
-            "near_duplicate_count": sanitized_batch.near_duplicate_count,
-            "low_quality_count": sanitized_batch.low_quality_count,
-            "noise_count": sanitized_batch.noise_count,
-            "review_recommended_count": sanitized_batch.review_recommended_count,
-            "drop_recommended_count": sanitized_batch.drop_recommended_count,
-            "average_quality_score": sanitized_batch.average_quality_score,
-            "created_at": sanitized_batch.created_at,
-        }
-    )
-    _write_json_list(SANITIZED_INDEX_FILE, sanitized_items)
-
-    job_items = _read_json_list(CLEANING_JOB_INDEX_FILE)
-    job_items.append(job.model_dump())
-    _write_json_list(CLEANING_JOB_INDEX_FILE, job_items)
-
-    # Dual-write sanitized results to database (P1-M17)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_repo.save_sanitized_batch_to_db(db, sanitized_batch, job)
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to save sanitized batch %s to database", batch_id)
+        with db.begin():
+            db_repo.save_sanitized_batch_to_db(
+                db, sanitized_batch, job, commit=False
+            )
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("cleaning", exc) from None
+    finally:
+        db.close()
 
     return job
 
 
 def get_cleaning_job(job_id: str) -> CleaningJobMetadata | None:
-    _ensure_storage()
-    job_file = CLEANING_JOB_DIR / f"{job_id}.json"
-    if not job_file.exists():
-        return None
+    db = SessionLocal()
     try:
-        data = json.loads(job_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return CleaningJobMetadata(**data)
+        data = db_repo.get_cleaning_job_from_db(db, job_id)
+        return CleaningJobMetadata(**data) if data is not None else None
+    except Exception as exc:
+        raise _persistence_failure("get cleaning job", exc) from None
+    finally:
+        db.close()
 
 
 def get_sanitized_batch(batch_id: str) -> SanitizedBatch | None:
-    # Try DB first (P1-M17), then merge manual cleaning records from DB (P1-M18)
-    db_result: SanitizedBatch | None = None
-    db_available = False
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_result = db_repo.get_sanitized_batch_from_db(db, batch_id)
-            if db_result is not None:
-                db_available = True
-                # Merge manual cleaning records from DB into messages (P1-M18)
-                db_manual_records = db_repo.get_manual_cleaning_records_for_batch_from_db(
-                    db, batch_id
-                )
-                if db_manual_records:
-                    # Build lookup: message_id -> latest record
-                    manual_by_msg: dict[str, dict[str, Any]] = {}
-                    for rec in db_manual_records:
-                        msg_id = rec.get("sanitized_message_id", "")
-                        if msg_id and msg_id not in manual_by_msg:
-                            manual_by_msg[msg_id] = rec
-
-                    # Apply to messages
-                    for i, msg in enumerate(db_result.messages):
-                        msg_id = msg.message_id
-                        mrec = manual_by_msg.get(msg_id) or manual_by_msg.get(
-                            msg.source_message_id
-                        )
-                        if mrec:
-                            db_result.messages[i] = msg.model_copy(
-                                update={
-                                    "manual_cleaning_status": "cleaned",
-                                    "manual_cleaned_content": mrec.get("cleaned_content"),
-                                    "manual_action": mrec.get("action"),
-                                    "cleaner": mrec.get("cleaner"),
-                                    "cleaning_note": mrec.get("note", ""),
-                                    "manual_cleaned_at": mrec.get("created_at"),
-                                }
-                            )
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to get sanitized batch %s from database", batch_id)
-
-    if db_available and db_result is not None:
-        return db_result
-
-    # Fallback to JSON
-    _ensure_storage()
-    batch_file = SANITIZED_BATCH_DIR / f"{batch_id}.json"
-    if batch_file.exists():
-        try:
-            json_data = json.loads(batch_file.read_text(encoding="utf-8"))
-            if isinstance(json_data, dict):
-                return SanitizedBatch(**json_data)  # type: ignore[arg-type]
-        except json.JSONDecodeError:
-            pass
-    return None
+        result = db_repo.get_sanitized_batch_from_db(db, batch_id)
+        if result is None:
+            return None
+        records = db_repo.get_manual_cleaning_records_for_batch_from_db(db, batch_id)
+        by_message: dict[str, dict[str, Any]] = {}
+        for record in records:
+            key = str(record.get("sanitized_message_id") or "")
+            if key and key not in by_message:
+                by_message[key] = record
+        for index, message in enumerate(result.messages):
+            record = by_message.get(message.message_id) or by_message.get(
+                message.source_message_id
+            )
+            if record and record.get("original_content") == message.content:
+                result.messages[index] = message.model_copy(update={
+                    "manual_cleaning_status": "cleaned",
+                    "manual_cleaned_content": record.get("cleaned_content"),
+                    "manual_action": record.get("action"),
+                    "cleaner": record.get("cleaner"),
+                    "cleaning_note": record.get("note", ""),
+                    "manual_cleaned_at": record.get("created_at"),
+                })
+        return result
+    except Exception as exc:
+        raise _persistence_failure("get sanitized batch", exc) from None
+    finally:
+        db.close()
 
 
 def manual_clean_sanitized_message(
@@ -774,30 +594,15 @@ def manual_clean_sanitized_message(
         created_at=now,
     )
 
-    _ensure_storage()
-    (SANITIZED_BATCH_DIR / f"{batch_id}.json").write_text(
-        json.dumps(sanitized.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    (MANUAL_CLEANING_RECORD_DIR / f"{record.record_id}.json").write_text(
-        json.dumps(record.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    records = _read_json_list(MANUAL_CLEANING_RECORD_INDEX_FILE)
-    records.append(record.model_dump())
-    _write_json_list(MANUAL_CLEANING_RECORD_INDEX_FILE, records)
-
-    # Dual-write manual cleaning record to database (P1-M18)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_repo.save_manual_cleaning_record_to_db(db, record)
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception(
-            "Failed to save manual cleaning record %s to database", record.record_id
-        )
+        with db.begin():
+            db_repo.save_manual_cleaning_record_to_db(db, record, commit=False)
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("manual cleaning", exc) from None
+    finally:
+        db.close()
 
     return record
 
@@ -967,149 +772,71 @@ def run_extraction(batch_id: str) -> ExtractionJobMetadata | None:
         completed_at=completed_at,
     )
 
-    _ensure_storage()
-    (EXTRACTION_JOB_DIR / f"{job_id}.json").write_text(
-        json.dumps(job.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    for candidate in candidates:
-        (KNOWLEDGE_CANDIDATE_DIR / f"{candidate.candidate_id}.json").write_text(
-            json.dumps(candidate.model_dump(), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-
-    existing = [
-        item for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE)
-        if item.get("source_batch_id") != batch_id
-    ]
-    existing.extend(candidate.model_dump() for candidate in candidates)
-    _write_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE, existing)
-
-    job_items = _read_json_list(EXTRACTION_JOB_INDEX_FILE)
-    job_items.append(job.model_dump())
-    _write_json_list(EXTRACTION_JOB_INDEX_FILE, job_items)
-
-    # Dual-write knowledge candidates to database (P1-M18)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_repo.save_knowledge_candidates_to_db(db, candidates)
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception(
-            "Failed to save knowledge candidates for batch %s to database", batch_id
-        )
+        with db.begin():
+            db_repo.save_knowledge_candidates_to_db(db, candidates, commit=False)
+            db_repo.save_extraction_job_to_db(db, batch_id, job, commit=False)
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("extraction", exc) from None
+    finally:
+        db.close()
 
     return job
 
 
 def get_extraction_job(job_id: str) -> ExtractionJobMetadata | None:
-    _ensure_storage()
-    job_file = EXTRACTION_JOB_DIR / f"{job_id}.json"
-    if not job_file.exists():
-        return None
+    db = SessionLocal()
     try:
-        data = json.loads(job_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return ExtractionJobMetadata(**data)
+        data = db_repo.get_extraction_job_from_db(db, job_id)
+        return ExtractionJobMetadata(**data) if data is not None else None
+    except Exception as exc:
+        raise _persistence_failure("get extraction job", exc) from None
+    finally:
+        db.close()
 
 
 def list_knowledge_candidates() -> list[KnowledgeCandidate]:
-    # Merge DB candidates with JSON candidates (P1-M18)
-    # DB takes priority for same candidate_id; JSON provides fallback
-    # for candidates not yet in DB (e.g., legacy imports).
-    candidates_by_id: dict[str, KnowledgeCandidate] = {}
-
-    # Load from DB first
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_results = db_repo.list_knowledge_candidates_from_db(db)
-            for c in db_results:
-                candidates_by_id[c.candidate_id] = c
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to list knowledge candidates from database")
-
-    # Merge JSON candidates (lower priority for same ID)
-    for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE):
-        candidate = KnowledgeCandidate(**item)
-        if candidate.candidate_id not in candidates_by_id:
-            candidates_by_id[candidate.candidate_id] = candidate
-
-    return list(candidates_by_id.values())
+        return db_repo.list_knowledge_candidates_from_db(db)
+    except Exception as exc:
+        raise _persistence_failure("list candidates", exc) from None
+    finally:
+        db.close()
 
 
 def get_knowledge_candidate(candidate_id: str) -> KnowledgeCandidate | None:
-    # Try DB first (P1-M18)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_result = db_repo.get_knowledge_candidate_from_db(db, candidate_id)
-            if db_result is not None:
-                return db_result
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception(
-            "Failed to get knowledge candidate %s from database", candidate_id
-        )
-
-    # Fallback to JSON
-    _ensure_storage()
-    candidate_file = KNOWLEDGE_CANDIDATE_DIR / f"{candidate_id}.json"
-    if not candidate_file.exists():
-        return None
-    try:
-        data = json.loads(candidate_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return KnowledgeCandidate(**data)
+        return db_repo.get_knowledge_candidate_from_db(db, candidate_id)
+    except Exception as exc:
+        raise _persistence_failure("get candidate", exc) from None
+    finally:
+        db.close()
 
 
 def _write_knowledge_candidate(candidate: KnowledgeCandidate) -> KnowledgeCandidate:
-    _ensure_storage()
-    (KNOWLEDGE_CANDIDATE_DIR / f"{candidate.candidate_id}.json").write_text(
-        json.dumps(candidate.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    items = [
-        item for item in _read_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE)
-        if item.get("candidate_id") != candidate.candidate_id
-    ]
-    items.append(candidate.model_dump())
-    _write_json_list(KNOWLEDGE_CANDIDATE_INDEX_FILE, items)
-    return candidate
+    db = SessionLocal()
+    try:
+        db_repo.save_knowledge_candidates_to_db(db, [candidate])
+        return candidate
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("write candidate", exc) from None
+    finally:
+        db.close()
 
 
 def list_pending_review_candidates() -> list[KnowledgeCandidate]:
-    # Try DB first (P1-M18)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_results = db_repo.list_pending_review_candidates_from_db(db)
-            if db_results:
-                return db_results
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception(
-            "Failed to list pending review candidates from database"
-        )
-
-    allowed = {"pending_review", "needs_revision"}
-    return [
-        candidate
-        for candidate in list_knowledge_candidates()
-        if candidate.review_status in allowed
-    ]
+        return db_repo.list_pending_review_candidates_from_db(db)
+    except Exception as exc:
+        raise _persistence_failure("list review queue", exc) from None
+    finally:
+        db.close()
 
 
 def update_knowledge_candidate(
@@ -1128,30 +855,16 @@ def update_knowledge_candidate(
             for tag in cleaned_tags
             if str(tag).strip()
         ]
-    now = datetime.now(UTC).isoformat()
-    updated = candidate.model_copy(
-        update={
-            **updates,
-            "updated_at": now,
-        }
-    )
-
-    # Dual-write to database (P1-M18)
+    db_updates = dict(updates)
     try:
         db = SessionLocal()
         try:
-            db_updates = payload.model_dump(exclude_unset=True)
-            if cleaned_tags is not None:
-                db_updates["tags"] = updates["tags"]
-            db_repo.update_knowledge_candidate_in_db(db, candidate_id, db_updates)
+            result = db_repo.update_knowledge_candidate_in_db(db, candidate_id, db_updates)
+            return result
         finally:
             db.close()
-    except Exception:
-        _logger.exception(
-            "Failed to update knowledge candidate %s in database", candidate_id
-        )
-
-    return _write_knowledge_candidate(updated)
+    except Exception as exc:
+        raise _persistence_failure("update candidate", exc) from None
 
 
 def apply_review_decision(
@@ -1172,17 +885,6 @@ def apply_review_decision(
         return None
 
     reviewed_at = datetime.now(UTC).isoformat()
-    updated = candidate.model_copy(
-        update={
-            "review_status": status,
-            "reviewer": payload.reviewer,
-            "review_note": payload.review_note,
-            "reviewed_at": reviewed_at,
-            "updated_at": reviewed_at,
-        }
-    )
-    written = _write_knowledge_candidate(updated)
-
     review = ReviewRecord(
         review_id=f"review_{uuid4().hex[:12]}",
         candidate_id=candidate_id,
@@ -1191,20 +893,10 @@ def apply_review_decision(
         review_note=payload.review_note,
         reviewed_at=reviewed_at,
     )
-    (REVIEW_RECORD_DIR / f"{review.review_id}.json").write_text(
-        json.dumps(review.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    review_items = _read_json_list(REVIEW_RECORD_INDEX_FILE)
-    review_items.append(review.model_dump())
-    _write_json_list(REVIEW_RECORD_INDEX_FILE, review_items)
-
-    # Dual-write to database (P1-M18)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            # Update candidate status in DB
-            db_repo.update_knowledge_candidate_in_db(
+        with db.begin():
+            written = db_repo.update_knowledge_candidate_in_db(
                 db,
                 candidate_id,
                 {
@@ -1213,20 +905,16 @@ def apply_review_decision(
                     "review_note": payload.review_note,
                     "reviewed_at": reviewed_at,
                     "updated_at": reviewed_at,
-                },
+                }, commit=False,
             )
-            # Save review record to DB
             db_repo.save_review_record_to_db(
-                db, review, candidate.model_dump()
+                db, review, candidate.model_dump(), commit=False
             )
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception(
-            "Failed to persist review decision for candidate %s to database",
-            candidate_id,
-        )
-
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("review", exc) from None
+    finally:
+        db.close()
     return written
 
 
@@ -1246,7 +934,6 @@ def _chunk_text(candidate: KnowledgeCandidate) -> str:
 
 
 def build_rag_chunks() -> RagBuildResult:
-    _ensure_storage()
     created_at = datetime.now(UTC).isoformat()
     candidates = list_knowledge_candidates()
     existing_chunks = {
@@ -1300,32 +987,18 @@ def build_rag_chunks() -> RagBuildResult:
             skipped_reasons["unchanged"] = skipped_reasons.get("unchanged", 0) + 1
         chunks_by_id[chunk_id] = next_chunk
 
-    for chunk_file in RAG_CHUNK_DIR.glob("chunk_*.json"):
-        if chunk_file.stem not in chunks_by_id:
-            chunk_file.unlink()
-
     chunks = sorted(chunks_by_id.values(), key=lambda item: item.chunk_id)
-    for chunk in chunks:
-        (RAG_CHUNK_DIR / f"{chunk.chunk_id}.json").write_text(
-            json.dumps(chunk.model_dump(), ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-    _write_json_list(
-        RAG_CHUNK_INDEX_FILE,
-        [chunk.model_dump() for chunk in chunks],
-    )
-
-    # Dual-write RAG chunks to database (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
+        with db.begin():
             db_repo.save_rag_chunks_to_db(
-                db, [chunk.model_dump() for chunk in chunks]
+                db, [chunk.model_dump() for chunk in chunks], commit=False
             )
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to save RAG chunks to database")
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("RAG build", exc) from None
+    finally:
+        db.close()
 
     # ── P1-M22: Sync approved knowledge to vector RAG ──────────────────────
     embedding_count = 0
@@ -1469,45 +1142,24 @@ def _rag_chunk_changed(previous: RagChunk, current: RagChunk) -> bool:
 
 
 def list_rag_chunks() -> list[RagChunk]:
-    # Try DB first (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_results = db_repo.list_rag_chunks_from_db(db)
-            if db_results:
-                return [RagChunk(**item) for item in db_results]
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to list RAG chunks from database")
-
-    return [RagChunk(**item) for item in _read_json_list(RAG_CHUNK_INDEX_FILE)]
+        return [RagChunk(**item) for item in db_repo.list_rag_chunks_from_db(db)]
+    except Exception as exc:
+        raise _persistence_failure("list RAG chunks", exc) from None
+    finally:
+        db.close()
 
 
 def get_rag_chunk(chunk_id: str) -> RagChunk | None:
-    # Try DB first (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_result = db_repo.get_rag_chunk_from_db(db, chunk_id)
-            if db_result is not None:
-                return RagChunk(**db_result)
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to get RAG chunk %s from database", chunk_id)
-
-    _ensure_storage()
-    chunk_file = RAG_CHUNK_DIR / f"{chunk_id}.json"
-    if not chunk_file.exists():
-        return None
-    try:
-        data = json.loads(chunk_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return RagChunk(**data)
+        result = db_repo.get_rag_chunk_from_db(db, chunk_id)
+        return RagChunk(**result) if result is not None else None
+    except Exception as exc:
+        raise _persistence_failure("get RAG chunk", exc) from None
+    finally:
+        db.close()
 
 
 def _tokenize(value: str) -> set[str]:
@@ -1682,9 +1334,7 @@ def run_customerops_retrieval(
 
     # Check if we can attempt semantic retrieval
     db = None
-    semantic_attempted = False
     try:
-        from app.database import DATABASE_URL
         from app.db_models import _HAS_PGVECTOR, _is_postgresql
 
         is_pg = _is_postgresql()
@@ -1713,7 +1363,6 @@ def run_customerops_retrieval(
                     retrieval_mode = "customerops_keyword_fallback"
                 else:
                     # Try semantic search
-                    semantic_attempted = True
                     semantic_results = db_repo.search_rag_embeddings_semantic(
                         db, query_emb, top_k
                     )
@@ -1760,7 +1409,6 @@ def run_customerops_retrieval(
             chunk_text_val = hit.get("chunk_text", "") or ""
             source_type_val = hit.get("source_type", "sanitized_batch") or "sanitized_batch"
             source_batch_id_val = hit.get("source_batch_id")
-            source_message_id_val = hit.get("source_message_id")
             intent_val = meta.get("intent", "general") or "general"
             tags_val = meta.get("tags", []) or []
             risk_level_val = meta.get("risk_level", "medium") or "medium"
@@ -1857,21 +1505,8 @@ def run_customerops_retrieval(
 
 
 def _write_retrieval_trace(trace: CustomerOpsRetrievalTrace) -> None:
-    _ensure_storage()
     trace_dict = trace.model_dump()
-    (RETRIEVAL_LOG_DIR / f"{trace.retrieval_id}.json").write_text(
-        json.dumps(trace_dict, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    items = [
-        item for item in _read_json_list(RETRIEVAL_LOG_INDEX_FILE)
-        if item.get("retrieval_id") != trace.retrieval_id
-    ]
-    items.append(trace_dict)
-    _write_json_list(RETRIEVAL_LOG_INDEX_FILE, items)
-
-    # Dual-write retrieval log to database (P1-M19)
-    # P1-M23: enrich metadata_json with semantic retrieval details
+    # Retrieval logging is deliberately best-effort and never falls back to JSON.
     try:
         db = SessionLocal()
         try:
@@ -1891,35 +1526,22 @@ def _write_retrieval_trace(trace: CustomerOpsRetrievalTrace) -> None:
         finally:
             db.close()
     except Exception:
-        _logger.exception("Failed to save retrieval log %s to database", trace.retrieval_id)
+        _logger.exception(
+            "P1_RETRIEVAL_AUDIT_WRITE_FAILED retrieval_id=%s", trace.retrieval_id
+        )
 
 
 def get_customerops_retrieval_trace(
     retrieval_id: str,
 ) -> CustomerOpsRetrievalTrace | None:
-    # Try DB first (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_result = db_repo.get_retrieval_log_from_db(db, retrieval_id)
-            if db_result is not None:
-                return CustomerOpsRetrievalTrace(**db_result)
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to get retrieval log %s from database", retrieval_id)
-
-    _ensure_storage()
-    trace_file = RETRIEVAL_LOG_DIR / f"{retrieval_id}.json"
-    if not trace_file.exists():
-        return None
-    try:
-        data = json.loads(trace_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return CustomerOpsRetrievalTrace(**data)
+        result = db_repo.get_retrieval_log_from_db(db, retrieval_id)
+        return CustomerOpsRetrievalTrace(**result) if result is not None else None
+    except Exception as exc:
+        raise _persistence_failure("get retrieval trace", exc) from None
+    finally:
+        db.close()
 
 
 def create_bad_case(
@@ -1929,7 +1551,6 @@ def create_bad_case(
     agent_answer: str,
     expected_answer: str | None,
 ) -> BadCaseRecord:
-    _ensure_storage()
     now = datetime.now(UTC).isoformat()
     bad_case = BadCaseRecord(
         bad_case_id=f"badcase_{uuid4().hex[:12]}",
@@ -1955,29 +1576,15 @@ def create_bad_case(
 
 
 def _write_bad_case(bad_case: BadCaseRecord) -> BadCaseRecord:
-    _ensure_storage()
-    (BAD_CASE_DIR / f"{bad_case.bad_case_id}.json").write_text(
-        json.dumps(bad_case.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    items = [
-        item for item in _read_json_list(BAD_CASE_INDEX_FILE)
-        if item.get("bad_case_id") != bad_case.bad_case_id
-    ]
-    items.append(bad_case.model_dump())
-    _write_json_list(BAD_CASE_INDEX_FILE, items)
-
-    # Dual-write bad case to database (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_repo.save_bad_case_to_db(db, bad_case.model_dump())
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to save bad case %s to database", bad_case.bad_case_id)
-
-    return bad_case
+        db_repo.save_bad_case_to_db(db, bad_case.model_dump())
+        return bad_case
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("write bad case", exc) from None
+    finally:
+        db.close()
 
 
 def list_bad_cases(
@@ -1985,54 +1592,27 @@ def list_bad_cases(
     issue_type: str | None = None,
     severity: str | None = None,
 ) -> list[BadCaseRecord]:
-    # Try DB first (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_results = db_repo.list_bad_cases_from_db(
-                db, status=status, issue_type=issue_type, severity=severity
-            )
-            if db_results:
-                return [BadCaseRecord(**item) for item in db_results]
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to list bad cases from database")
-
-    records = [BadCaseRecord(**item) for item in _read_json_list(BAD_CASE_INDEX_FILE)]
-    if status:
-        records = [record for record in records if record.status == status]
-    if issue_type:
-        records = [record for record in records if record.issue_type == issue_type]
-    if severity:
-        records = [record for record in records if record.severity == severity]
-    return sorted(records, key=lambda item: item.created_at, reverse=True)
+        rows = db_repo.list_bad_cases_from_db(
+            db, status=status, issue_type=issue_type, severity=severity
+        )
+        return [BadCaseRecord(**item) for item in rows]
+    except Exception as exc:
+        raise _persistence_failure("list bad cases", exc) from None
+    finally:
+        db.close()
 
 
 def get_bad_case(bad_case_id: str) -> BadCaseRecord | None:
-    # Try DB first (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_result = db_repo.get_bad_case_from_db(db, bad_case_id)
-            if db_result is not None:
-                return BadCaseRecord(**db_result)
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to get bad case %s from database", bad_case_id)
-
-    _ensure_storage()
-    bad_case_file = BAD_CASE_DIR / f"{bad_case_id}.json"
-    if not bad_case_file.exists():
-        return None
-    try:
-        data = json.loads(bad_case_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return BadCaseRecord(**data)
+        result = db_repo.get_bad_case_from_db(db, bad_case_id)
+        return BadCaseRecord(**result) if result is not None else None
+    except Exception as exc:
+        raise _persistence_failure("get bad case", exc) from None
+    finally:
+        db.close()
 
 
 def update_bad_case(
@@ -2044,24 +1624,15 @@ def update_bad_case(
         return None
 
     updates = payload.model_dump(exclude_unset=True)
-    updated = bad_case.model_copy(
-        update={
-            **updates,
-            "updated_at": datetime.now(UTC).isoformat(),
-        }
-    )
-
-    # Update bad case in database (P1-M19)
+    db = SessionLocal()
     try:
-        db = SessionLocal()
-        try:
-            db_repo.update_bad_case_in_db(db, bad_case_id, updates)
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception("Failed to update bad case %s in database", bad_case_id)
-
-    return _write_bad_case(updated)
+        result = db_repo.update_bad_case_in_db(db, bad_case_id, updates)
+        return BadCaseRecord(**result) if result is not None else None
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("update bad case", exc) from None
+    finally:
+        db.close()
 
 
 def create_candidate_from_bad_case(
@@ -2071,7 +1642,6 @@ def create_candidate_from_bad_case(
     answer: str,
     tags: list[str],
 ) -> KnowledgeCandidate:
-    _ensure_storage()
     now = datetime.now(UTC).isoformat()
     candidate = KnowledgeCandidate(
         candidate_id=f"kc_badcase_{uuid4().hex[:12]}",
@@ -2097,22 +1667,6 @@ def create_candidate_from_bad_case(
         review_note=payload.review_note,
         updated_at=now,
     )
-    _write_knowledge_candidate(candidate)
-
-    # Dual-write candidate from bad case to database (P1-M19)
-    try:
-        db = SessionLocal()
-        try:
-            db_repo.create_candidate_from_bad_case_in_db(
-                db, candidate.model_dump()
-            )
-        finally:
-            db.close()
-    except Exception:
-        _logger.exception(
-            "Failed to save bad case candidate %s to database", candidate.candidate_id
-        )
-
     resolution_type = bad_case.resolution_type
     if resolution_type not in {"create_new_knowledge", "update_existing_knowledge"}:
         resolution_type = "create_new_knowledge"
@@ -2121,18 +1675,28 @@ def create_candidate_from_bad_case(
     review_note = (
         f"{existing_note}\n{note_suffix}" if existing_note else note_suffix
     )
-    _write_bad_case(
-        bad_case.model_copy(
-            update={
-                "status": "resolved",
-                "resolution_type": resolution_type,
-                "linked_candidate_id": candidate.candidate_id,
-                "review_note": review_note,
-                "updated_at": now,
-            }
-        )
-    )
-    return candidate
+    bad_case_updates = {
+        "status": "resolved",
+        "resolution_type": resolution_type,
+        "linked_candidate_id": candidate.candidate_id,
+        "review_note": review_note,
+        "updated_at": now,
+    }
+    db = SessionLocal()
+    try:
+        with db.begin():
+            db_repo.create_candidate_from_bad_case_in_db(
+                db, candidate.model_dump(), commit=False
+            )
+            db_repo.update_bad_case_in_db(
+                db, bad_case.bad_case_id, bad_case_updates, commit=False
+            )
+        return candidate
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("bad case draft", exc) from None
+    finally:
+        db.close()
 
 
 def _legacy_candidate_id(source_name: str, legacy_id: str) -> str:
@@ -2183,7 +1747,6 @@ def _legacy_candidate_changed(
 
 
 def import_legacy_rag(payload: LegacyRagImportRequest) -> LegacyRagImportMetadata:
-    _ensure_storage()
     now = datetime.now(UTC).isoformat()
     import_id = f"legacy_import_{uuid4().hex[:12]}"
     migration_mode = "trusted_import" if payload.trusted_import else "review_required"
@@ -2193,10 +1756,13 @@ def import_legacy_rag(payload: LegacyRagImportRequest) -> LegacyRagImportMetadat
     skipped_reasons: dict[str, int] = {}
     candidate_ids: list[str] = []
 
-    for item in payload.items:
-        candidate_id = _legacy_candidate_id(payload.source_name, item.legacy_id)
-        previous = get_knowledge_candidate(candidate_id)
-        candidate = KnowledgeCandidate(
+    candidates_to_save: list[KnowledgeCandidate] = []
+    db = SessionLocal()
+    try:
+        for item in payload.items:
+            candidate_id = _legacy_candidate_id(payload.source_name, item.legacy_id)
+            previous = db_repo.get_knowledge_candidate_from_db(db, candidate_id)
+            candidate = KnowledgeCandidate(
             candidate_id=candidate_id,
             source_type="legacy_rag",
             source_batch_id=None,
@@ -2218,23 +1784,26 @@ def import_legacy_rag(payload: LegacyRagImportRequest) -> LegacyRagImportMetadat
             created_at=previous.created_at if previous else now,
             updated_at=now,
         )
-        candidate_ids.append(candidate_id)
+            candidate_ids.append(candidate_id)
+            if previous is None:
+                candidates_to_save.append(candidate)
+                created_candidate_count += 1
+            elif _legacy_candidate_changed(previous, candidate):
+                candidates_to_save.append(candidate)
+                updated_count += 1
+            else:
+                skipped_reasons["unchanged"] = skipped_reasons.get("unchanged", 0) + 1
 
-        if previous is None:
-            _write_knowledge_candidate(candidate)
-            created_candidate_count += 1
-        elif _legacy_candidate_changed(previous, candidate):
-            _write_knowledge_candidate(candidate)
-            updated_count += 1
-        else:
-            skipped_reasons["unchanged"] = skipped_reasons.get("unchanged", 0) + 1
-
-    candidates = [
-        candidate
-        for candidate in (get_knowledge_candidate(candidate_id) for candidate_id in candidate_ids)
-        if candidate is not None
-    ]
-    metadata = LegacyRagImportMetadata(
+        effective = {
+            candidate.candidate_id: candidate for candidate in candidates_to_save
+        }
+        for candidate_id in candidate_ids:
+            if candidate_id not in effective:
+                previous = db_repo.get_knowledge_candidate_from_db(db, candidate_id)
+                if previous is not None:
+                    effective[candidate_id] = previous
+        candidates = list(effective.values())
+        metadata = LegacyRagImportMetadata(
         import_id=import_id,
         source_name=payload.source_name,
         source_type="legacy_rag",
@@ -2251,34 +1820,43 @@ def import_legacy_rag(payload: LegacyRagImportRequest) -> LegacyRagImportMetadat
         skipped_reasons=skipped_reasons,
         created_at=now,
         candidate_ids=candidate_ids,
-    )
-
-    (LEGACY_RAG_IMPORT_DIR / f"{import_id}.json").write_text(
-        json.dumps(metadata.model_dump(), ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    items = _read_json_list(LEGACY_RAG_IMPORT_INDEX_FILE)
-    items.append(metadata.model_dump())
-    _write_json_list(LEGACY_RAG_IMPORT_INDEX_FILE, items)
-    return metadata
+        )
+        db.rollback()  # close read transaction before the atomic write boundary
+        with db.begin():
+            if candidates_to_save:
+                db_repo.save_knowledge_candidates_to_db(
+                    db, candidates_to_save, commit=False
+                )
+            db_repo.save_legacy_import_receipt_to_db(
+                db, candidate_ids, metadata.model_dump(), commit=False
+            )
+        return metadata
+    except Exception as exc:
+        db.rollback()
+        raise _persistence_failure("legacy import", exc) from None
+    finally:
+        db.close()
 
 
 def list_legacy_rag_imports() -> list[LegacyRagImportMetadata]:
-    return [
-        LegacyRagImportMetadata(**item)
-        for item in _read_json_list(LEGACY_RAG_IMPORT_INDEX_FILE)
-    ]
+    db = SessionLocal()
+    try:
+        return [
+            LegacyRagImportMetadata(**item)
+            for item in db_repo.list_legacy_import_receipts_from_db(db)
+        ]
+    except Exception as exc:
+        raise _persistence_failure("list legacy imports", exc) from None
+    finally:
+        db.close()
 
 
 def get_legacy_rag_import(import_id: str) -> LegacyRagImportMetadata | None:
-    _ensure_storage()
-    import_file = LEGACY_RAG_IMPORT_DIR / f"{import_id}.json"
-    if not import_file.exists():
-        return None
+    db = SessionLocal()
     try:
-        data = json.loads(import_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return None
-    if not isinstance(data, dict):
-        return None
-    return LegacyRagImportMetadata(**data)
+        data = db_repo.get_legacy_import_receipt_from_db(db, import_id)
+        return LegacyRagImportMetadata(**data) if data is not None else None
+    except Exception as exc:
+        raise _persistence_failure("get legacy import", exc) from None
+    finally:
+        db.close()

@@ -43,6 +43,13 @@ from app.schemas import (
 )
 
 
+def _finish_write(db: Session, *, commit: bool) -> None:
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+
+
 # ──────────────────────────────────────────────────────────────────
 #  Raw batches
 # ──────────────────────────────────────────────────────────────────
@@ -55,6 +62,8 @@ def save_raw_batch_to_db(
     message_count: int,
     raw_payload: dict[str, Any],
     conversations: list[dict[str, Any]],
+    *,
+    commit: bool = True,
 ) -> None:
     """Idempotent: upsert raw_batches row and replace raw_messages for batch_id."""
     now = datetime.now(UTC)
@@ -104,7 +113,7 @@ def save_raw_batch_to_db(
                 )
             )
 
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def list_raw_batches_from_db(db: Session) -> list[SourceBatchMetadata]:
@@ -201,6 +210,8 @@ def save_sanitized_batch_to_db(
     db: Session,
     sanitized_batch: SanitizedBatch,
     job: Any,  # CleaningJobMetadata
+    *,
+    commit: bool = True,
 ) -> None:
     """Idempotent: upsert sanitized_batches row and replace sanitized_messages."""
     now = datetime.now(UTC)
@@ -222,8 +233,15 @@ def save_sanitized_batch_to_db(
         "near_duplicate_count": sanitized_batch.near_duplicate_count,
         "low_quality_count": sanitized_batch.low_quality_count,
         "noise_count": sanitized_batch.noise_count,
+        "review_recommended_count": sanitized_batch.review_recommended_count,
+        "drop_recommended_count": sanitized_batch.drop_recommended_count,
+        "average_quality_score": sanitized_batch.average_quality_score,
         "job_id": getattr(job, "job_id", ""),
+        "cleaning_job": job.model_dump() if hasattr(job, "model_dump") else {},
+        "created_at": sanitized_batch.created_at,
     }
+    if existing and isinstance(existing.metadata_json, dict):
+        summary_metadata = {**existing.metadata_json, **summary_metadata}
     if existing:
         existing.raw_batch_id = sanitized_batch.source_batch_id
         existing.status = "sanitized"
@@ -279,7 +297,7 @@ def save_sanitized_batch_to_db(
             )
         )
 
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def list_sanitized_batches_from_db(
@@ -393,6 +411,43 @@ def get_sanitized_batch_from_db(
     )
 
 
+def get_cleaning_job_from_db(db: Session, job_id: str) -> dict[str, Any] | None:
+    for row in db.query(DbSanitizedBatch).all():
+        metadata = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+        job = metadata.get("cleaning_job")
+        if isinstance(job, dict) and job.get("job_id") == job_id:
+            return dict(job)
+    return None
+
+
+def save_extraction_job_to_db(
+    db: Session,
+    batch_id: str,
+    job: Any,
+    *,
+    commit: bool = True,
+) -> None:
+    row = db.query(DbSanitizedBatch).filter(DbSanitizedBatch.id == batch_id).first()
+    if row is None:
+        raise LookupError("SANITIZED_BATCH_NOT_FOUND")
+    metadata = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+    metadata["extraction_job"] = (
+        job.model_dump() if hasattr(job, "model_dump") else dict(job)
+    )
+    row.metadata_json = metadata
+    row.updated_at = datetime.now(UTC)
+    _finish_write(db, commit=commit)
+
+
+def get_extraction_job_from_db(db: Session, job_id: str) -> dict[str, Any] | None:
+    for row in db.query(DbSanitizedBatch).all():
+        metadata = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+        job = metadata.get("extraction_job")
+        if isinstance(job, dict) and job.get("job_id") == job_id:
+            return dict(job)
+    return None
+
+
 # ──────────────────────────────────────────────────────────────────
 #  Helpers
 # ──────────────────────────────────────────────────────────────────
@@ -423,6 +478,8 @@ def _get_db_session() -> Session:
 def save_manual_cleaning_record_to_db(
     db: Session,
     record: SchemaManualCleaningRecord,
+    *,
+    commit: bool = True,
 ) -> None:
     """Save a manual cleaning record to the database.
 
@@ -443,7 +500,7 @@ def save_manual_cleaning_record_to_db(
             created_at=now,
         )
     )
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def get_manual_cleaning_records_for_batch_from_db(
@@ -526,6 +583,8 @@ def get_effective_manual_cleaning_record(
 def save_knowledge_candidates_to_db(
     db: Session,
     candidates: list[KnowledgeCandidate],
+    *,
+    commit: bool = True,
 ) -> None:
     """Write or replace knowledge candidates for a batch.
 
@@ -535,8 +594,11 @@ def save_knowledge_candidates_to_db(
     """
     now = datetime.now(UTC)
     for candidate in candidates:
-        # Idempotent dedup key: source_id + question + answer
+        # Idempotent by stable candidate ID and by historical content key.
         source_id = candidate.source_batch_id or candidate.candidate_id
+        db.query(DbKnowledgeCandidate).filter(
+            DbKnowledgeCandidate.id == candidate.candidate_id
+        ).delete()
         db.query(DbKnowledgeCandidate).filter(
             DbKnowledgeCandidate.source_id == source_id,
             DbKnowledgeCandidate.question == candidate.question,
@@ -582,7 +644,7 @@ def save_knowledge_candidates_to_db(
                 updated_at=now,
             )
         )
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def list_knowledge_candidates_from_db(db: Session) -> list[KnowledgeCandidate]:
@@ -607,10 +669,61 @@ def get_knowledge_candidate_from_db(
     return _db_candidate_to_schema(row)
 
 
+def save_legacy_import_receipt_to_db(
+    db: Session,
+    candidate_ids: list[str],
+    receipt: dict[str, Any],
+    *,
+    commit: bool = True,
+) -> None:
+    """Attach an import receipt to participating candidates without a new table."""
+    rows = (
+        db.query(DbKnowledgeCandidate)
+        .filter(DbKnowledgeCandidate.id.in_(candidate_ids))
+        .all()
+    ) if candidate_ids else []
+    if not rows:
+        raise LookupError("LEGACY_IMPORT_CANDIDATES_NOT_FOUND")
+    for row in rows:
+        metadata = dict(row.metadata_json) if isinstance(row.metadata_json, dict) else {}
+        receipts = [
+            item for item in metadata.get("legacy_import_receipts", [])
+            if isinstance(item, dict) and item.get("import_id") != receipt.get("import_id")
+        ]
+        receipts.append(dict(receipt))
+        metadata["legacy_import_receipts"] = receipts
+        row.metadata_json = metadata
+    _finish_write(db, commit=commit)
+
+
+def list_legacy_import_receipts_from_db(db: Session) -> list[dict[str, Any]]:
+    receipts: dict[str, dict[str, Any]] = {}
+    for row in db.query(DbKnowledgeCandidate).all():
+        metadata = row.metadata_json if isinstance(row.metadata_json, dict) else {}
+        for item in metadata.get("legacy_import_receipts", []):
+            if isinstance(item, dict) and item.get("import_id"):
+                receipts[str(item["import_id"])] = dict(item)
+    return sorted(receipts.values(), key=lambda item: str(item.get("created_at", "")), reverse=True)
+
+
+def get_legacy_import_receipt_from_db(
+    db: Session, import_id: str
+) -> dict[str, Any] | None:
+    return next(
+        (
+            item for item in list_legacy_import_receipts_from_db(db)
+            if item.get("import_id") == import_id
+        ),
+        None,
+    )
+
+
 def update_knowledge_candidate_in_db(
     db: Session,
     candidate_id: str,
     updates: dict[str, Any],
+    *,
+    commit: bool = True,
 ) -> KnowledgeCandidate | None:
     """Update fields on an existing knowledge candidate row."""
     row = (
@@ -655,7 +768,7 @@ def update_knowledge_candidate_in_db(
     meta["updated_at"] = now.isoformat()
     row.metadata_json = meta
     row.updated_at = now
-    db.commit()
+    _finish_write(db, commit=commit)
     db.refresh(row)
     return _db_candidate_to_schema(row)
 
@@ -722,6 +835,8 @@ def save_review_record_to_db(
     db: Session,
     review: SchemaReviewRecord,
     candidate_snapshot: dict[str, Any] | None = None,
+    *,
+    commit: bool = True,
 ) -> None:
     """Save a review record to the database."""
     now = datetime.now(UTC)
@@ -736,7 +851,7 @@ def save_review_record_to_db(
             created_at=now,
         )
     )
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def list_review_records_from_db(
@@ -767,6 +882,8 @@ def list_review_records_from_db(
 def save_rag_chunks_to_db(
     db: Session,
     chunks: list[dict[str, Any]],
+    *,
+    commit: bool = True,
 ) -> None:
     """Replace all RAG chunks in the database.
 
@@ -797,7 +914,7 @@ def save_rag_chunks_to_db(
                 created_at=now,
             )
         )
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def list_rag_chunks_from_db(db: Session) -> list[dict[str, Any]]:
@@ -847,6 +964,8 @@ def replace_rag_chunks_for_candidates(
 def save_retrieval_log_to_db(
     db: Session,
     trace: dict[str, Any],
+    *,
+    commit: bool = True,
 ) -> None:
     """Save a retrieval log trace to the database.
 
@@ -877,7 +996,7 @@ def save_retrieval_log_to_db(
                 created_at=now,
             )
         )
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def get_retrieval_log_from_db(
@@ -928,6 +1047,8 @@ def _build_response_preview(trace: dict[str, Any]) -> str:
 def save_bad_case_to_db(
     db: Session,
     bad_case: dict[str, Any],
+    *,
+    commit: bool = True,
 ) -> None:
     """Save a bad case record to the database.
 
@@ -967,7 +1088,7 @@ def save_bad_case_to_db(
                 updated_at=now,
             )
         )
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 def get_bad_case_from_db(
@@ -1007,6 +1128,8 @@ def update_bad_case_in_db(
     db: Session,
     bad_case_id: str,
     updates: dict[str, Any],
+    *,
+    commit: bool = True,
 ) -> dict[str, Any] | None:
     """Update fields on an existing bad case row."""
     row = db.query(BadCase).filter(BadCase.id == bad_case_id).first()
@@ -1044,7 +1167,7 @@ def update_bad_case_in_db(
             meta[key] = updates[key]
     row.metadata_json = meta
     row.updated_at = now
-    db.commit()
+    _finish_write(db, commit=commit)
     db.refresh(row)
     return _db_bad_case_to_dict(row)
 
@@ -1052,6 +1175,8 @@ def update_bad_case_in_db(
 def create_candidate_from_bad_case_in_db(
     db: Session,
     candidate_data: dict[str, Any],
+    *,
+    commit: bool = True,
 ) -> None:
     """Save a knowledge candidate created from a bad case to the database.
 
@@ -1091,7 +1216,7 @@ def create_candidate_from_bad_case_in_db(
         )
         existing.metadata_json = meta
         existing.updated_at = now
-        db.commit()
+        _finish_write(db, commit=commit)
         return
 
     candidate_id = candidate_data.get("candidate_id", "")
@@ -1125,7 +1250,7 @@ def create_candidate_from_bad_case_in_db(
             updated_at=now,
         )
     )
-    db.commit()
+    _finish_write(db, commit=commit)
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -1138,6 +1263,8 @@ DEFAULT_SYNC_METHOD = "approved_knowledge_vector_sync"
 def save_rag_embeddings_to_db(
     db: Session,
     embeddings: list[dict[str, Any]],
+    *,
+    commit: bool = True,
 ) -> int:
     """Delete old approved-knowledge rag_embeddings and insert new ones.
 
@@ -1199,7 +1326,7 @@ def save_rag_embeddings_to_db(
         )
         inserted += 1
 
-    db.commit()
+    _finish_write(db, commit=commit)
     return inserted
 
 
@@ -1337,7 +1464,6 @@ def search_rag_embeddings_semantic(
     if query_dim == 0:
         return []
 
-    from app.database import DATABASE_URL
     from app.db_models import _HAS_PGVECTOR, _is_postgresql
 
     is_pg = _is_postgresql() and _HAS_PGVECTOR

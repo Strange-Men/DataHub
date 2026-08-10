@@ -47,6 +47,7 @@ from app.p3_export_routes import router as p3_export_router
 from app.unified_retrieval_routes import router as unified_retrieval_router
 from app.customerops_unified_routes import router as customerops_unified_router
 from app.storage import (
+    P1PersistenceError,
     apply_review_decision,
     build_rag_chunks,
     create_candidate_from_bad_case,
@@ -86,6 +87,22 @@ async def _lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="DataHub API", version="0.1.0", lifespan=_lifespan)
+
+
+@app.exception_handler(P1PersistenceError)
+async def _handle_p1_persistence_error(_request, _exc: P1PersistenceError) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={
+            "success": False,
+            "error": {
+                "code": P1PersistenceError.code,
+                "message": "P1 database persistence is temporarily unavailable.",
+                "details": {},
+            },
+            "requestId": _request_id(),
+        },
+    )
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(capability_router)

@@ -485,15 +485,15 @@ class ImportCleaningDbPersistenceTest(unittest.TestCase):
 
     # ── JSON storage compatibility ─────────────────────────────────
 
-    def test_12_json_storage_still_works(self) -> None:
-        """Verify the JSON storage is still written alongside DB."""
+    def test_12_runtime_import_does_not_write_legacy_json(self) -> None:
+        """Runtime records are persisted only in the database authority."""
         batch_id = self._import_sample()
         raw_file = (
             ROOT_DIR / "backend" / "storage" / "raw_batches" / f"{batch_id}.json"
         )
-        self.assertTrue(
+        self.assertFalse(
             raw_file.exists(),
-            f"JSON storage file {raw_file} should still exist after import",
+            f"Runtime import must not create legacy JSON file {raw_file}",
         )
 
     # ── Existing P1 flow remains intact ────────────────────────────
