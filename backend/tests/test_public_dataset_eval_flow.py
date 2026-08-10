@@ -12,10 +12,12 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.main import app  # noqa: E402
+from p1_test_database import ensure_p1_test_database  # noqa: E402
 
 
 class PublicDatasetEvalFlowTest(unittest.TestCase):
     def setUp(self) -> None:
+        ensure_p1_test_database(app)
         self.client = TestClient(app)
         self.sample_path = ROOT_DIR / "samples" / "public_dataset_eval_sample.json"
         self.sample = json.loads(self.sample_path.read_text(encoding="utf-8"))

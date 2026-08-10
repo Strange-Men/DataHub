@@ -34,24 +34,19 @@ from app.schemas import (
     SanitizedMessage,
     SourceBatchMetadata,
 )
-from app.database import SessionLocal as _SessionLocal
+import app.database as database
 import app.db_repositories as db_repo
+from app.p1_persistence import P1PersistenceError
 from app.embedding import get_embedding_provider
 import logging
 
 _logger = logging.getLogger(__name__)
 
 
-class P1PersistenceError(RuntimeError):
-    """Stable, safe failure raised when P1 database persistence is unavailable."""
-
-    code = "P1_DATABASE_UNAVAILABLE"
-
-
 def SessionLocal():
     """Open a database session while normalizing connection failures."""
     try:
-        return _SessionLocal()
+        return database.SessionLocal()
     except Exception as exc:
         raise _persistence_failure("open session", exc) from None
 

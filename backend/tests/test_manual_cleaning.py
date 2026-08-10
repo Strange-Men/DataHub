@@ -12,10 +12,13 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.main import app  # noqa: E402
+from p1_test_database import ensure_p1_test_database  # noqa: E402
+from app.storage import get_raw_batch_document  # noqa: E402
 
 
 class ManualCleaningTest(unittest.TestCase):
     def setUp(self) -> None:
+        ensure_p1_test_database(app)
         self.client = TestClient(app)
         self.run_id = uuid4().hex[:8]
 
@@ -83,9 +86,10 @@ class ManualCleaningTest(unittest.TestCase):
         self.assertEqual(imported.status_code, 200, imported.text)
         return imported.json()["data"]["batch_id"]
 
-    def _raw_batch_text(self, batch_id: str) -> str:
-        raw_path = ROOT_DIR / "backend" / "storage" / "raw_batches" / f"{batch_id}.json"
-        return raw_path.read_text(encoding="utf-8")
+    def _raw_batch_snapshot(self, batch_id: str) -> dict[str, object]:
+        document = get_raw_batch_document(batch_id)
+        self.assertIsNotNone(document)
+        return document
 
     def _manual_clean(self, batch_id: str, message_id: str, **overrides: object) -> dict:
         payload = {
@@ -104,7 +108,7 @@ class ManualCleaningTest(unittest.TestCase):
 
     def test_manual_cleaning_updates_sanitized_only_and_guides_extraction(self) -> None:
         batch_id = self._import_manual_cleaning_sample()
-        raw_before = self._raw_batch_text(batch_id)
+        raw_before = self._raw_batch_snapshot(batch_id)
 
         cleaned = self.client.post(f"/api/cleaning/run/{batch_id}")
         self.assertEqual(cleaned.status_code, 200, cleaned.text)
@@ -138,18 +142,11 @@ class ManualCleaningTest(unittest.TestCase):
             cleaning_note="Needs senior cleaner review.",
         )
 
-        self.assertEqual(self._raw_batch_text(batch_id), raw_before)
+        self.assertEqual(self._raw_batch_snapshot(batch_id), raw_before)
         self.assertEqual(drop_record["manual_action"], "drop")
         self.assertEqual(edit_record["manual_action"], "keep_edited")
 
-        record_path = (
-            ROOT_DIR
-            / "backend"
-            / "storage"
-            / "manual_cleaning_records"
-            / f"{edit_record['record_id']}.json"
-        )
-        self.assertTrue(record_path.exists())
+        self.assertTrue(edit_record["record_id"].startswith("manual_clean_"))
 
         sanitized = self.client.get(f"/api/sanitized/{batch_id}")
         self.assertEqual(sanitized.status_code, 200, sanitized.text)

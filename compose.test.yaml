@@ -12,7 +12,7 @@ x-test-backend-environment: &test-backend-environment
   POSTGRES_DB: datahub_test
   POSTGRES_USER: datahub_test
   POSTGRES_PASSWORD: ${DATAHUB_TEST_POSTGRES_PASSWORD:?Set an ephemeral test-only password}
-  DATAHUB_ENV: docker-test
+  DATAHUB_ENV: test
   DATAHUB_TEST_MODE: integration
   ASSET_STORAGE_BACKEND: local
   ASSET_STORAGE_ROOT: /data/assets
@@ -88,7 +88,7 @@ services:
     command:
       - sh
       - -c
-      - python scripts/check_pgvector_support.py && python scripts/init_database.py
+      - python scripts/check_pgvector_support.py && python scripts/manage_migrations.py upgrade
     environment: *test-backend-environment
     volumes: *test-volumes
     depends_on:

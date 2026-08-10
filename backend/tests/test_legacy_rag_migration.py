@@ -13,10 +13,12 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.main import app  # noqa: E402
+from p1_test_database import ensure_p1_test_database  # noqa: E402
 
 
 class LegacyRagMigrationTest(unittest.TestCase):
     def setUp(self) -> None:
+        ensure_p1_test_database(app)
         self.client = TestClient(app)
         self.sample = json.loads(
             (ROOT_DIR / "samples" / "legacy_rag_export_sample.json").read_text(

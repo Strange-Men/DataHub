@@ -30,6 +30,7 @@ class DatabaseFoundationTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         # Force SQLite in-memory so tests never touch a real file or PostgreSQL.
+        cls._saved_database_url = os.environ.get("DATABASE_URL")
         os.environ["DATABASE_URL"] = "sqlite:///:memory:"
         # Force re-import so the module picks up the override.
         import importlib
@@ -40,6 +41,27 @@ class DatabaseFoundationTestCase(unittest.TestCase):
         importlib.reload(_models_module)
         cls.db = db_module
         cls.models = _models_module
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.db.engine.dispose()
+        if cls._saved_database_url is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = cls._saved_database_url
+
+        import importlib
+        import app.database as db_module
+        import app.db_models as models_module
+        import app.db_repositories as repositories_module
+        import app.storage as storage_module
+        import app.main as main_module
+
+        importlib.reload(db_module)
+        importlib.reload(models_module)
+        importlib.reload(repositories_module)
+        importlib.reload(storage_module)
+        importlib.reload(main_module)
 
     def test_01_engine_created(self) -> None:
         self.assertIsNotNone(self.db.engine)

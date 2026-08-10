@@ -1,4 +1,3 @@
-import json
 import sys
 import unittest
 from pathlib import Path
@@ -13,10 +12,12 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.main import app  # noqa: E402
+from p1_test_database import ensure_p1_test_database  # noqa: E402
 
 
 class ReviewQualityConsoleTest(unittest.TestCase):
     def setUp(self) -> None:
+        ensure_p1_test_database(app)
         self.client = TestClient(app)
         self.run_id = uuid4().hex[:8]
 
@@ -153,11 +154,13 @@ class ReviewQualityConsoleTest(unittest.TestCase):
         self.assertEqual(approved_review["review_note"], "Approved by review quality console test.")
         self.assertIsNotNone(approved_review["reviewed_at"])
 
-        review_index = json.loads(
-            (ROOT_DIR / "backend" / "storage" / "review_records" / "index.json").read_text(
-                encoding="utf-8"
-            )
-        )
+        import app.storage as storage
+
+        db = storage.database.SessionLocal()
+        try:
+            review_index = storage.db_repo.list_review_records_from_db(db)
+        finally:
+            db.close()
         reviewed_ids = {record["candidate_id"] for record in review_index}
         self.assertIn(approved["candidate_id"], reviewed_ids)
         self.assertIn(rejected["candidate_id"], reviewed_ids)

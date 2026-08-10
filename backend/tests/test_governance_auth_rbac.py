@@ -34,6 +34,7 @@ from app.auth import (  # noqa: E402
     validate_auth_configuration,
 )
 from app.main import app  # noqa: E402
+from p1_test_database import ensure_p1_test_database  # noqa: E402
 from scripts.auth_client import load_bearer_token  # noqa: E402
 from scripts.run_p1_pipeline_harness import PipelineHarness  # noqa: E402
 from scripts.run_p2_local_acceptance import AcceptanceClient  # noqa: E402
@@ -57,6 +58,7 @@ def disabled_auth_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def client() -> TestClient:
+    ensure_p1_test_database(app)
     return TestClient(app)
 
 

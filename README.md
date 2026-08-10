@@ -24,7 +24,7 @@ English version: [README.en.md](./README.en.md)
 
 DataHub 当前包含三个已落地的中心，但 P1～P3 尚未完成最终统一封板：
 
-- **P1｜客服文本知识治理中心**：覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。当前仍保留 JSON/数据库双写及兼容 fallback 技术债；“P1 封板”仅表示既有业务与检索合约基线稳定，不表示单一真相源改造已经完成。P1 单一真相源属于后续独立 Goal。
+- **P1｜客服文本知识治理中心**：覆盖导入、清洗、审核、RAG、检索与 Bad Case 回流。P1-R2 已完成数据库单一真相源切换：PostgreSQL 是正常 Runtime 的唯一业务权威，Legacy JSON 不再参与业务读、写、合并或故障 fallback，仅保留为不可变历史与显式迁移输入。
 - **P2｜素材文本投影治理中心**：接收 JPEG、PNG、WebP 素材；正式 Extraction 仍是 deterministic mock，不代表真实 OCR、Caption 或原生图片理解。当前真实价值在于素材治理、人工修订、Snapshot、发布、独立 Chunk/Embedding、Serving Gate、P2-only Retrieval，以及显式 opt-in 的 Unified/CustomerOpsAgent 证据融合。
 - **P3｜已治理知识复用资产生产和交付中心**：从合格的 P1、P2 与已批准 Bad Case 来源生产 `training_material`、`sop`、`service_script`、`qa_bank`、`sft_dataset` 五类资产，支持确定性草稿、默认关闭的可选 LLM 草稿、人工修订与审核、发布及 JSONL/CSV 导出。`approved` 不等于 `published`；`published` 不等于进入 RAG、Agent 或训练；`export` 不等于模型训练。P3-M8 已完成，P3-M9 尚未完成，因此 P3 不是最终封板状态。
 - **P4**：尚未开始。
@@ -41,9 +41,13 @@ R1 只完成合同与基础设施加固。P1 JSON/数据库双写、P2 真实 OC
 
 R1 完成后的 Goal 必须按以下顺序推进：
 
-1. P1 单一真相源。
+1. ~~P1 单一真相源。~~ **P1-R2 已完成。**
 2. P2/P3 核心缺口。
 3. P1～P3 最终统一封板。
+
+## P1-R2 数据库单一真相源
+
+**P1-R2 Database Authority 已完成。** 14 项 Persistence Map 覆盖 10 项可无损对账/迁移实体、3 项只读历史审计实体与 1 项 DB-only 实体。53,705 条合法 JSON-only 历史记录以 insert-only 方式回填；最终对账为 `EXACT_MATCH=53,705`、`JSON_ONLY=0`、`CONFLICT=0`、`ORPHAN=0`、`INVALID=0`。历史 JSON 共 24,961 个文件，聚合 SHA-256 保持 `4bca2561...f281`，未删除或由 Runtime 改写。DB 故障现在稳定 fail closed 为安全 `503 P1_DATABASE_UNAVAILABLE`。完整证据见 [P1-R2 Release 报告](docs/87_P1_R2_DATABASE_AUTHORITY_RELEASE_REPORT.md)。
 
 ## 目录
 

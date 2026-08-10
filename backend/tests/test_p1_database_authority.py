@@ -53,6 +53,17 @@ class P1DatabaseAuthorityTest(unittest.TestCase):
             os.environ.pop("DATABASE_URL", None)
         else:
             os.environ["DATABASE_URL"] = cls._previous_database_url
+        import app.database as database
+        import app.db_models as db_models
+        import app.db_repositories as db_repositories
+        import app.main as main
+        import app.storage as storage
+
+        importlib.reload(database)
+        importlib.reload(db_models)
+        importlib.reload(db_repositories)
+        importlib.reload(storage)
+        importlib.reload(main)
         os.unlink(cls._tmp.name)
 
     def setUp(self) -> None:
@@ -86,8 +97,8 @@ class P1DatabaseAuthorityTest(unittest.TestCase):
 
     def test_database_outage_returns_safe_503_without_json_fallback(self) -> None:
         with patch.object(
-            self.storage,
-            "_SessionLocal",
+            self.storage.database,
+            "SessionLocal",
             side_effect=RuntimeError("postgresql://user:secret@db.internal/datahub"),
         ):
             response = self.client.get("/api/sources")
@@ -241,7 +252,7 @@ def test_postgresql_import_transaction_rolls_back(monkeypatch) -> None:
     )
     engine = create_engine(database_url, pool_pre_ping=True)
     pg_session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    monkeypatch.setattr(storage, "_SessionLocal", pg_session)
+    monkeypatch.setattr(storage.database, "SessionLocal", pg_session)
     original = repo.save_raw_batch_to_db
 
     def fail_after_flush(*args, **kwargs):

@@ -24,7 +24,7 @@ The current online demo supports the P1 workflow. P1 database-backed persistence
 
 DataHub currently contains three implemented centers, but final unified closure of P1 through P3 is not complete:
 
-- **P1 | Customer-service text knowledge governance center**: covers import, cleaning, review, RAG, retrieval, and Bad Case feedback. JSON/database dual writes and compatibility fallbacks remain technical debt. “P1 frozen” means that the existing business and retrieval contract baseline is stable; it does not mean that the single-source-of-truth migration is complete. That migration is a separate upcoming Goal.
+- **P1 | Customer-service text knowledge governance center**: covers import, cleaning, review, RAG, retrieval, and Bad Case feedback. P1-R2 completed the database-authority cutover: PostgreSQL is the only normal-runtime business authority. Legacy JSON is no longer read, written, merged, or used as a failure fallback; it is retained only as immutable history and explicit migration input.
 - **P2 | Material text-projection governance center**: accepts JPEG, PNG, and WebP assets. The formal Extraction path is still deterministic mock and is not real OCR, Caption, or native image understanding. Its current value is asset governance, human revision, Snapshots, publication, an independent Chunk/Embedding index, the Serving Gate, P2-only Retrieval, and explicitly opted-in Unified/CustomerOpsAgent evidence fusion.
 - **P3 | Governed-knowledge reuse asset production and delivery center**: produces five asset types—`training_material`, `sop`, `service_script`, `qa_bank`, and `sft_dataset`—from eligible P1, P2, and approved Bad Case sources. It supports deterministic drafts, optional LLM drafts that are disabled by default, manual revision and review, publication, and JSONL/CSV export. `approved` is not `published`; `published` does not mean entry into RAG, an Agent, or training; `export` does not mean model training. P3-M8 is complete, but P3-M9 is incomplete, so P3 is not finally frozen.
 - **P4**: has not started.
@@ -41,9 +41,13 @@ R1 closes only contract and infrastructure hardening. P1 JSON/database dual writ
 
 The remaining Goals must proceed in this order:
 
-1. P1 single source of truth.
+1. ~~P1 single source of truth.~~ **P1-R2 complete.**
 2. P2/P3 core gaps.
 3. Final unified closure of P1 through P3.
+
+## P1-R2 Database Single Source of Truth
+
+**P1-R2 Database Authority is complete.** The 14-entry Persistence Map covers 10 losslessly reconcilable/migratable entities, three read-only legacy-audit entities, and one DB-only entity. The insert-only backfill added 53,705 valid JSON-only historical records. Final reconciliation is `EXACT_MATCH=53,705`, `JSON_ONLY=0`, `CONFLICT=0`, `ORPHAN=0`, and `INVALID=0`. All 24,961 historical JSON files remain retained, with aggregate SHA-256 unchanged at `4bca2561...f281`; normal runtime neither reads nor modifies them. Database failure now fails closed as safe `503 P1_DATABASE_UNAVAILABLE`. See the [P1-R2 Release Report](docs/87_P1_R2_DATABASE_AUTHORITY_RELEASE_REPORT.md).
 
 ## Contents
 

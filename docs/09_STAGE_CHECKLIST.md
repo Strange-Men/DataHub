@@ -2,7 +2,7 @@
 
 ## Current Unified Boundary
 
-- **P1 | Customer-service text knowledge governance center** is implemented, but JSON/database dual writes and compatibility fallbacks remain technical debt. Its historical freeze protects the existing business/retrieval baseline; P1 single-source-of-truth migration remains a separate upcoming Goal.
+- **P1 | Customer-service text knowledge governance center** is implemented and P1-R2 Database Authority is complete. PostgreSQL is the sole normal-runtime business authority; Legacy JSON is retained only for explicit reconciliation/migration and no longer participates in runtime reads, writes, merges, or fallback.
 - **P2 | Material text-projection governance center** supports JPEG, PNG, and WebP governance, human revision, Snapshots, publication, independent indexing, the Serving Gate, and P2-only Retrieval. Formal Extraction remains deterministic mock rather than real OCR, Caption, or native image understanding. Local Docker is the functional/release acceptance authority, not production or complete Render online acceptance; missing persistent Render Asset storage keeps online P2 acceptance **BLOCKED**.
 - **P3 | Governed-knowledge reuse asset production and delivery center** accepts eligible P1, P2, and approved Bad Case sources and produces `training_material`, `sop`, `service_script`, `qa_bank`, and `sft_dataset` through deterministic or optional-LLM drafts, manual revision/review, publication, and JSONL/CSV export. `approved` is not `published`; `published` does not mean entry into RAG, an Agent, or training; `export` does not mean model training. P3-M8 is complete, but P3-M9 is incomplete and P3 is not finally frozen.
 - **P4** has not started.
@@ -19,11 +19,26 @@
 - [x] Only P1-P3-R1 Contract and Infrastructure Hardening is marked complete. P1 data refactoring, real P2 multimodal/cloud storage, P3-M9, OIDC/human identity, and P4 remain incomplete.
 - [x] Authoritative report: `docs/86_P1_P3_R1_CONTRACT_INFRASTRUCTURE_RELEASE_REPORT.md`.
 
+## P1-R2 Database Authority Closure
+
+- [x] Freeze a 14-entry Persistence Map: 10 reconciled/migratable, 3 legacy-audit-only, 1 DB-only-by-design.
+- [x] Reconcile without writes and classify exact/json-only/db-only/conflict/orphan/invalid with safe ID hashes.
+- [x] Back up PostgreSQL and pass a restore drill before data mutation.
+- [x] Insert exactly 53,705 valid JSON-only historical P1 records; perform no update or delete.
+- [x] Finish with exact 53,705 and JSON-only/conflict/orphan/invalid all 0; explain DB-only and legacy-only-by-design records.
+- [x] Preserve all 24,961 Legacy JSON files and aggregate SHA-256 `4bca2561...f281`.
+- [x] Make PostgreSQL the only P1 runtime authority; remove runtime JSON write, fallback, and merge.
+- [x] Fail closed with safe `503 P1_DATABASE_UNAVAILABLE`; cover transaction rollback and concurrency on PostgreSQL.
+- [x] Isolate historical JSON access in the migration-only legacy module and pass the persistence-boundary gate.
+- [x] Pass backend `1214 passed`, PostgreSQL `21 passed`, frontend `59 passed`, Docker Harness `10/10`, compileall and platform gates with 0 failed.
+- [x] Retain the explicitly accepted `retrieval_logs` 968→969 audit row without deletion or preflight rewrite.
+- [x] Keep P2/P3 semantics/schema unchanged, P3 at exactly seven tables, CustomerOpsAgent P1-only by default, and Unified false by default.
+- [x] Publish `docs/87_P1_R2_DATABASE_AUTHORITY_RELEASE_REPORT.md`.
+
 The remaining Goals must proceed in this order:
 
-1. P1 single source of truth.
-2. P2/P3 core gaps.
-3. Final unified closure of P1 through P3.
+1. P2/P3 core gaps.
+2. Final unified closure of P1 through P3.
 
 > Historical-scope rule: every milestone checklist and phase boundary below records the facts and forbidden scope at that checkpoint. Older statements such as “P2/P3 not implemented”, “M8 not started”, or “Roadmap only” remain historical evidence; they do not override the current boundary above and must not be rewritten as if they were current claims.
 

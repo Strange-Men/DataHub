@@ -47,7 +47,6 @@ from app.p3_export_routes import router as p3_export_router
 from app.unified_retrieval_routes import router as unified_retrieval_router
 from app.customerops_unified_routes import router as customerops_unified_router
 from app.storage import (
-    P1PersistenceError,
     apply_review_decision,
     build_rag_chunks,
     create_candidate_from_bad_case,
@@ -77,6 +76,7 @@ from app.storage import (
     update_bad_case,
     update_knowledge_candidate,
 )
+from app.p1_persistence import P1PersistenceError
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI):

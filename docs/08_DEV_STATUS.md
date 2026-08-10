@@ -2,11 +2,11 @@
 
 ## Current Stage
 
-P1-P3-R1 Contract and Infrastructure Hardening is **COMPLETE / PASS WITH AN APPROVED STAGE E EXCEPTION**. P3-M8 remains complete, but P3-M9 is incomplete and P4 has not started. P1/P2 historical release baselines remain protected while the explicitly ordered follow-up Goals address known technical debt and gaps. CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, and Render P2 persistence remains **BLOCKED**.
+P1-R2 Database Authority is **COMPLETE / PASS WITH THE ACCEPTED AUDIT EXCEPTION RETAINED**. PostgreSQL is now P1's only normal-runtime business truth source; Legacy JSON is immutable migration/history input only. P3-M8 remains complete, P3-M9 is incomplete, P4 has not started, CustomerOpsAgent remains P1-only by default, Unified remains explicit opt-in, and Render P2 persistence remains **BLOCKED**.
 
 ## Current Product Positioning and Boundaries
 
-- **P1 | Customer-service text knowledge governance center**: import, cleaning, review, RAG, retrieval, and Bad Case feedback are implemented. JSON/database dual writes and compatibility fallbacks remain technical debt. The frozen P1 business/retrieval baseline does not mean that a single source of truth has been completed; that migration is a separate upcoming Goal.
+- **P1 | Customer-service text knowledge governance center**: import, cleaning, review, RAG, retrieval, and Bad Case feedback are implemented. P1-R2 removed normal-runtime JSON writes, reads, merges, and failure fallbacks. PostgreSQL is the sole runtime business authority; historical JSON remains retained for explicit reconciliation/migration only.
 - **P2 | Material text-projection governance center**: JPEG, PNG, and WebP assets are governed through human revision, Snapshots, publication, independent indexing, the Serving Gate, and P2-only Retrieval. Formal Extraction remains deterministic mock, not real OCR, Caption, or native image understanding.
 - **P3 | Governed-knowledge reuse asset production and delivery center**: eligible P1, P2, and approved Bad Case sources can produce `training_material`, `sop`, `service_script`, `qa_bank`, and `sft_dataset` through deterministic or optional-LLM drafts, manual revision/review, publication, and JSONL/CSV export. `approved` is not `published`; `published` does not mean entry into RAG, an Agent, or training; `export` does not mean model training. P3-M9 remains incomplete.
 - **P4**: not started.
@@ -24,11 +24,23 @@ Local Docker is the authoritative current functional and release-acceptance boun
 - Approved exception: one P2 Retrieval smoke made one real SiliconFlow query-embedding call and persisted one required audit row. `retrieval_logs` changed from 968 to 969; the other 26 business-table count/hash snapshots, 107-index fingerprint, 324-constraint fingerprint, and exact seven P3 tables did not change. The record is retained and the preflight is not rewritten.
 - This release changes no P1/P2/P3 business semantics. It does not complete P1 single-source-of-truth, real P2 multimodal Providers/cloud storage, P3-M9, OIDC/human identity, or P4. Green CI and local Docker acceptance are not production deployment acceptance.
 
+## P1-R2 Database Authority Release
+
+- **Status:** complete on 2026-08-10; authoritative evidence is in `docs/87_P1_R2_DATABASE_AUTHORITY_RELEASE_REPORT.md`.
+- Persistence Map: 14 entries = 10 reconciled/migratable entities + 3 legacy-audit-only entities + 1 DB-only-by-design entity.
+- Initial reconciliation: exact 0, JSON-only 53,705, DB-only 1,205, conflict/orphan/invalid 0; 5,521 legacy-only-by-design workflow receipts were retained.
+- Backup and restore drill passed before the insert-only backfill. The backfill inserted exactly 53,705 historical records and performed no update/delete.
+- Final reconciliation: exact 53,705, JSON-only/conflict/orphan/invalid 0, DB-only 1,205, DB-only-by-design 10, legacy-only-by-design 5,521. A final no-write plan contained zero inserts.
+- Legacy JSON remains 24,961 files / 62,711,653 bytes with aggregate SHA-256 `4bca2561a389b6dff5e3db604f33561a38db2989a90bb9b0d8833d44d794f281`.
+- Runtime failure is safe `503 P1_DATABASE_UNAVAILABLE` with no JSON fallback. Import, cleaning, review, Bad Case, and related multi-write paths are transaction-bound.
+- Final gates: backend `1214 passed, 2 skipped, 22 deselected`; PostgreSQL `21 passed, 1 skipped`; frontend `59 passed` plus typecheck/lint/build; Docker P1 Harness `10/10`; compileall, boundary, CI contract, Secret/conflict and diff checks pass.
+- Accepted audit exception remains intact: `retrieval_logs` increased 968→969 during overlapping Stage E activity. The row was not deleted and preflight was not rewritten; the other 26 business-table snapshots and exact seven P3 tables remained stable.
+- P2/P3 product semantics and schema were not modified. Real P2 multimodal capability, P3-M9, OIDC/human identity, and P4 remain outside this release.
+
 ## Ordered Next Goals
 
-1. P1 single source of truth.
-2. P2/P3 core gaps.
-3. Final unified closure of P1 through P3.
+1. P2/P3 core gaps.
+2. Final unified closure of P1 through P3.
 
 ## Historical Chronology
 

@@ -13,10 +13,13 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from app.main import app  # noqa: E402
+from p1_test_database import ensure_p1_test_database  # noqa: E402
+from app.storage import get_raw_batch_document  # noqa: E402
 
 
 class P1HighQualityDataHubReleaseTest(unittest.TestCase):
     def setUp(self) -> None:
+        ensure_p1_test_database(app)
         self.client = TestClient(app)
         self.run_id = uuid4().hex[:8]
 
@@ -168,8 +171,8 @@ class P1HighQualityDataHubReleaseTest(unittest.TestCase):
         self.assertEqual(health.json()["phase"], "P1-M24.3")
 
         batch_id = self._import_high_quality_sample()
-        raw_path = ROOT_DIR / "backend" / "storage" / "raw_batches" / f"{batch_id}.json"
-        raw_before = raw_path.read_text(encoding="utf-8")
+        raw_before = get_raw_batch_document(batch_id)
+        self.assertIsNotNone(raw_before)
 
         cleaned = self.client.post(f"/api/cleaning/run/{batch_id}")
         self.assertEqual(cleaned.status_code, 200, cleaned.text)
@@ -219,7 +222,7 @@ class P1HighQualityDataHubReleaseTest(unittest.TestCase):
             "keep",
         )
 
-        self.assertEqual(raw_path.read_text(encoding="utf-8"), raw_before)
+        self.assertEqual(get_raw_batch_document(batch_id), raw_before)
 
         extracted = self.client.post(f"/api/extraction/run/{batch_id}")
         self.assertEqual(extracted.status_code, 200, extracted.text)
@@ -404,13 +407,14 @@ class P1HighQualityDataHubReleaseTest(unittest.TestCase):
         self.assertEqual(legacy_matches[0]["source_legacy_id"], f"legacy_{unique}")
 
         ignored_check = subprocess.run(
-            ["git", "check-ignore", "backend/storage"],
+            ["git", "check-ignore", "--no-index", "backend/storage/"],
             cwd=ROOT_DIR,
             capture_output=True,
             text=True,
             check=False,
         )
         self.assertEqual(ignored_check.returncode, 0, ignored_check.stderr)
+        self.assertFalse((ROOT_DIR / "backend" / "storage").exists())
 
         routes = {route.path.lower() for route in app.routes}
         # P2-M7 adds one isolated management listing; P1 still exposes no
