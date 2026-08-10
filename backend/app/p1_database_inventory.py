@@ -23,6 +23,68 @@ def _add(inventory: Inventory, entity: str, business_id: str, payload: dict[str,
     inventory.add(Record(entity, business_id, payload, "database"))
 
 
+def _manual_associations(
+    db: Session,
+) -> tuple[
+    dict[str, db_models.SanitizedMessage],
+    dict[str, db_models.SanitizedMessage],
+    dict[str, db_models.ManualCleaningRecord],
+]:
+    messages = db.query(db_models.SanitizedMessage).all()
+    messages_by_id = {row.id: row for row in messages}
+    by_message_id: dict[str, list[db_models.SanitizedMessage]] = {}
+    for row in messages:
+        decoded = row.id.split("__", 2)[-1] if "__" in row.id else row.id
+        by_message_id.setdefault(decoded, []).append(row)
+
+    record_message: dict[str, db_models.SanitizedMessage] = {}
+    latest_by_message: dict[str, db_models.ManualCleaningRecord] = {}
+    records = (
+        db.query(db_models.ManualCleaningRecord)
+        .order_by(db_models.ManualCleaningRecord.created_at)
+        .all()
+    )
+    for record in records:
+        candidates = list(by_message_id.get(record.sanitized_message_id, []))
+        direct = messages_by_id.get(record.sanitized_message_id)
+        if direct is not None and direct not in candidates:
+            candidates.append(direct)
+        content_matches = [
+            candidate
+            for candidate in candidates
+            if candidate.content == record.original_content
+        ]
+        if content_matches:
+            candidates = content_matches
+        eligible = [
+            candidate
+            for candidate in candidates
+            if candidate.created_at is None
+            or record.created_at is None
+            or candidate.created_at <= record.created_at
+        ]
+        if eligible:
+            candidates = eligible
+        if not candidates:
+            continue
+        message = max(
+            candidates,
+            key=lambda candidate: candidate.created_at or record.created_at,
+        )
+        record_message[record.id] = message
+        existing = latest_by_message.get(message.id)
+        if (
+            existing is None
+            or existing.created_at is None
+            or (
+                record.created_at is not None
+                and record.created_at >= existing.created_at
+            )
+        ):
+            latest_by_message[message.id] = record
+    return messages_by_id, record_message, latest_by_message
+
+
 def _raw_inventory(db: Session, inventory: Inventory) -> None:
     for row in db.query(db_models.RawBatch).all():
         stored = _mapping(row.metadata_json)
@@ -63,14 +125,6 @@ def _raw_inventory(db: Session, inventory: Inventory) -> None:
 
 
 def _sanitized_inventory(db: Session, inventory: Inventory) -> None:
-    latest_manual: dict[str, db_models.ManualCleaningRecord] = {}
-    for row in (
-        db.query(db_models.ManualCleaningRecord)
-        .order_by(db_models.ManualCleaningRecord.created_at.desc())
-        .all()
-    ):
-        latest_manual.setdefault(row.sanitized_message_id, row)
-
     for row in db.query(db_models.SanitizedBatch).all():
         metadata = _mapping(row.metadata_json)
         payload = {
@@ -96,7 +150,6 @@ def _sanitized_inventory(db: Session, inventory: Inventory) -> None:
         parts = row.id.split("__", 2)
         conversation_id = parts[1] if len(parts) == 3 else ""
         message_id = parts[2] if len(parts) == 3 else row.id
-        manual = latest_manual.get(message_id) or latest_manual.get(row.id)
         payload = {
             "id": row.id,
             "batch_id": row.batch_id,
@@ -108,18 +161,11 @@ def _sanitized_inventory(db: Session, inventory: Inventory) -> None:
             "content": row.content,
             "pii_detected": bool(row.pii_entities),
             "pii_types": list(row.pii_entities or []),
-            "cleaning_notes": [],
             "cleaning_issues": list(row.cleaning_issues or []),
             "risk_flags": list(row.risk_flags or []),
             "quality_score": float(row.quality_score),
             "quality_level": row.quality_level,
             "suggested_action": row.suggested_action,
-            "manual_cleaning_status": "cleaned" if manual else "not_cleaned",
-            "manual_cleaned_content": manual.cleaned_content if manual else None,
-            "manual_action": manual.action if manual else None,
-            "cleaner": manual.cleaner if manual else None,
-            "cleaning_note": manual.note if manual else None,
-            "manual_cleaned_at": _iso(manual.created_at) if manual else None,
             "created_at": _iso(row.created_at),
         }
         _add(inventory, "sanitized_message", row.id, payload)
@@ -163,13 +209,9 @@ def _candidate_payload(row: db_models.KnowledgeCandidate) -> dict[str, Any]:
 
 
 def _governance_inventory(db: Session, inventory: Inventory) -> None:
-    sanitized_rows = {row.id: row for row in db.query(db_models.SanitizedMessage).all()}
-    decoded_rows = {
-        (row.id.split("__", 2)[-1] if "__" in row.id else row.id): row
-        for row in sanitized_rows.values()
-    }
+    sanitized_rows, record_message, _latest_manual = _manual_associations(db)
     for row in db.query(db_models.ManualCleaningRecord).all():
-        message = decoded_rows.get(row.sanitized_message_id) or sanitized_rows.get(row.sanitized_message_id)
+        message = record_message.get(row.id) or sanitized_rows.get(row.sanitized_message_id)
         parts = message.id.split("__", 2) if message is not None else []
         payload = {
             "record_id": row.id,

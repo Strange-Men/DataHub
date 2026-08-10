@@ -93,6 +93,80 @@ def _references(entity: str, payload: Mapping[str, Any]) -> tuple[tuple[str, str
     return ()
 
 
+def _normalize_payload(entity: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(payload)
+    if entity == "sanitized_batch":
+        for field in (
+            "exact_duplicate_count",
+            "near_duplicate_count",
+            "low_quality_count",
+            "noise_count",
+            "review_recommended_count",
+            "drop_recommended_count",
+        ):
+            if normalized.get(field) is None:
+                normalized[field] = 0
+        if normalized.get("average_quality_score") is None:
+            normalized["average_quality_score"] = 0.0
+    elif entity == "sanitized_message":
+        for field in (
+            "cleaning_notes",
+            "manual_cleaning_status",
+            "manual_cleaned_content",
+            "manual_action",
+            "cleaner",
+            "cleaning_note",
+            "manual_cleaned_at",
+        ):
+            normalized.pop(field, None)
+        defaults: dict[str, object] = {
+            "pii_detected": False,
+            "pii_types": [],
+            "cleaning_issues": [],
+            "risk_flags": [],
+            "quality_score": 0.0,
+            "quality_level": "high",
+            "suggested_action": "keep",
+        }
+        for field, default in defaults.items():
+            if normalized.get(field) is None:
+                normalized[field] = default
+    elif entity == "knowledge_candidate":
+        defaults = {
+            "source_type": "sanitized_batch",
+            "source_batch_id": None,
+            "source_conversation_id": None,
+            "source_message_ids": [],
+            "source_bad_case_id": None,
+            "source_retrieval_id": None,
+            "source_chunk_ids": [],
+            "source_legacy_id": None,
+            "source_import_id": None,
+            "linked_candidate_id": None,
+            "knowledge_type": "faq",
+            "intent": "general",
+            "tags": [],
+            "risk_level": "medium",
+            "review_status": "pending_review",
+            "quality_score": 0.0,
+            "extraction_method": "rule_based_mock",
+            "migration_mode": None,
+            "source_note": None,
+            "cleaning_issues": [],
+            "risk_flags": [],
+            "manual_cleaning_status": None,
+            "manual_action": None,
+            "reviewer": None,
+            "review_note": None,
+            "reviewed_at": None,
+            "updated_at": None,
+        }
+        for field, default in defaults.items():
+            if normalized.get(field) is None:
+                normalized[field] = default
+    return normalized
+
+
 def _add_record(
     inventory: Inventory,
     entity: str,
@@ -107,7 +181,7 @@ def _add_record(
     record = Record(
         entity=entity,
         business_id=business_id,
-        payload=dict(payload),
+        payload=_normalize_payload(entity, payload),
         source=str(source),
         references=_references(entity, payload),
     )

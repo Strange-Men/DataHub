@@ -240,6 +240,42 @@ def test_conflict_blocks_plan_and_never_overwrites_database(sqlite_session: Sess
     assert sqlite_session.get(db_models.RawBatch, "batch_1").source_name == "database-value"
 
 
+def test_cleaning_notes_are_explicitly_excluded_as_nonbusiness_diagnostics(
+    sqlite_session: Session,
+) -> None:
+    sqlite_session.add(
+        db_models.RawMessage(
+            id="batch_notes|conv_notes|msg_notes",
+            batch_id="batch_notes",
+            role="user",
+            content="  raw content  ",
+            timestamp="2026-08-10T01:00:00Z",
+            metadata_json={"conversation_id": "conv_notes", "message_id": "msg_notes"},
+        )
+    )
+    sqlite_session.add(
+        db_models.SanitizedMessage(
+            id="batch_notes__conv_notes__msg_notes",
+            batch_id="batch_notes",
+            raw_message_id="msg_notes",
+            role="customer",
+            content="masked content",
+            sanitized_content="masked content",
+            quality_score=1.0,
+            quality_level="high",
+            suggested_action="keep",
+            cleaning_issues=[],
+            risk_flags=[],
+            pii_entities=["EMAIL"],
+        )
+    )
+    sqlite_session.commit()
+    payload = load_database_inventory(sqlite_session).records["sanitized_message"][
+        "batch_notes__conv_notes__msg_notes"
+    ].payload
+    assert "cleaning_notes" not in payload
+
+
 def test_apply_failure_rolls_back_whole_transaction(sqlite_session: Session) -> None:
     legacy = _raw_fixture()
     plan = build_migration_plan(

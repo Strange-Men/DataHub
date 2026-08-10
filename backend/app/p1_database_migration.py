@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Callable, Mapping
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import db_models
@@ -172,8 +173,6 @@ def _model_for_insert(item: PlannedInsert) -> object:
             updated_at=created_at,
         )
     if item.entity == "sanitized_message":
-        if payload.get("cleaning_notes") not in (None, []):
-            raise MigrationBlocked("Sanitized message cleaning_notes have no lossless database column")
         return db_models.SanitizedMessage(
             id=item.business_id,
             batch_id=str(payload.get("batch_id") or ""),
@@ -311,14 +310,23 @@ def apply_migration_plan(
     """Apply one insert-only transaction; any error rolls back every insert."""
     inserted = 0
     with db.begin():
+        ids_by_entity: dict[str, list[str]] = {}
+        for item in plan.inserts:
+            ids_by_entity.setdefault(item.entity, []).append(item.business_id)
+        for entity, business_ids in ids_by_entity.items():
+            model = _MODEL_BY_ENTITY[entity]
+            for offset in range(0, len(business_ids), 2_000):
+                batch = business_ids[offset : offset + 2_000]
+                existing = db.execute(
+                    select(model.id).where(model.id.in_(batch))
+                ).first()
+                if existing is not None:
+                    raise MigrationBlocked(
+                        f"Concurrent row appeared for {entity}; reconciliation must be rerun"
+                    )
         for item in plan.inserts:
             if before_insert is not None:
                 before_insert(item)
-            model = _MODEL_BY_ENTITY[item.entity]
-            if db.get(model, item.business_id) is not None:
-                raise MigrationBlocked(
-                    f"Concurrent row appeared for {item.entity}; reconciliation must be rerun"
-                )
             db.add(_model_for_insert(item))
             inserted += 1
         db.flush()

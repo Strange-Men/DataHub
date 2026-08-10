@@ -54,7 +54,7 @@ PERSISTENCE_MAP: tuple[dict[str, object], ...] = (
     {"entity": "raw_batch", "legacy": "raw_batches", "database": "raw_batches", "mode": "reconciled"},
     {"entity": "raw_message", "legacy": "raw_batches/*.json", "database": "raw_messages", "mode": "reconciled"},
     {"entity": "sanitized_batch", "legacy": "sanitized_batches", "database": "sanitized_batches", "mode": "reconciled"},
-    {"entity": "sanitized_message", "legacy": "sanitized_batches/*.json", "database": "sanitized_messages", "mode": "reconciled"},
+    {"entity": "sanitized_message", "legacy": "sanitized_batches/*.json", "database": "sanitized_messages", "mode": "reconciled", "ignored_nonbusiness_fields": ["cleaning_notes", "manual_cleaning_status", "manual_cleaned_content", "manual_action", "cleaner", "cleaning_note", "manual_cleaned_at"], "manual_authority": "manual_cleaning_record"},
     {"entity": "cleaning_job", "legacy": "cleaning_jobs", "database": None, "mode": "legacy_audit_only"},
     {"entity": "extraction_job", "legacy": "extraction_jobs", "database": None, "mode": "legacy_audit_only"},
     {"entity": "manual_cleaning_record", "legacy": "manual_cleaning_records", "database": "manual_cleaning_records", "mode": "reconciled"},
