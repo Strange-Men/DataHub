@@ -59,6 +59,11 @@ TOKENS = {
 def cleanup_temporary_database() -> Generator[None, None, None]:
     yield
     engine.dispose()
+    # Persistence tests intentionally reload app.database with isolated engines.
+    # Dispose the currently registered engine as well before deleting this DB.
+    import app.database as current_database
+
+    current_database.engine.dispose()
     _TEMP_DATABASE_DIR.cleanup()
 
 
